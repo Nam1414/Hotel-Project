@@ -73,6 +73,9 @@ builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 // =============================================
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ISlugService, SlugService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+
 
 // =============================================
 // 5. CONTROLLERS

@@ -13,6 +13,10 @@ public class AppDbContext : DbContext
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<ArticleCategory> ArticleCategories { get; set; }
     public DbSet<Article> Articles { get; set; }
+    public DbSet<RoomType> RoomTypes { get; set; }
+    public DbSet<Room> Rooms { get; set; }
+    public DbSet<RoomInventory> RoomInventories { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,5 +51,28 @@ public class AppDbContext : DbContext
             .HasOne(a => a.Author)
             .WithMany()
             .HasForeignKey(a => a.AuthorId);
+
+        // Room -> RoomType (n-1)
+        modelBuilder.Entity<Room>()
+            .HasOne(r => r.RoomType)
+            .WithMany(rt => rt.Rooms)
+            .HasForeignKey(r => r.RoomTypeId);
+
+        // RoomInventory -> RoomType (n-1)
+        modelBuilder.Entity<RoomInventory>()
+            .HasOne(ri => ri.RoomType)
+            .WithMany(rt => rt.Inventories)
+            .HasForeignKey(ri => ri.RoomTypeId);
+
+        // Precision for decimal
+        modelBuilder.Entity<RoomType>()
+            .Property(rt => rt.BasePrice)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<RoomInventory>()
+            .Property(ri => ri.PriceOverride)
+            .HasPrecision(18, 2);
     }
 }
+
+
