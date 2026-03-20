@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<RolePermission> RolePermissions { get; set; }
     public DbSet<ArticleCategory> ArticleCategories { get; set; }
     public DbSet<Article> Articles { get; set; }
+    public DbSet<Attraction> Attractions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,5 +48,17 @@ public class AppDbContext : DbContext
             .HasOne(a => a.Author)
             .WithMany()
             .HasForeignKey(a => a.AuthorId);
+            // Attraction — config rõ ràng cho decimal columns
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.DistanceKm)
+            .HasColumnType("decimal(5,2)");
+
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.Latitude)
+            .HasColumnType("decimal(10,7)");
+
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.Longitude)
+            .HasColumnType("decimal(10,7)");
     }
 }
