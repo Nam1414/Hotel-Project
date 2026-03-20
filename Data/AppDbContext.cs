@@ -20,7 +20,6 @@ public class AppDbContext : DbContext
     public DbSet<Attraction> Attractions { get; set; }
     public DbSet<Amenity> Amenities { get; set; }
 
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Composite key Role_Permissions
@@ -106,5 +105,3 @@ public class AppDbContext : DbContext
             .HasColumnType("decimal(18, 10)");
     }
 }
-
-

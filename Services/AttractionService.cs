@@ -38,6 +38,7 @@ public class AttractionService : IAttractionService
             MapEmbedLink = dto.MapEmbedLink,
             Latitude = dto.Latitude,
             Longitude = dto.Longitude,
+            ImageUrl = dto.ImageUrl,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -59,6 +60,8 @@ public class AttractionService : IAttractionService
         attraction.MapEmbedLink = dto.MapEmbedLink;
         attraction.Latitude = dto.Latitude;
         attraction.Longitude = dto.Longitude;
+        attraction.ImageUrl = dto.ImageUrl;
+        attraction.IsActive = dto.IsActive;
         attraction.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -83,6 +86,8 @@ public class AttractionService : IAttractionService
         a.MapEmbedLink,
         a.Latitude,
         a.Longitude,
+        a.ImageUrl,
+        a.IsActive,
         a.CreatedAt,
         a.UpdatedAt
     );
