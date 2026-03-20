@@ -27,24 +27,39 @@ public class InventoryController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("update")]
-    [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> UpdateInventory([FromBody] InventoryUpdateDto dto)
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(int id)
     {
-        var result = await _inventoryService.UpdateInventoryAsync(dto);
+        var result = await _inventoryService.GetByIdAsync(id);
+        if (result == null) return NotFound(new { message = "Không tìm thấy thông tin kho phòng" });
         return Ok(result);
     }
 
-    [HttpPost("initialize")]
+    [HttpPut("{id}")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> InitializeInventory([FromQuery] int roomTypeId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+    public async Task<IActionResult> Update(int id, [FromBody] InventoryUpdateDto dto)
     {
-        if (startDate == default) startDate = DateTime.Today;
-        if (endDate == default) endDate = startDate.AddDays(30);
+        var result = await _inventoryService.UpdateByIdAsync(id, dto);
+        if (result == null) return NotFound(new { message = "Không tìm thấy thông tin kho phòng" });
+        return Ok(result);
+    }
 
-        var result = await _inventoryService.InitializeInventoryAsync(roomTypeId, startDate, endDate);
-        if (!result) return BadRequest(new { message = "Khởi tạo kho phòng thất bại. Vui lòng kiểm tra lại loại phòng." });
-        
-        return Ok(new { message = "Khởi tạo kho phòng thành công" });
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _inventoryService.DeleteByIdAsync(id);
+        if (!result) return NotFound(new { message = "Không tìm thấy thông tin kho phòng" });
+        return Ok(new { message = "Đã xóa bản ghi kho phòng thành công" });
+    }
+
+    [HttpPost("{id}/clone")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Clone(int id)
+    {
+        var result = await _inventoryService.CloneAsync(id);
+        if (result == null) return NotFound(new { message = "Không tìm thấy bản ghi gốc để nhân bản" });
+        return Ok(result);
     }
 }

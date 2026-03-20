@@ -22,6 +22,8 @@ public interface IRoomService
 public interface IInventoryService
 {
     Task<IEnumerable<InventoryResponseDto>> GetInventoryAsync(DateTime startDate, DateTime endDate, int? roomTypeId = null);
-    Task<InventoryResponseDto> UpdateInventoryAsync(InventoryUpdateDto dto);
-    Task<bool> InitializeInventoryAsync(int roomTypeId, DateTime startDate, DateTime endDate);
+    Task<InventoryResponseDto?> GetByIdAsync(int id);
+    Task<InventoryResponseDto?> UpdateByIdAsync(int id, InventoryUpdateDto dto);
+    Task<bool> DeleteByIdAsync(int id);
+    Task<InventoryResponseDto?> CloneAsync(int id);
 }

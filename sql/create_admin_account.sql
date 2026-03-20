@@ -1,7 +1,7 @@
 -- SCRIPT KHẮC PHỤC LỖI SCHEMA VÀ TẠO TÀI KHOẢN ADMIN (BẢN CẬP NHẬT CHẮC CHẮN)
 -- Hãy chọn Database 'HotelManagementDB' ở ô Dropdown phía trên bên trái SSMS trước khi chạy
 
-USE [HotelManagement]
+USE [HotelManagementDB]
 GO
 
 PRINT '--- Bat dau qua trinh dong bo Database ---'

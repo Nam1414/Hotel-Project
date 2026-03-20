@@ -23,7 +23,8 @@ public record RoomTypeResponseDto(
     decimal BasePrice,
     int MaxCapacity,
     bool IsActive,
-    List<RoomImageResponseDto>? Images = null
+    List<RoomImageResponseDto>? Images = null,
+    List<AmenityDto>? Amenities = null
 );
 
 public record RoomImageResponseDto(
@@ -71,5 +72,12 @@ public record InventoryResponseDto(
     DateTime InventoryDate,
     int TotalRooms,
     int AvailableRooms,
+    decimal? PriceOverride
+);
+
+public record BulkUpdatePriceDto(
+    int RoomTypeId,
+    DateTime StartDate,
+    DateTime EndDate,
     decimal? PriceOverride
 );

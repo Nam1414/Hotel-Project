@@ -30,60 +30,60 @@ public class InventoryService : IInventoryService
             .ToListAsync();
     }
 
-    public async Task<InventoryResponseDto> UpdateInventoryAsync(InventoryUpdateDto dto)
+    public async Task<InventoryResponseDto?> GetByIdAsync(int id)
     {
-        var inventory = await _context.RoomInventories
-            .FirstOrDefaultAsync(ri => ri.RoomTypeId == dto.RoomTypeId && ri.InventoryDate.Date == dto.InventoryDate.Date);
-
-        if (inventory == null)
-        {
-            inventory = new RoomInventory
-            {
-                RoomTypeId = dto.RoomTypeId,
-                InventoryDate = dto.InventoryDate.Date,
-                TotalRooms = dto.TotalRooms,
-                AvailableRooms = dto.AvailableRooms,
-                PriceOverride = dto.PriceOverride
-            };
-            _context.RoomInventories.Add(inventory);
-        }
-        else
-        {
-            inventory.TotalRooms = dto.TotalRooms;
-            inventory.AvailableRooms = dto.AvailableRooms;
-            inventory.PriceOverride = dto.PriceOverride;
-        }
-
-        await _context.SaveChangesAsync();
-        await _context.Entry(inventory).Reference(x => x.RoomType).LoadAsync();
-
-        return new InventoryResponseDto(
-            inventory.Id, inventory.RoomTypeId, inventory.RoomType!.Name, inventory.InventoryDate, inventory.TotalRooms, inventory.AvailableRooms, inventory.PriceOverride);
+        var inv = await _context.RoomInventories.Include(ri => ri.RoomType)
+            .FirstOrDefaultAsync(ri => ri.Id == id);
+        return inv == null ? null : MapToDto(inv);
     }
 
-    public async Task<bool> InitializeInventoryAsync(int roomTypeId, DateTime startDate, DateTime endDate)
+    public async Task<InventoryResponseDto?> UpdateByIdAsync(int id, InventoryUpdateDto dto)
     {
-        var roomType = await _context.RoomTypes.FindAsync(roomTypeId);
-        if (roomType == null) return false;
+        var inv = await _context.RoomInventories.FindAsync(id);
+        if (inv == null) return null;
 
-        var totalRooms = await _context.Rooms.CountAsync(r => r.RoomTypeId == roomTypeId && r.IsActive);
+        inv.TotalRooms = dto.TotalRooms;
+        inv.AvailableRooms = dto.AvailableRooms;
+        inv.PriceOverride = dto.PriceOverride;
+        inv.InventoryDate = dto.InventoryDate.Date;
+        inv.RoomTypeId = dto.RoomTypeId;
 
-        for (var date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
-        {
-            var exists = await _context.RoomInventories.AnyAsync(ri => ri.RoomTypeId == roomTypeId && ri.InventoryDate == date);
-            if (!exists)
-            {
-                _context.RoomInventories.Add(new RoomInventory
-                {
-                    RoomTypeId = roomTypeId,
-                    InventoryDate = date,
-                    TotalRooms = totalRooms,
-                    AvailableRooms = totalRooms
-                });
-            }
-        }
+        await _context.SaveChangesAsync();
+        await _context.Entry(inv).Reference(x => x.RoomType).LoadAsync();
+        return MapToDto(inv);
+    }
 
+    public async Task<bool> DeleteByIdAsync(int id)
+    {
+        var inv = await _context.RoomInventories.FindAsync(id);
+        if (inv == null) return false;
+
+        _context.RoomInventories.Remove(inv);
         await _context.SaveChangesAsync();
         return true;
     }
+
+    public async Task<InventoryResponseDto?> CloneAsync(int id)
+    {
+        var source = await _context.RoomInventories.AsNoTracking().FirstOrDefaultAsync(ri => ri.Id == id);
+        if (source == null) return null;
+
+        var clone = new RoomInventory
+        {
+            RoomTypeId = source.RoomTypeId,
+            InventoryDate = source.InventoryDate.AddDays(1), // Default to next day
+            TotalRooms = source.TotalRooms,
+            AvailableRooms = source.AvailableRooms,
+            PriceOverride = source.PriceOverride
+        };
+
+        _context.RoomInventories.Add(clone);
+        await _context.SaveChangesAsync();
+        
+        // Reload with RoomType
+        return await GetByIdAsync(clone.Id);
+    }
+
+    private static InventoryResponseDto MapToDto(RoomInventory ri) => new(
+        ri.Id, ri.RoomTypeId, ri.RoomType?.Name ?? "N/A", ri.InventoryDate, ri.TotalRooms, ri.AvailableRooms, ri.PriceOverride);
 }

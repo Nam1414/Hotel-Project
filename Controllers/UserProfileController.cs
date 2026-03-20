@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -71,5 +72,41 @@ public class UserProfileController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Cập nhật ảnh đại diện thành công", url });
+    }
+
+    // PUT /api/UserProfile
+    [HttpPut]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        user.FullName = dto.FullName;
+        user.Phone = dto.Phone;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Cập nhật thông tin cá nhân thành công" });
+    }
+
+    // POST /api/UserProfile/change-password
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        // 1. Kiểm tra mật khẩu cũ
+        if (!BCrypt.Net.BCrypt.Verify(dto.OldPassword, user.PasswordHash))
+        {
+            return BadRequest(new { message = "Mật khẩu cũ không chính xác" });
+        }
+
+        // 2. Hash mật khẩu mới và lưu
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Đổi mật khẩu thành công" });
     }
 }

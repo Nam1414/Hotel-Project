@@ -17,6 +17,8 @@ public class AppDbContext : DbContext
     public DbSet<Room> Rooms { get; set; }
     public DbSet<RoomImage> RoomImages { get; set; }
     public DbSet<RoomInventory> RoomInventories { get; set; }
+    public DbSet<Attraction> Attractions { get; set; }
+    public DbSet<Amenity> Amenities { get; set; }
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -71,14 +73,37 @@ public class AppDbContext : DbContext
             .WithMany(rt => rt.Inventories)
             .HasForeignKey(ri => ri.RoomTypeId);
 
+        // Many-to-Many: RoomType <-> Amenity
+        modelBuilder.Entity<RoomType>()
+            .HasMany(rt => rt.Amenities)
+            .WithMany(a => a.RoomTypes)
+            .UsingEntity<Dictionary<string, object>>(
+                "RoomType_Amenities",
+                j => j.HasOne<Amenity>().WithMany().HasForeignKey("amenity_id"),
+                j => j.HasOne<RoomType>().WithMany().HasForeignKey("room_type_id")
+            );
+
         // Precision for decimal
         modelBuilder.Entity<RoomType>()
             .Property(rt => rt.BasePrice)
-            .HasPrecision(18, 2);
+            .HasColumnType("decimal(18, 2)");
 
         modelBuilder.Entity<RoomInventory>()
             .Property(ri => ri.PriceOverride)
-            .HasPrecision(18, 2);
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.DistanceKm)
+            .HasColumnType("decimal(5, 2)");
+
+        // Precision for Latitude/Longitude in Attraction
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.Latitude)
+            .HasColumnType("decimal(18, 10)");
+
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.Longitude)
+            .HasColumnType("decimal(18, 10)");
     }
 }
 

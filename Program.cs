@@ -76,6 +76,9 @@ builder.Services.AddScoped<ISlugService, SlugService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IAttractionService, AttractionService>();
+builder.Services.AddScoped<IAmenityService, AmenityService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 
 
 // =============================================

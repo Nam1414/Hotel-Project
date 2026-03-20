@@ -19,10 +19,12 @@ public class RoomService : IRoomService
     {
         return await _context.RoomTypes
             .Include(rt => rt.Images)
+            .Include(rt => rt.Amenities)
             .Where(rt => rt.IsActive)
             .Select(rt => new RoomTypeResponseDto(
                 rt.Id, rt.Name, rt.Description, rt.BasePrice, rt.MaxCapacity, rt.IsActive,
-                rt.Images!.Select(img => new RoomImageResponseDto(img.Id, img.ImageUrl, img.IsPrimary)).ToList()))
+                rt.Images!.Select(img => new RoomImageResponseDto(img.Id, img.ImageUrl, img.IsPrimary)).ToList(),
+                rt.Amenities!.Select(a => new AmenityDto(a.Id, a.Name, a.IconUrl)).ToList()))
             .ToListAsync();
     }
 
@@ -30,13 +32,15 @@ public class RoomService : IRoomService
     {
         var rt = await _context.RoomTypes
             .Include(rt => rt.Images)
+            .Include(rt => rt.Amenities)
             .FirstOrDefaultAsync(x => x.Id == id);
             
         if (rt == null || !rt.IsActive) return null;
 
         return new RoomTypeResponseDto(
             rt.Id, rt.Name, rt.Description, rt.BasePrice, rt.MaxCapacity, rt.IsActive,
-            rt.Images!.Select(img => new RoomImageResponseDto(img.Id, img.ImageUrl, img.IsPrimary)).ToList());
+            rt.Images!.Select(img => new RoomImageResponseDto(img.Id, img.ImageUrl, img.IsPrimary)).ToList(),
+            rt.Amenities!.Select(a => new AmenityDto(a.Id, a.Name, a.IconUrl)).ToList());
     }
 
     public async Task<RoomTypeResponseDto> CreateRoomTypeAsync(CreateRoomTypeDto dto)

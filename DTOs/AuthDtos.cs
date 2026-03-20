@@ -11,3 +11,7 @@ public record LoginResponseDto(
 );
 
 public record RefreshTokenDto(string AccessToken);
+
+public record UpdateProfileDto(string FullName, string? Phone);
+
+public record ChangePasswordDto(string OldPassword, string NewPassword);
