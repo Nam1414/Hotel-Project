@@ -20,6 +20,7 @@ public class RoomService : IRoomService
         return await _context.RoomTypes
             .Include(rt => rt.Images)
             .Include(rt => rt.Amenities)
+            .AsSplitQuery()
             .Where(rt => rt.IsActive)
             .Select(rt => new RoomTypeResponseDto(
                 rt.Id, rt.Name, rt.Description, rt.BasePrice, rt.MaxCapacity, rt.IsActive,
@@ -33,6 +34,7 @@ public class RoomService : IRoomService
         var rt = await _context.RoomTypes
             .Include(rt => rt.Images)
             .Include(rt => rt.Amenities)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(x => x.Id == id);
             
         if (rt == null || !rt.IsActive) return null;
