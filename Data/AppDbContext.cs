@@ -48,17 +48,16 @@ public class AppDbContext : DbContext
             .HasOne(a => a.Author)
             .WithMany()
             .HasForeignKey(a => a.AuthorId);
-            // Attraction — config rõ ràng cho decimal columns
-        modelBuilder.Entity<Attraction>()
-            .Property(a => a.DistanceKm)
-            .HasColumnType("decimal(5,2)");
-
-        modelBuilder.Entity<Attraction>()
-            .Property(a => a.Latitude)
-            .HasColumnType("decimal(10,7)");
-
-        modelBuilder.Entity<Attraction>()
-            .Property(a => a.Longitude)
-            .HasColumnType("decimal(10,7)");
+            
+        modelBuilder.Entity<Attraction>(entity =>
+        {
+            entity.Property(a => a.DistanceKm).HasColumnName("distance_km").HasColumnType("decimal(5,2)");
+            entity.Property(a => a.MapEmbedLink).HasColumnName("map_embed_link");
+            entity.Property(a => a.ImageUrl).HasColumnName("image_url");
+            entity.Property(a => a.IsActive).HasColumnName("is_active");
+            entity.Property(a => a.CreatedAt).HasColumnName("created_at");
+            entity.Property(a => a.Latitude).HasColumnName("latitude").HasColumnType("decimal(10,7)");
+            entity.Property(a => a.Longitude).HasColumnName("longitude").HasColumnType("decimal(10,7)");
+        });
     }
 }
