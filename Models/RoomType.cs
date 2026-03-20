@@ -33,5 +33,6 @@ public class RoomType
 
     // Navigation
     public ICollection<Room>? Rooms { get; set; }
+    public ICollection<RoomImage>? Images { get; set; }
     public ICollection<RoomInventory>? Inventories { get; set; }
 }

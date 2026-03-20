@@ -18,19 +18,25 @@ public class RoomService : IRoomService
     public async Task<IEnumerable<RoomTypeResponseDto>> GetAllRoomTypesAsync()
     {
         return await _context.RoomTypes
+            .Include(rt => rt.Images)
             .Where(rt => rt.IsActive)
             .Select(rt => new RoomTypeResponseDto(
-                rt.Id, rt.Name, rt.Description, rt.BasePrice, rt.MaxCapacity, rt.IsActive))
+                rt.Id, rt.Name, rt.Description, rt.BasePrice, rt.MaxCapacity, rt.IsActive,
+                rt.Images!.Select(img => new RoomImageResponseDto(img.Id, img.ImageUrl, img.IsPrimary)).ToList()))
             .ToListAsync();
     }
 
     public async Task<RoomTypeResponseDto?> GetRoomTypeByIdAsync(int id)
     {
-        var rt = await _context.RoomTypes.FindAsync(id);
+        var rt = await _context.RoomTypes
+            .Include(rt => rt.Images)
+            .FirstOrDefaultAsync(x => x.Id == id);
+            
         if (rt == null || !rt.IsActive) return null;
 
         return new RoomTypeResponseDto(
-            rt.Id, rt.Name, rt.Description, rt.BasePrice, rt.MaxCapacity, rt.IsActive);
+            rt.Id, rt.Name, rt.Description, rt.BasePrice, rt.MaxCapacity, rt.IsActive,
+            rt.Images!.Select(img => new RoomImageResponseDto(img.Id, img.ImageUrl, img.IsPrimary)).ToList());
     }
 
     public async Task<RoomTypeResponseDto> CreateRoomTypeAsync(CreateRoomTypeDto dto)

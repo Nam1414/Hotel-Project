@@ -1,7 +1,7 @@
 -- SCRIPT KHẮC PHỤC LỖI SCHEMA VÀ TẠO TÀI KHOẢN ADMIN (BẢN CẬP NHẬT CHẮC CHẮN)
 -- Hãy chọn Database 'HotelManagementDB' ở ô Dropdown phía trên bên trái SSMS trước khi chạy
 
-USE [HotelManagementDB]
+USE [HotelManagement]
 GO
 
 PRINT '--- Bat dau qua trinh dong bo Database ---'
@@ -68,8 +68,9 @@ SELECT @AdminRoleId = id FROM Roles WHERE name = 'Admin';
 IF EXISTS (SELECT * FROM Users WHERE email = 'admin@hotel.com')
 BEGIN
     -- Neu ton tai thi chi cap nhat Password Hash (để tránh lỗi Foreign Key)
+    -- Hash mới tương thích: $2a$11$EgEtVgS6AeToUyYWP.DtBO3KTf6u1lLDx/deKHODpifz.kojxsZ3K
     UPDATE Users 
-    SET password_hash = '$2a$11$N9qo8uLOickgx2ZMRZoMyeIjZAgNIvKBS9t2Dq3r9f12Z48p5f5mG',
+    SET password_hash = '$2a$11$EgEtVgS6AeToUyYWP.DtBO3KTf6u1lLDx/deKHODpifz.kojxsZ3K',
         role_id = @AdminRoleId,
         status = 1
     WHERE email = 'admin@hotel.com';
@@ -79,7 +80,7 @@ ELSE
 BEGIN
     -- Neu chua co thi moi chen moi
     INSERT INTO Users (role_id, full_name, email, password_hash, status, created_at)
-    VALUES (@AdminRoleId, N'Quản trị viên', 'admin@hotel.com', '$2a$11$N9qo8uLOickgx2ZMRZoMyeIjZAgNIvKBS9t2Dq3r9f12Z48p5f5mG', 1, GETUTCDATE());
+    VALUES (@AdminRoleId, N'Quản trị viên', 'admin@hotel.com', '$2a$11$EgEtVgS6AeToUyYWP.DtBO3KTf6u1lLDx/deKHODpifz.kojxsZ3K', 1, GETUTCDATE());
     PRINT 'Da tao moi tai khoan Admin: admin@hotel.com / Admin@123';
 END
 GO

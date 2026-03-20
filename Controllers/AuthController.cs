@@ -54,10 +54,11 @@ public class AuthController : ControllerBase
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
         await _context.SaveChangesAsync();
 
+        SetRefreshTokenCookie(refreshToken);
+
         return Ok(new
         {
             accessToken,
-            refreshToken,
             fullName = user.FullName,
             email = user.Email,
             role = user.Role?.Name ?? "",
@@ -79,6 +80,12 @@ public class AuthController : ControllerBase
     [HttpPost("refresh-token")]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto dto)
     {
+        // Lấy refresh token từ cookie
+        var refreshToken = Request.Cookies["refreshToken"];
+        
+        if (string.IsNullOrEmpty(refreshToken))
+            return Unauthorized(new { message = "Không tìm thấy Refresh token trong cookie" });
+
         // Giải mã access token cũ (đã expired)
         var principal = _tokenService.GetPrincipalFromExpiredToken(dto.AccessToken);
         if (principal == null)
@@ -95,7 +102,7 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(u => u.Id == int.Parse(userIdClaim.Value));
 
         if (user == null || 
-            user.RefreshToken != dto.RefreshToken ||
+            user.RefreshToken != refreshToken ||
             user.RefreshTokenExpiry < DateTime.UtcNow)
         {
             return Unauthorized(new { message = "Refresh token không hợp lệ hoặc đã hết hạn" });
@@ -113,7 +120,9 @@ public class AuthController : ControllerBase
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
         await _context.SaveChangesAsync();
 
-        return Ok(new RefreshTokenDto(newAccessToken, newRefreshToken));
+        SetRefreshTokenCookie(newRefreshToken);
+
+        return Ok(new RefreshTokenDto(newAccessToken));
     }
 
     // POST /api/Auth/logout  
@@ -130,8 +139,22 @@ public class AuthController : ControllerBase
                 user.RefreshToken = null;
                 user.RefreshTokenExpiry = null;
                 await _context.SaveChangesAsync();
+
+                Response.Cookies.Delete("refreshToken");
             }
         }
         return Ok(new { message = "Đăng xuất thành công" });
+    }
+
+    private void SetRefreshTokenCookie(string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps, // Tự động bật Secure nếu dùng HTTPS
+            SameSite = SameSiteMode.Lax, // Lax sẽ dễ dùng hơn cho FE local
+            Expires = DateTime.UtcNow.AddDays(7)
+        };
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
     }
 }

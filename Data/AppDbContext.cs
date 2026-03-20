@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<Article> Articles { get; set; }
     public DbSet<RoomType> RoomTypes { get; set; }
     public DbSet<Room> Rooms { get; set; }
+    public DbSet<RoomImage> RoomImages { get; set; }
     public DbSet<RoomInventory> RoomInventories { get; set; }
 
 
@@ -57,6 +58,12 @@ public class AppDbContext : DbContext
             .HasOne(r => r.RoomType)
             .WithMany(rt => rt.Rooms)
             .HasForeignKey(r => r.RoomTypeId);
+
+        // RoomResources (RoomType -> Images)
+        modelBuilder.Entity<RoomImage>()
+            .HasOne(ri => ri.RoomType)
+            .WithMany(rt => rt.Images)
+            .HasForeignKey(ri => ri.RoomTypeId);
 
         // RoomInventory -> RoomType (n-1)
         modelBuilder.Entity<RoomInventory>()

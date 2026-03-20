@@ -22,7 +22,14 @@ public record RoomTypeResponseDto(
     string? Description,
     decimal BasePrice,
     int MaxCapacity,
-    bool IsActive
+    bool IsActive,
+    List<RoomImageResponseDto>? Images = null
+);
+
+public record RoomImageResponseDto(
+    int Id,
+    string ImageUrl,
+    bool IsPrimary
 );
 
 // Rooms

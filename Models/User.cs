@@ -33,6 +33,9 @@ public class User
     [Column("avatar_url")]
     public string? AvatarUrl { get; set; }
 
+    [Column("avatar_public_id")]
+    public string? AvatarPublicId { get; set; }
+
     [Column("refresh_token")]
     public string? RefreshToken { get; set; }
 

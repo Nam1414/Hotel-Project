@@ -3614,31 +3614,24 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\khato\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\Anh Kha\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\Web hotel\\Hotel-Project\\HotelManagementAPI.csproj",
+      "projectUniqueName": "C:\\GIt\\Hotel-Project\\HotelManagementAPI.csproj",
       "projectName": "HotelManagementAPI",
-      "projectPath": "E:\\Web hotel\\Hotel-Project\\HotelManagementAPI.csproj",
-      "packagesPath": "C:\\Users\\khato\\.nuget\\packages\\",
-      "outputPath": "E:\\Web hotel\\Hotel-Project\\obj\\",
+      "projectPath": "C:\\GIt\\Hotel-Project\\HotelManagementAPI.csproj",
+      "packagesPath": "C:\\Users\\Anh Kha\\.nuget\\packages\\",
+      "outputPath": "C:\\GIt\\Hotel-Project\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\khato\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "C:\\Users\\Anh Kha\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {

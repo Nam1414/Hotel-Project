@@ -18,16 +18,16 @@ public class ArticlesController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ISlugService _slugService;
-    private readonly Cloudinary _cloudinary;
+    private readonly ICloudinaryService _cloudinaryService;
 
     public ArticlesController(
         AppDbContext context, 
         ISlugService slugService, 
-        Cloudinary cloudinary)
+        ICloudinaryService cloudinaryService)
     {
         _context = context;
         _slugService = slugService;
-        _cloudinary = cloudinary;
+        _cloudinaryService = cloudinaryService;
     }
 
     // GET /api/Articles  ← Public
@@ -189,29 +189,15 @@ public class ArticlesController : ControllerBase
         // Bước 1: Xóa ảnh cũ trên Cloudinary (dọn rác tự động)
         if (!string.IsNullOrEmpty(article.ThumbnailPublicId))
         {
-            await _cloudinary.DestroyAsync(
-                new DeletionParams(article.ThumbnailPublicId));
+            await _cloudinaryService.DeleteImageAsync(article.ThumbnailPublicId);
         }
 
-        // Bước 2: Upload ảnh mới (in-memory, không lưu file tạm)
-        await using var stream = file.OpenReadStream();
-        var uploadParams = new ImageUploadParams
-        {
-            File = new FileDescription(file.FileName, stream),
-            Folder = "HotelManagement/Articles",
-            Transformation = new Transformation()
-                .Width(1200).Height(630)
-                .Crop("fill")
-        };
-
-        var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-        if (uploadResult.Error != null)
-            return BadRequest(new { message = uploadResult.Error.Message });
+        // Bước 2: Upload ảnh mới qua CloudinaryService
+        var (url, publicId) = await _cloudinaryService.UploadImageAsync(file, "HotelManagement/Articles");
 
         // Bước 3: Lưu URL và PublicId mới
-        article.ThumbnailUrl = uploadResult.SecureUrl.ToString();
-        article.ThumbnailPublicId = uploadResult.PublicId;
+        article.ThumbnailUrl = url;
+        article.ThumbnailPublicId = publicId;
         article.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
