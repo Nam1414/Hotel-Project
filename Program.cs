@@ -96,7 +96,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "Hotel Management API",
         Version = "v1",
-        Description = "ERP System cho Khách Sạn — Nguyễn Thanh Nam"
+        Description = "ERP System cho Khách Sạn — Kant"
     });
 
     // Thêm nút Authorize 🔒 trên Swagger UI
