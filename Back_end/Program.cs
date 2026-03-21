@@ -73,6 +73,13 @@ builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 // =============================================
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ISlugService, SlugService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IAttractionService, AttractionService>();
+builder.Services.AddScoped<IAmenityService, AmenityService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+
 
 // =============================================
 // 5. CONTROLLERS
@@ -89,7 +96,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "Hotel Management API",
         Version = "v1",
-        Description = "ERP System cho Khách Sạn — Nguyễn Thanh Nam"
+        Description = "ERP System cho Khách Sạn — Kant"
     });
 
     // Thêm nút Authorize 🔒 trên Swagger UI
