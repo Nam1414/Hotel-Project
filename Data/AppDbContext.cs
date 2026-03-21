@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<RoomInventory> RoomInventories { get; set; }
     public DbSet<Attraction> Attractions { get; set; }
     public DbSet<Amenity> Amenities { get; set; }
+    public DbSet<RoomItem> RoomItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -103,5 +104,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Attraction>()
             .Property(a => a.Longitude)
             .HasColumnType("decimal(18, 10)");
+
+        modelBuilder.Entity<RoomItem>()
+            .Property(ri => ri.PriceIfLost)
+            .HasColumnType("decimal(18, 2)");
     }
 }
