@@ -24,6 +24,19 @@ public class UserManagementController : ControllerBase
         return Ok(result);
     }
 
+    // GET /api/UserManagement/filter?phone=...&email=...&status=true/false
+    [HttpGet("filter")]
+    public async Task<IActionResult> Filter(
+        [FromQuery] string? phone,
+        [FromQuery] string? email,
+        [FromQuery] bool? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        var (data, total) = await _userService.FilterUsersPagedAsync(phone, email, status, page, pageSize);
+        return Ok(new FilterUsersResponseDto(data, total, page, pageSize));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {

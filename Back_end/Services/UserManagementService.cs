@@ -30,12 +30,14 @@ public class UserManagementService : IUserManagementService
         var user = await _context.Users
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id);
-            
         return user == null ? null : MapToDto(user);
     }
 
     public async Task<UserResponseDto> CreateUserAsync(CreateUserDto dto)
     {
+        if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
+            throw new InvalidOperationException("Email đã tồn tại trong hệ thống");
+
         var user = new User
         {
             FullName = dto.FullName,
@@ -49,8 +51,6 @@ public class UserManagementService : IUserManagementService
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-
-        // Load Role for the response
         await _context.Entry(user).Reference(u => u.Role).LoadAsync();
 
         return MapToDto(user);
@@ -58,23 +58,37 @@ public class UserManagementService : IUserManagementService
 
     public async Task<UserResponseDto?> UpdateUserAsync(int id, UpdateUserDto dto)
     {
-        var user = await _context.Users
-            .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Id == id);
-            
+        var user = await _context.Users.FindAsync(id);
         if (user == null) return null;
+
+        bool wasActive = user.Status;
 
         user.FullName = dto.FullName;
         user.Phone = dto.Phone;
-        
-        if (user.Status != dto.Status)
-        {
-            user.Status = dto.Status;
-            var message = dto.Status ? "Tài khoản của bạn đã được mở khóa." : "Tài khoản của bạn đã bị khóa bởi Quản trị viên.";
-            await _notificationService.SendNotificationAsync(user.Id, message, "AccountStatus");
-        }
+        user.Status = dto.Status;
 
         await _context.SaveChangesAsync();
+
+        // Gửi thông báo nếu tài khoản bị khóa
+        if (wasActive && !dto.Status)
+        {
+            await _notificationService.SendNotificationAsync(
+                user.Id,
+                "Tài khoản của bạn đã bị khóa bởi Admin.",
+                "Security"
+            );
+        }
+        // Gửi thông báo nếu tài khoản được mở khóa
+        else if (!wasActive && dto.Status)
+        {
+            await _notificationService.SendNotificationAsync(
+                user.Id,
+                "Tài khoản của bạn đã được kích hoạt trở lại.",
+                "Account"
+            );
+        }
+
+        await _context.Entry(user).Reference(u => u.Role).LoadAsync();
         return MapToDto(user);
     }
 
@@ -88,26 +102,74 @@ public class UserManagementService : IUserManagementService
         return true;
     }
 
-    public async Task<bool> ChangeUserRoleAsync(int id, int roleId)
+    public async Task<bool> ChangeUserRoleAsync(int userId, int roleId)
     {
-        var user = await _context.Users.FindAsync(id);
+        var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null) return false;
 
         var roleExists = await _context.Roles.AnyAsync(r => r.Id == roleId);
         if (!roleExists) return false;
 
+        var oldRoleName = user.Role?.Name ?? "N/A";
+        var newRole = await _context.Roles.FindAsync(roleId);
+
         user.RoleId = roleId;
         await _context.SaveChangesAsync();
 
-        // Load Role Name for message
-        var roleName = await _context.Roles
-            .Where(r => r.Id == roleId)
-            .Select(r => r.Name)
-            .FirstOrDefaultAsync();
+        // Thông báo khi quyền thay đổi
+        await _notificationService.SendNotificationAsync(
+            userId,
+            $"Quyền của bạn đã được thay đổi từ [{oldRoleName}] sang [{newRole?.Name}].",
+            "PermissionUpdate"
+        );
 
-        await _notificationService.SendNotificationAsync(user.Id, $"Quyền truy cập của bạn đã được thay đổi thành: {roleName}", "PermissionChange");
-        
         return true;
+    }
+
+    public async Task<IEnumerable<UserResponseDto>> FilterUsersAsync(
+        string? phone, string? email, bool? status)
+    {
+        var query = _context.Users.Include(u => u.Role).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(phone))
+            query = query.Where(u => u.Phone != null && u.Phone.Contains(phone));
+
+        if (!string.IsNullOrWhiteSpace(email))
+            query = query.Where(u => u.Email.Contains(email));
+
+        if (status.HasValue)
+            query = query.Where(u => u.Status == status.Value);
+
+        return await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Select(u => MapToDto(u))
+            .ToListAsync();
+    }
+
+    public async Task<(IEnumerable<UserResponseDto> Data, int Total)> FilterUsersPagedAsync(
+        string? phone, string? email, bool? status, int page, int pageSize)
+    {
+        var query = _context.Users.Include(u => u.Role).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(phone))
+            query = query.Where(u => u.Phone != null && u.Phone.Contains(phone));
+
+        if (!string.IsNullOrWhiteSpace(email))
+            query = query.Where(u => u.Email.Contains(email));
+
+        if (status.HasValue)
+            query = query.Where(u => u.Status == status.Value);
+
+        var total = await query.CountAsync();
+
+        var data = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(u => MapToDto(u))
+            .ToListAsync();
+
+        return (data, total);
     }
 
     private static UserResponseDto MapToDto(User u) => new(

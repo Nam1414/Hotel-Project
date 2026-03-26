@@ -39,7 +39,7 @@ public class RolesController : ControllerBase
             r.Id,
             r.Name,
             r.Description,
-            r.RolePermissions.Select(rp => rp.Permission.Name).ToList()
+            r.RolePermissions.Select(rp => rp.Permission!.Name).ToList()
         ));
 
         return Ok(result);
@@ -61,7 +61,7 @@ public class RolesController : ControllerBase
             role.Id,
             role.Name,
             role.Description,
-            role.RolePermissions.Select(rp => rp.Permission.Name).ToList()
+            role.RolePermissions.Select(rp => rp.Permission!.Name).ToList()
         );
 
         return Ok(result);

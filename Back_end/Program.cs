@@ -184,6 +184,7 @@ app.UseCors("AllowAll");
 app.UseRefreshTokenMiddleware();
 
 app.UseAuthentication();
+app.UsePermissionMiddleware();
 app.UseAuthorization();
 
 app.MapControllers();

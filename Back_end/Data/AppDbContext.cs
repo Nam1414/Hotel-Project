@@ -134,5 +134,18 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(n => n.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Notifications column mapping
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("Notifications");
+            entity.HasKey(n => n.Id);
+            entity.Property(n => n.Id).HasColumnName("Id");
+            entity.Property(n => n.UserId).HasColumnName("UserId");
+            entity.Property(n => n.Message).HasColumnName("Message");
+            entity.Property(n => n.Type).HasColumnName("Type");
+            entity.Property(n => n.IsRead).HasColumnName("IsRead");
+            entity.Property(n => n.CreatedAt).HasColumnName("CreatedAt");
+        });
     }
 }
