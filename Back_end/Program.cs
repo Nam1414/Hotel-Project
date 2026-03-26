@@ -52,6 +52,26 @@ builder.Services.AddAuthentication(options =>
             if (ctx.Exception is SecurityTokenExpiredException)
                 ctx.Response.Headers.Append("Token-Expired", "true");
             return Task.CompletedTask;
+        },
+        OnChallenge = async ctx =>
+        {
+            // Tắt response mặc định của JWT Bearer
+            ctx.HandleResponse();
+            ctx.Response.StatusCode = 401;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(new { 
+                statusCode = 401, 
+                message = "Bạn chưa đăng nhập hoặc Token không hợp lệ!" 
+            });
+        },
+        OnForbidden = async ctx =>
+        {
+            ctx.Response.StatusCode = 403;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(new { 
+                statusCode = 403, 
+                message = "Bạn không có quyền truy cập vào chức năng này!" 
+            });
         }
     };
 });
@@ -71,6 +91,7 @@ builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 // =============================================
 // 4. SERVICES
 // =============================================
+builder.Services.AddSignalR(); // Bổ sung SignalR
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ISlugService, SlugService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
@@ -79,6 +100,7 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAttractionService, AttractionService>();
 builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<INotificationService, NotificationService>(); // Đăng ký NotificationService
 
 
 // =============================================
@@ -129,9 +151,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
         policy
-            .AllowAnyOrigin()
+            .SetIsOriginAllowed(_ => true) // Cho phép SignalR từ bất kỳ origin nào (hoặc cấu chỉ định origin cụ thể)
             .AllowAnyMethod()
             .AllowAnyHeader()
+            .AllowCredentials() // BẮT BUỘC cho SignalR
             .WithExposedHeaders("Token-Expired"));
 });
 
@@ -161,8 +184,10 @@ app.UseCors("AllowAll");
 app.UseRefreshTokenMiddleware();
 
 app.UseAuthentication();
+app.UsePermissionMiddleware();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<HotelManagementAPI.Hubs.NotificationHub>("/notificationHub"); // Map SignalR Hub
 
 app.Run();
