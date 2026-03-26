@@ -20,6 +20,9 @@ public class AppDbContext : DbContext
     public DbSet<Attraction> Attractions { get; set; }
     public DbSet<Amenity> Amenities { get; set; }
     public DbSet<RoomItem> RoomItems { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<MinibarItem> MinibarItems { get; set; }
+    public DbSet<RoomMinibarStock> RoomMinibarStocks { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,5 +111,28 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<RoomItem>()
             .Property(ri => ri.PriceIfLost)
             .HasColumnType("decimal(18, 2)");
+
+        // MinibarItem -> Price precision
+        modelBuilder.Entity<MinibarItem>()
+            .Property(m => m.Price)
+            .HasColumnType("decimal(18, 2)");
+
+        // RoomMinibarStock -> Room & MinibarItem
+        modelBuilder.Entity<RoomMinibarStock>()
+            .HasOne(rms => rms.Room)
+            .WithMany()
+            .HasForeignKey(rms => rms.RoomId);
+
+        modelBuilder.Entity<RoomMinibarStock>()
+            .HasOne(rms => rms.MinibarItem)
+            .WithMany()
+            .HasForeignKey(rms => rms.MinibarItemId);
+
+        // Notification -> User (n-1)
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

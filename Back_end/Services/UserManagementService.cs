@@ -8,10 +8,12 @@ namespace HotelManagementAPI.Services;
 public class UserManagementService : IUserManagementService
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public UserManagementService(AppDbContext context)
+    public UserManagementService(AppDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync()
@@ -64,7 +66,13 @@ public class UserManagementService : IUserManagementService
 
         user.FullName = dto.FullName;
         user.Phone = dto.Phone;
-        user.Status = dto.Status;
+        
+        if (user.Status != dto.Status)
+        {
+            user.Status = dto.Status;
+            var message = dto.Status ? "Tài khoản của bạn đã được mở khóa." : "Tài khoản của bạn đã bị khóa bởi Quản trị viên.";
+            await _notificationService.SendNotificationAsync(user.Id, message, "AccountStatus");
+        }
 
         await _context.SaveChangesAsync();
         return MapToDto(user);
@@ -90,6 +98,15 @@ public class UserManagementService : IUserManagementService
 
         user.RoleId = roleId;
         await _context.SaveChangesAsync();
+
+        // Load Role Name for message
+        var roleName = await _context.Roles
+            .Where(r => r.Id == roleId)
+            .Select(r => r.Name)
+            .FirstOrDefaultAsync();
+
+        await _notificationService.SendNotificationAsync(user.Id, $"Quyền truy cập của bạn đã được thay đổi thành: {roleName}", "PermissionChange");
+        
         return true;
     }
 
