@@ -89,7 +89,7 @@ const Dashboard: React.FC = () => {
         <div className="lg:col-span-2 glass-card p-8">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-xl font-display font-bold text-white">Recent Bookings</h3>
-            <button className="text-sm text-primary font-bold hover:underline">View All</button>
+            {/* <button className="text-sm text-primary font-bold hover:underline">View All</button> */}
           </div>
           <Table 
             columns={columns} 

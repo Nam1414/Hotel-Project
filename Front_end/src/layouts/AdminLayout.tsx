@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
+import { markAsRead, markAllAsRead } from '../store/slices/notificationSlice';
+import { useNotification } from '../hooks/useNotification';
+import { Popover, Badge } from 'antd';
 import { 
   LayoutDashboard, 
   Users, 
@@ -21,26 +24,60 @@ import { cn } from '../utils/cn';
 
 const AdminLayout: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const { notifications, unreadCount } = useSelector((state: RootState) => state.notifications);
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const { requestPermission } = useNotification();
+
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
+
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin', roles: ['ADMIN', 'STAFF'] },
-    { icon: Users, label: 'User Management', path: '/admin/users', roles: ['ADMIN'] },
-    { icon: Bed, label: 'Room Management', path: '/admin/rooms', roles: ['ADMIN'] },
-    { icon: CalendarCheck, label: 'Bookings', path: '/admin/bookings', roles: ['ADMIN', 'STAFF'] },
-    { icon: Package, label: 'Inventory', path: '/admin/inventory', roles: ['ADMIN', 'STAFF'] },
-    { icon: ShieldCheck, label: 'Roles & Permissions', path: '/admin/roles', roles: ['ADMIN'] },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
+    { icon: Users, label: 'User Management', path: '/admin/users', permissions: ['MANAGE_USERS'] },
+    { icon: Bed, label: 'Room Management', path: '/admin/rooms', permissions: ['MANAGE_ROOMS'] },
+    // { icon: CalendarCheck, label: 'Bookings', path: '/admin/bookings', permissions: ['MANAGE_BOOKINGS'] },
+    { icon: Package, label: 'Inventory', path: '/admin/inventory', permissions: ['MANAGE_INVENTORY'] },
+    { icon: ShieldCheck, label: 'Roles & Permissions', path: '/admin/roles', permissions: ['MANAGE_ROLES'] },
   ];
 
-  const filteredMenu = menuItems.filter(item => item.roles.includes(user?.role || ''));
+  const filteredMenu = menuItems.filter(item => {
+    const hasPermission = item.permissions ? item.permissions.some(p => user?.permissions?.includes(p)) : true;
+    return hasPermission;
+  });
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
   };
+
+  const notificationContent = (
+    <div className="w-80 max-h-96 flex flex-col custom-scrollbar -m-3">
+      <div className="flex-1 overflow-y-auto">
+        {notifications.length === 0 ? (
+          <div className="p-6 text-center text-gray-500 text-sm">Chưa có thông báo nào</div>
+        ) : (
+          notifications.map(n => (
+            <div 
+              key={n.id} 
+              onClick={() => dispatch(markAsRead(n.id))}
+              className={`p-4 border-b border-gray-200 dark:border-gray-800 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${!n.isRead ? 'bg-primary/5' : ''}`}
+            >
+              <div className="flex justify-between items-start mb-1">
+                <span className={`font-semibold text-sm ${!n.isRead ? 'text-primary' : 'text-gray-700 dark:text-gray-300'}`}>{n.title}</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap ml-2">{n.time}</span>
+              </div>
+              <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-3">{n.description}</p>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex h-screen bg-dark-base overflow-hidden">
@@ -103,10 +140,27 @@ const AdminLayout: React.FC = () => {
           </h1>
 
           <div className="flex items-center space-x-6">
-            <button className="relative p-2 text-gray-400 hover:text-primary transition-colors">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full ring-2 ring-dark-navy"></span>
-            </button>
+            <Popover 
+              content={notificationContent} 
+              title={
+                <div className="flex justify-between items-center py-2 px-1 border-b border-gray-100 dark:border-gray-800">
+                  <span className="font-semibold">Notifications</span>
+                  <button 
+                    onClick={() => dispatch(markAllAsRead())} 
+                    className="text-xs text-primary hover:text-primary/80 transition-colors">
+                    Đánh dấu đã đọc
+                  </button>
+                </div>
+              }
+              trigger="click" 
+              placement="bottomRight"
+            >
+              <button className="relative p-2 text-gray-400 hover:text-primary transition-colors">
+                <Badge count={unreadCount} size="small" color="#C6A96B" offset={[-2, 2]}>
+                  <Bell size={20} />
+                </Badge>
+              </button>
+            </Popover>
             <div className="flex items-center space-x-3 pl-6 border-l border-white/10">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-white">{user?.name}</p>

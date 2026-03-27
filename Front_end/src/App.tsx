@@ -7,7 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import AppRoutes from './routes';
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, App as AntApp } from 'antd';
 import { useScrollToTop } from './hooks/useScrollToTop';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -44,9 +44,11 @@ export default function App() {
           },
         }}
       >
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
+        <AntApp>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </AntApp>
       </ConfigProvider>
     </Provider>
   );

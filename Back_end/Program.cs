@@ -112,6 +112,7 @@ builder.Services.AddScoped<IAttractionService, AttractionService>();
 builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<INotificationService, NotificationService>(); // Đăng ký NotificationService
+builder.Services.AddScoped<IEmailService, EmailService>(); // Đăng ký EmailService
 
 
 // =============================================
@@ -162,7 +163,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
         policy
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:5175")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials() // BẮT BUỘC cho SignalR

@@ -1,9 +1,12 @@
 import { useEffect, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { addNotification } from '../store/slices/notificationSlice';
+import * as signalR from '@microsoft/signalr';
+import { App } from 'antd';
 
 export const useNotification = () => {
   const dispatch = useDispatch();
+  const { notification } = App.useApp();
 
   const requestPermission = useCallback(async () => {
     if (!('Notification' in window)) {
@@ -24,37 +27,73 @@ export const useNotification = () => {
   const showPushNotification = useCallback((title: string, body: string) => {
     if (Notification.permission === 'granted') {
       new Notification(title, {
-        body,
-        icon: '/favicon.ico', // Adjust path as needed
+        body
       });
     }
   }, []);
 
-  const notify = useCallback((title: string, description: string, type: 'booking' | 'reminder' | 'update' | 'message' = 'update') => {
+  const notify = useCallback((notificationData: any) => {
+    // Phù hợp với cấu trúc mới từ Backend
+    // Support both camelCase and PascalCase payloads from backend
+    const title = notificationData.title ?? notificationData.Title ?? 'Thông báo mới';
+    const content = notificationData.content ?? notificationData.Content ?? notificationData.message ?? '';
+    const rawType = notificationData.type ?? notificationData.Type ?? 'update';
+    const type = (typeof rawType === 'string' ? rawType.toLowerCase() : 'update') as 'booking' | 'reminder' | 'update' | 'message';
+
     // Add to Redux store
     dispatch(addNotification({
       title,
-      description,
-      time: 'Just now',
-      type,
+      description: content,
+      time: new Date(notificationData.createdAt || notificationData.CreatedAt || Date.now()).toLocaleTimeString(),
+      type: type,
     }));
 
+    notification[type === 'update' ? 'info' : type === 'reminder' ? 'warning' : 'success']({
+      message: title,
+      description: content,
+      placement: 'topRight',
+    });
+
     // Show browser push notification
-    showPushNotification(title, description);
+    showPushNotification(title, content);
   }, [dispatch, showPushNotification]);
 
-  // Mock SignalR/Real-time listener
+  // Khởi tạo SignalR kết nối thực tế
   useEffect(() => {
-    // In a real app, you would initialize SignalR here
-    // const connection = new signalR.HubConnectionBuilder().withUrl("/notificationHub").build();
-    // connection.on("ReceiveNotification", (title, message) => notify(title, message));
-    
-    // Simulate a real-time notification after 10 seconds for demo
-    const timer = setTimeout(() => {
-      // notify('System Update', 'The server will undergo maintenance at 2:00 AM.', 'update');
-    }, 10000);
+    let isMounted = true;
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-    return () => clearTimeout(timer);
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5206';
+    
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(`${apiUrl}/notificationHub`, {
+        accessTokenFactory: () => token
+      })
+      .withAutomaticReconnect()
+      .build();
+
+    connection.on("ReceiveNotification", (data) => {
+      console.log('Received notification:', data);
+      notify(data);
+    });
+
+    const startPromise = connection.start();
+    
+    startPromise
+      .then(() => {
+        if (!isMounted) return;
+        console.log('SignalR Connected!');
+      })
+      .catch(err => {
+        if (isMounted) console.error('SignalR Connection Error: ', err);
+      });
+
+    return () => {
+      isMounted = false;
+      // Đợi startPromise xong rồi mới stop() để tránh lỗi AbortError của SignalR
+      startPromise.then(() => connection.stop()).catch(() => {});
+    };
   }, [notify]);
 
   return { notify, requestPermission };

@@ -7,7 +7,7 @@ namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize]
 public class UserManagementController : ControllerBase
 {
     private readonly IUserManagementService _userService;

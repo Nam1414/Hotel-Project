@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://api.kant-hotel.com',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5206',
   headers: {
     'Content-Type': 'application/json',
   },

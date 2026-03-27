@@ -15,25 +15,8 @@ interface NotificationState {
 }
 
 const initialState: NotificationState = {
-  notifications: [
-    {
-      id: '1',
-      title: 'New Booking',
-      description: 'Room 101 has been booked by Alice Johnson.',
-      time: '2 mins ago',
-      isRead: false,
-      type: 'booking',
-    },
-    {
-      id: '2',
-      title: 'Check-in Reminder',
-      description: 'Guest Bob Smith is arriving in 30 minutes.',
-      time: '15 mins ago',
-      isRead: false,
-      type: 'reminder',
-    },
-  ],
-  unreadCount: 2,
+  notifications: [],
+  unreadCount: 0,
 };
 
 const notificationSlice = createSlice({

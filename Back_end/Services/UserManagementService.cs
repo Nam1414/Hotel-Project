@@ -10,11 +10,13 @@ public class UserManagementService : IUserManagementService
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
 
-    public UserManagementService(AppDbContext context, INotificationService notificationService)
+    public UserManagementService(AppDbContext context, INotificationService notificationService, IEmailService emailService)
     {
         _context = context;
         _notificationService = notificationService;
+        _emailService = emailService;
     }
 
     public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync()
@@ -54,6 +56,45 @@ public class UserManagementService : IUserManagementService
         await _context.SaveChangesAsync();
         await _context.Entry(user).Reference(u => u.Role).LoadAsync();
 
+        // Gửi Email thông báo tài khoản
+        try
+        {
+            string subject = "Chào mừng bạn đến với hệ thống quản lý khách sạn";
+            string body = $@"
+                <h3>Chào mừng <b>{dto.FullName}</b>!</h3>
+                <p>Tài khoản của bạn đã được tạo thành công bởi Admin.</p>
+                <p>Dưới đây là thông tin đăng nhập của bạn:</p>
+                <ul>
+                    <li><b>Email:</b> {dto.Email}</li>
+                    <li><b>Mật khẩu:</b> {dto.Password}</li>
+                </ul>
+                <p>Vui lòng đăng nhập và bảo mật thông tin tài khoản của bạn.</p>";
+            
+            await _emailService.SendEmailAsync(dto.Email, subject, body);
+        }
+        catch (Exception ex)
+        {
+            // Log lỗi gửi mail nhưng không làm gián đoạn quá trình tạo user
+            Console.WriteLine($"Lỗi gửi email: {ex.Message}");
+        }
+
+        // Gửi thông báo đến Admin và Manager
+        try
+        {
+            await _notificationService.SendToRolesAndUserAsync(
+                new List<string> { "Admin", "Manager" },
+                null,
+                NotificationAction.CreateAccount,
+                NotificationType.Info,
+                user.FullName,
+                $"/admin/users"
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CreateUser Notification Error]: {ex.Message}");
+        }
+
         return MapToDto(user);
     }
 
@@ -79,15 +120,35 @@ public class UserManagementService : IUserManagementService
                 "Tài khoản của bạn đã bị khóa bởi Admin. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.",
                 NotificationType.Security
             );
+
+            // Tìm các Roles có quyền MANAGE_USERS hoặc MANAGE_ROLES (bao gồm Admin)
+            var rolesWithAccess = await _context.Roles
+                .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
+                .Select(r => r.Name)
+                .ToListAsync();
+
+            await _notificationService.SendToRolesAndUserAsync(
+                rolesWithAccess,
+                user.Id,
+                NotificationAction.LockAccount,
+                NotificationType.Security,
+                user.FullName
+            );
         }
         // Gửi thông báo nếu tài khoản được mở khóa
         else if (!wasActive && dto.Status)
         {
-            await _notificationService.SendNotificationAsync(
+            var rolesWithAccess = await _context.Roles
+                .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
+                .Select(r => r.Name)
+                .ToListAsync();
+
+            await _notificationService.SendToRolesAndUserAsync(
+                rolesWithAccess,
                 user.Id,
-                "Tài khoản đã kích hoạt",
-                "Tài khoản của bạn đã được kích hoạt trở lại. Bây giờ bạn có thể đăng nhập vào hệ thống.",
-                NotificationType.Account
+                NotificationAction.UnlockAccount,
+                NotificationType.Account,
+                user.FullName
             );
         }
 
@@ -125,6 +186,20 @@ public class UserManagementService : IUserManagementService
             "Cập nhật quyền hạn",
             $"Quyền của bạn đã được thay đổi từ [{oldRoleName}] sang [{newRole?.Name}].",
             NotificationType.PermissionUpdate
+        );
+
+        // Thông báo bằng Group Broadcast
+        var rolesWithAccess = await _context.Roles
+            .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
+            .Select(r => r.Name)
+            .ToListAsync();
+
+        await _notificationService.SendToRolesAndUserAsync(
+            rolesWithAccess,
+            userId,
+            NotificationAction.ChangeRole,
+            NotificationType.PermissionUpdate,
+            user.FullName
         );
 
         return true;

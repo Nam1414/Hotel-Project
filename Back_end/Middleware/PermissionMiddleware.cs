@@ -10,14 +10,14 @@ public class PermissionMiddleware
     // Key: "{METHOD}:{path_prefix}"
     private static readonly Dictionary<string, string> _permissionMap = new()
     {
-        { "GET:/api/usermanagement", "user.view" },
-        { "POST:/api/usermanagement", "user.create" },
-        { "PUT:/api/usermanagement", "user.edit" },
-        { "DELETE:/api/usermanagement", "user.delete" },
-        { "GET:/api/roles", "role.view" },
-        { "POST:/api/roles", "role.manage" },
-        { "PUT:/api/roles", "role.manage" },
-        { "DELETE:/api/roles", "role.manage" },
+        { "GET:/api/usermanagement", "MANAGE_USERS" },
+        { "POST:/api/usermanagement", "MANAGE_USERS" },
+        { "PUT:/api/usermanagement", "MANAGE_USERS" },
+        { "DELETE:/api/usermanagement", "MANAGE_USERS" },
+        { "GET:/api/roles", "MANAGE_ROLES" },
+        { "POST:/api/roles", "MANAGE_ROLES" },
+        { "PUT:/api/roles", "MANAGE_ROLES" },
+        { "DELETE:/api/roles", "MANAGE_ROLES" },
     };
 
     public PermissionMiddleware(RequestDelegate next)

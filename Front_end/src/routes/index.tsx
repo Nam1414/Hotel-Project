@@ -1,23 +1,14 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import MainLayout from '../layouts/MainLayout';
 import AdminLayout from '../layouts/AdminLayout';
 import ProtectedRoute from './ProtectedRoute';
 import RequirePermission from './RequirePermission';
 
-// Lazy load pages
-const Home = lazy(() => import('../pages/public/Home'));
-const RoomList = lazy(() => import('../pages/public/RoomList'));
-const RoomDetail = lazy(() => import('../pages/public/RoomDetail'));
-const Booking = lazy(() => import('../pages/public/Booking'));
+// Auth pages
 const Login = lazy(() => import('../pages/auth/Login'));
 const Register = lazy(() => import('../pages/auth/Register'));
-const Profile = lazy(() => import('../pages/public/Profile'));
-const Services = lazy(() => import('../pages/public/Services'));
-const About = lazy(() => import('../pages/public/About'));
-const Contact = lazy(() => import('../pages/public/Contact'));
-const Rooms = lazy(() => import('../pages/public/Rooms'));
 
+// Only Admin & Staff Routes now
 const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
 const UserManagement = lazy(() => import('../pages/admin/UserManagement'));
 const RoomManagement = lazy(() => import('../pages/admin/RoomManagement'));
@@ -32,42 +23,19 @@ const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center bg-dark-base text-primary font-display text-2xl animate-pulse">KANT...</div>}>
       <Routes>
-        {/* Public Routes */}
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/rooms" element={<Rooms />} />
-          <Route path="/rooms/:id" element={<RoomDetail />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route 
-            path="/profile" 
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/booking/:roomId" 
-            element={
-              <ProtectedRoute>
-                <Booking />
-              </ProtectedRoute>
-            } 
-          />
-        </Route>
+        {/* Redirect Root to Login by default */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
+        {/* Auth Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-        {/* Admin Routes */}
+        {/* Admin/App Routes */}
         <Route 
           path="/admin" 
           element={
             <ProtectedRoute>
-              <RequirePermission allowedRoles={['ADMIN', 'STAFF']}>
-                <AdminLayout />
-              </RequirePermission>
+              <AdminLayout />
             </ProtectedRoute>
           }
         >
@@ -75,7 +43,7 @@ const AppRoutes: React.FC = () => {
           <Route 
             path="users" 
             element={
-              <RequirePermission allowedRoles={['ADMIN']}>
+              <RequirePermission allowedPermissions={['MANAGE_USERS']}>
                 <UserManagement />
               </RequirePermission>
             } 
@@ -83,7 +51,7 @@ const AppRoutes: React.FC = () => {
           <Route 
             path="rooms" 
             element={
-              <RequirePermission allowedRoles={['ADMIN']}>
+              <RequirePermission allowedPermissions={['MANAGE_ROOMS']}>
                 <RoomManagement />
               </RequirePermission>
             } 
@@ -93,28 +61,14 @@ const AppRoutes: React.FC = () => {
           <Route 
             path="roles" 
             element={
-              <RequirePermission allowedRoles={['ADMIN']}>
+              <RequirePermission allowedPermissions={['MANAGE_ROLES']}>
                 <RoleManagement />
               </RequirePermission>
             } 
           />
         </Route>
 
-        {/* Staff Routes */}
-        <Route 
-          path="/staff" 
-          element={
-            <ProtectedRoute>
-              <RequirePermission allowedRoles={['STAFF', 'ADMIN']}>
-                <StaffLayout />
-              </RequirePermission>
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<StaffDashboard />} />
-          <Route path="bookings" element={<div className="p-8">Staff Booking Management (Coming Soon)</div>} />
-          <Route path="rooms" element={<div className="p-8">Staff Room Management (Coming Soon)</div>} />
-        </Route>
+
 
 
         {/* Error Pages */}

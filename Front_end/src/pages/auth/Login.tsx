@@ -4,6 +4,7 @@ import { useDispatch } from 'react-redux';
 import { loginStart, loginSuccess, loginFailure } from '../../store/slices/authSlice';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import axiosClient from '../../api/axiosClient';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -16,25 +17,30 @@ const Login: React.FC = () => {
     setLoading(true);
     dispatch(loginStart());
     
-    // Simulate API call
-    setTimeout(() => {
-      let role: any = 'USER';
-      if (formData.email.includes('admin')) role = 'ADMIN';
-      else if (formData.email.includes('staff')) role = 'STAFF';
+    try {
+      const response: any = await axiosClient.post('/api/Auth/login', {
+        email: formData.email,
+        password: formData.password
+      });
+
+      const { accessToken, fullName, email, role, permissions } = response;
 
       const user = {
-        id: '1',
-        name: role === 'ADMIN' ? 'Admin User' : role === 'STAFF' ? 'Staff Member' : 'John Doe',
-        email: formData.email,
-        role: role
+        id: '0', // API login chưa trả về ID, tạm để '0' hoặc parse từ token nếu cần
+        name: fullName,
+        email: email,
+        role: role,
+        permissions: permissions || []
       };
 
-      dispatch(loginSuccess({ user, token: 'mock-jwt-token' }));
-      
+      dispatch(loginSuccess({ user, token: accessToken }));
+      navigate('/admin');
+    } catch (err: any) {
+      dispatch(loginFailure());
+      alert(err.response?.data?.message || 'Email hoặc mật khẩu không chính xác');
+    } finally {
       setLoading(false);
-      if (role === 'ADMIN' || role === 'STAFF') navigate('/admin');
-      else navigate('/');
-    }, 1500);
+    }
   };
 
 
@@ -74,10 +80,7 @@ const Login: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Password</label>
-                <button type="button" className="text-xs text-primary hover:underline">Forgot password?</button>
-              </div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Password</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                 <input 
@@ -88,6 +91,9 @@ const Login: React.FC = () => {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
+              </div>
+              <div className="flex justify-end">
+                <button type="button" className="text-xs text-primary hover:underline">Forgot password?</button>
               </div>
             </div>
 

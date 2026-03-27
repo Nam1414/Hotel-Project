@@ -1,90 +1,98 @@
-# Hotel Management API - Hệ Thống ERP Quản Lý Khách Sạn
+# 🏨 Hotel Management System - Hệ Thống ERP Quản Lý Khách Sạn Toàn Diện
 
-Dự án này là một API backend được xây dựng bằng **.NET 8.0/9.0/10.0**, cung cấp các dịch vụ quản lý cho hệ thống khách sạn, bao gồm quản lý người dùng, loại phòng, phòng, kho lưu trữ, thông báo Real-time và tích hợp lưu trữ hình ảnh qua Cloudinary.
+Một giải pháp phần mềm quản trị khách sạn hiện đại, cung cấp hệ sinh thái đầy đủ từ backend mạnh mẽ đến frontend mượt mà. Hệ thống hỗ trợ quản lý nhân sự, đặt phòng, thiết bị, minibar và tính năng **thông báo theo thời gian thực (Real-time Notifications)**.
+
+---
 
 ## 🚀 Công Nghệ Sử Dụng
 
-- **Framework**: .NET 10.0 (Web API)
+### Backend (API Server)
+- **Framework**: .NET 8.0 (ASP.NET Core Web API)
 - **Database**: Microsoft SQL Server
-- **ORM**: Entity Framework Core 9.0
-- **Authentication**: JWT (JSON Web Token) với Refresh Token
-- **Real-time**: **SignalR** (Hệ thống thông báo)
-- **Hashing**: BCrypt.Net-Next
-- **Image Cloud**: Cloudinary
-- **API Documentation**: Swagger/OpenAPI (Swashbuckle)
-- **Utils**: Slugify.Core (Tạo slug cho URL)
+- **ORM**: Entity Framework Core
+- **Authentication**: JWT (JSON Web Token) với kiến trúc Refresh Token
+- **Real-time Engine**: **SignalR** (Auto-Negotiation: WebSockets ➔ SSE ➔ Long Polling)
+- **Security**: Phân quyền RBAC (Role-Based Access Control), Password Hashing (BCrypt.Net-Next)
+- **Cloud Storage**: Cloudinary (lưu trữ ảnh phòng, avatar)
+- **Document**: Swagger / OpenAPI
 
-## ✨ Tính Năng Chính
-
-- **Quản lý người dùng (User Management API)**:
-    - Danh sách người dùng, tạo mới, cập nhật và xóa.
-    - Tự động gửi thông báo khi tài khoản bị khóa hoặc mở khóa.
-- **Xác thực & Phân quyền (Auth & Roles)**:
-    - Đăng ký, đăng nhập, bảo mật JWT với Refresh Token.
-    - **Full CRUD Roles**: Quản lý vai trò, danh sách quyền hạn (Permissions).
-    - **Custom Error Handling**: Trả lỗi 401 (Unauthorized) và 403 (Forbidden) định dạng JSON chuẩn.
-- **Quản lý phòng (Room Module)**:
-    - Cấu hình loại phòng (Room Types), Tiện nghi (Amenities).
-    - Quản lý danh sách phòng thực tế và hình ảnh phòng.
-- **Quản lý Vật tư & Minibar (Management Module)**:
-    - **Room Items**: Quản lý trang thiết bị, vật tư trong từng phòng.
-    - **Minibar**: Quản lý danh mục đồ uống và theo dõi số lượng tồn kho thực tế của Minibar trong mỗi phòng.
-- **Hệ thống Thông báo (Notification System)**:
-    - Tích hợp **SignalR** cho thông báo Real-time.
-    - Tự động gửi thông báo khi: Thay đổi quyền hạn, Khóa/Mở khóa tài khoản, Cập nhật hệ thống.
-- **Quản lý tồn kho (Inventory API)**:
-    - Xem tình trạng phòng trống và giá theo dải ngày.
-    - **Nhân bản dữ liệu (Clone)**: Sao chép thông tin từ một bản ghi sang ngày tiếp theo.
-- **Lưu trữ hình ảnh**: Tích hợp Cloudinary (Avatar, ảnh phòng, ảnh bài viết).
-- **API Documentation**: Tài liệu API đầy đủ qua Swagger UI.
-
-## 🛠️ Hướng Dẫn Cài Đặt (Khi pull về máy mới)
-
-Để chạy project trên một môi trường mới, bạn cần thực hiện các bước sau:
-
-### 1. Yêu Cầu Hệ Thống (Prerequisites)
-- Cài đặt **.NET 8.0 SDK** trở lên.
-- Cài đặt **Microsoft SQL Server**.
-- Một tài khoản **Cloudinary**.
-
-### 2. Thiết Lập Cơ Sở Dữ Liệu (Database)
-Hãy thực hiện các file script trong thư mục `sql/` theo thứ tự sau để đảm bảo tính toàn vẹn:
-1.  `DBHotel.sql`: Script chính tạo Database và dữ liệu gốc.
-2.  `fix_auth_articles_cloudinary.sql`: Sửa lỗi đồng bộ cột Cloudinary và Audit.
-3.  `setup_notifications.sql`: Cài đặt bảng thông báo.
-4.  `setup_minibar_module.sql`: Cài đặt module quản lý Minibar & Vật tư.
-5.  `seed_room_data.sql`: Nạp dữ liệu phòng mẫu.
-6.  `patch_attractions_gps.sql`: Cập nhật tọa độ GPS cho các điểm tham quan.
-
-### 3. Cấu Hình Ứng Dụng (Configuration)
-Mở file `appsettings.json` và cập nhật:
-- **ConnectionStrings**: Thay đổi chuỗi kết nối tới SQL Server của bạn.
-- **JWT Settings**: Cấu hình Secret Key và thời gian hết hạn.
-- **Cloudinary**: Cập nhật CloudName, ApiKey, và ApiSecret từ trang quản trị Cloudinary.
-- **SignalR**: Đảm bảo CORS cho phép `AllowCredentials()` để SignalR hoạt động.
-
-### 4. Chạy Ứng Dụng
-1. Mở terminal tại thư mục gốc của project.
-2. Chạy lệnh:
-   ```bash
-   dotnet restore
-   dotnet build
-   dotnet run
-   ```
-3. Truy cập Swagger tại: `http://localhost:5206/index.html` (port có thể thay đổi tùy cấu hình).
-
-## 📂 Cấu Trúc Thư Mục
-
-- `Controllers/`: Chứa các API Endpoints.
-- `Models/`: Định nghĩa các thực thể (Entities).
-- `DTOs/`: Chứa các đối tượng chuyển đổi dữ liệu (RoleDtos, ManagementDtos...).
-- `Services/`: Chứa logic nghiệp vụ (NotificationService, UserManagementService...).
-- `Hubs/`: Chứa `NotificationHub.cs` xử lý Real-time SignalR.
-- `Middleware/`: Chứa các lớp xử lý request/response trung gian.
-- `sql/`: Các mã nguồn SQL theo module.
-
-## 🔒 Tài Khoản Mặc Định
-- **Admin**: `admin@hotel.com` / `Password123` (Hoặc theo cấu hình trong file SQL).
+### Frontend (Client App)
+- **Core**: React 18 + TypeScript (build bằng Vite siêu tốc)
+- **UI Framework**: Ant Design v5 (Thiết kế hiện đại, tùy biến cao)
+- **State Management**: Redux Toolkit & Zustand
+- **Animations**: Framer Motion
+- **Fetching**: Axios (kèm Interceptors xử lý Token tự động)
 
 ---
-*Dự án ERP Khách sạn - Phiên bản nâng cấp 2026/03*
+
+## ✨ Các Module Tính Năng Chính
+
+### 1. Phân Quyền & Bảo Mật (Auth & Roles)
+- Đăng nhập, xuất/nhập/cấp lại JWT Token an toàn.
+- Hệ thống Role linh hoạt (Admin, Manager, Receptionist,...).
+- Mapping Permissions (Quyền hạn) trực tiếp từ database lên UI bảo vệ từng Nút bấm và Route.
+
+### 2. Quản Lý Nhân Sự (User Management)
+- Xem, Thêm, Sửa, Xóa nhân sự, Khóa/Mở Khóa tài khoản.
+- *Thay đổi lập tức có hiệu lực ngay trong phiên làm việc của người dùng.*
+
+### 3. Hệ Thống Thông Báo Hiện Thực (Real-time Notifications)
+- Cơ chế **Group Broadcasting** (Rải thông báo theo nhóm quyền).
+- Tự động reo chuông báo (Ant Design Notification) chém góc màn hình bất cứ khi nào:
+  - Có nhân sự mới được thêm vào.
+  - Tài khoản bị khóa / mở khóa hoặc thay đổi chức vụ.
+- Tích hợp **Redux** để cập nhật con số Badge trên Menu Bell không cần tải lại trang.
+
+### 4. Quản Lý Buồng Phòng (Rooms & Inventory)
+- Cấu hình loại phòng, mức giá gốc, tiện ích đi kèm (Amenities).
+- Trích xuất hàng loạt Inventory (Tồn kho): quản lý giá tự động biến động theo ngày lễ, cuối tuần.
+
+### 5. Quản Lý Vật Tư & Minibar (Management)
+- Thiết lập định mức Minibar cho từng phòng (Nước suối, Snack, Rượu,...).
+- Danh sách tài sản cố định trong phòng, tính giá bồi thường tự động khi làm hỏng.
+
+---
+
+## 🛠️ Hướng Dẫn Cài Đặt (Cho máy tính mới)
+
+Chỉ với 3 bước đơn giản, bạn có thể triển khai dự án này lên bất kỳ máy tính nào:
+
+### Bước 1: Khai sinh Database (Chỉ 1 Click)
+Chúng tôi đã nén toàn bộ kiến trúc lịch sử, cấu trúc bảng và cả Data Mẫu vào duy nhất **1 file SQL**:
+1. Mở **SQL Server Management Studio (SSMS)**.
+2. File > Open > File... và chọn tệp: `Back_end/sql/00_MASTER_INSTALL.sql`
+3. Nhấn **F5 (Execute)**.
+*(Tuyệt đối không cần chạy thủ công các file nhỏ lẻ). Hệ thống đã tự động tạo CSDL `HotelManagementDB` và nạp sẵn hàng loạt nhân sự, dịch vụ.*
+
+### Bước 2: Cấu hình Backend
+1. Mở folder `Back_end` bằng Visual Studio hoặc VS Code.
+2. Kiểm tra file `appsettings.json`:
+   - Xác nhận `ConnectionStrings:DefaultConnection` trỏ đúng vào SQL Server của bạn (thường là `Server=.;`).
+   - Sửa key Cloudinary nếu muốn thay đổi kho lưu ảnh chứa hình cá nhân.
+3. Mở terminal và chạy lệnh:
+   ```bash
+   dotnet restore
+   dotnet run
+   ```
+4. API sẽ phơi tại: `http://localhost:5206` (kèm Swagger document tại `/index.html`)
+
+### Bước 3: Khởi chạy Frontend
+1. Mở một terminal mới, trỏ vào folder `Front_end`.
+2. Chạy lệnh:
+   ```bash
+   npm install
+   npm run dev
+   ```
+3. Truy cập giao diện tại: `http://localhost:5173`
+
+---
+
+## 🔒 Tài Khoản Đăng Nhập Mẫu
+
+File cài đặt tự động đã nung sẵn tài khoản cao nhất để bạn trải nghiệm ngay lập tức.
+- **Tài khoản (Email)**: `admin@hotel.com`
+- **Mật khẩu**: `Admin@123`
+*(Tài khoản này sở hữu quyền tối thượng: FULL_ACCESS).*
+
+---
+*Dự án tâm huyết - Phiên bản nâng cấp 2026/03*

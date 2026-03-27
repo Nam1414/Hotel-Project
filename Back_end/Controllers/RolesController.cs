@@ -28,7 +28,6 @@ public class RolesController : ControllerBase
 
     // GET /api/Roles (Admin Only)
     [HttpGet]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAll()
     {
         var roles = await _context.Roles
@@ -48,7 +47,6 @@ public class RolesController : ControllerBase
 
     // GET /api/Roles/{id} (Admin Only)
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetById(int id)
     {
         var role = await _context.Roles
@@ -70,7 +68,6 @@ public class RolesController : ControllerBase
 
     // POST /api/Roles (Admin Only)
     [HttpPost]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateRoleDto dto)
     {
         if (await _context.Roles.AnyAsync(r => r.Name == dto.Name))
@@ -90,7 +87,6 @@ public class RolesController : ControllerBase
 
     // PUT /api/Roles/{id} (Admin Only)
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateRoleDto dto)
     {
         var role = await _context.Roles.FindAsync(id);
@@ -109,7 +105,6 @@ public class RolesController : ControllerBase
 
     // DELETE /api/Roles/{id} (Admin Only)
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var role = await _context.Roles.Include(r => r.Users).FirstOrDefaultAsync(r => r.Id == id);
@@ -131,7 +126,6 @@ public class RolesController : ControllerBase
 
     // GET /api/Roles/permissions (Admin Only)
     [HttpGet("permissions")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAllPermissions()
     {
         var permissions = await _context.Permissions
@@ -142,7 +136,6 @@ public class RolesController : ControllerBase
 
     // POST /api/Roles/assign-permission  ← (Admin Only)
     [HttpPost("assign-permission")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AssignPermission([FromBody] AssignPermissionDto dto)
     {
         var role = await _context.Roles.AnyAsync(r => r.Id == dto.RoleId);
@@ -167,16 +160,35 @@ public class RolesController : ControllerBase
         await _context.SaveChangesAsync();
 
         // Notify users
-        var roleName = await _context.Roles.Where(r => r.Id == dto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
-        var permissionName = await _context.Permissions.Where(p => p.Id == dto.PermissionId).Select(p => p.Name).FirstOrDefaultAsync();
-        await _notificationService.SendToRoleAsync(dto.RoleId, "Cập nhật quyền hạn nhóm", $"Quyền [{permissionName}] đã được thêm vào nhóm [{roleName}]", NotificationType.PermissionUpdate);
+        try {
+            var roleName = await _context.Roles.Where(r => r.Id == dto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
+            var permissionName = await _context.Permissions.Where(p => p.Id == dto.PermissionId).Select(p => p.Name).FirstOrDefaultAsync();
+            
+            // 1. Notify affected users in the role
+            await _notificationService.SendToRoleAsync(dto.RoleId, "Cập nhật quyền hạn nhóm", $"Quyền [{permissionName}] đã được thêm vào nhóm [{roleName}]", NotificationType.PermissionUpdate);
+            
+            // 2. Notify users with MANAGE_USERS or MANAGE_ROLES (bao gồm cả Admin)
+            var rolesWithAccess = await _context.Roles
+                .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
+                .Select(r => r.Name)
+                .ToListAsync();
+
+            await _notificationService.SendToRolesAndUserAsync(
+                rolesWithAccess,
+                null,
+                HotelManagementAPI.Enums.NotificationAction.UpdateRolePermissions,
+                NotificationType.PermissionUpdate,
+                roleName
+            );
+        } catch (Exception ex) {
+            Console.WriteLine($"[AssignPermission Notification Error]: {ex.Message}");
+        }
 
         return Ok(new { message = "Gán quyền thành công" });
     }
 
     // DELETE /api/Roles/remove-permission (Admin Only)
     [HttpDelete("remove-permission")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> RemovePermission([FromBody] RemovePermissionDto dto)
     {
         var rolePermission = await _context.RolePermissions
@@ -189,9 +201,29 @@ public class RolesController : ControllerBase
         await _context.SaveChangesAsync();
 
         // Notify users
-        var roleName = await _context.Roles.Where(r => r.Id == dto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
-        var permissionName = await _context.Permissions.Where(p => p.Id == dto.PermissionId).Select(p => p.Name).FirstOrDefaultAsync();
-        await _notificationService.SendToRoleAsync(dto.RoleId, "Cập nhật quyền hạn nhóm", $"Quyền [{permissionName}] đã bị gỡ khỏi nhóm [{roleName}]", NotificationType.PermissionUpdate);
+        try {
+            var roleName = await _context.Roles.Where(r => r.Id == dto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
+            var permissionName = await _context.Permissions.Where(p => p.Id == dto.PermissionId).Select(p => p.Name).FirstOrDefaultAsync();
+            
+            // 1. Notify affected users
+            await _notificationService.SendToRoleAsync(dto.RoleId, "Cập nhật quyền hạn nhóm", $"Quyền [{permissionName}] đã bị gỡ khỏi nhóm [{roleName}]", NotificationType.PermissionUpdate);
+            
+            // 2. Notify users with MANAGE_USERS or MANAGE_ROLES (bao gồm cả Admin)
+            var rolesWithAccess = await _context.Roles
+                .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
+                .Select(r => r.Name)
+                .ToListAsync();
+                
+            await _notificationService.SendToRolesAndUserAsync(
+                rolesWithAccess,
+                null, 
+                HotelManagementAPI.Enums.NotificationAction.UpdateRolePermissions,
+                NotificationType.PermissionUpdate,
+                roleName
+            );
+        } catch (Exception ex) {
+            Console.WriteLine($"[RemovePermission Notification Error]: {ex.Message}");
+        }
 
         return Ok(new { message = "Gỡ quyền thành công" });
     }

@@ -6,13 +6,17 @@ import { Role } from '../store/slices/authSlice';
 
 interface RequirePermissionProps {
   children: React.ReactNode;
-  allowedRoles: Role[];
+  allowedRoles?: Role[];
+  allowedPermissions?: string[];
 }
 
-const RequirePermission: React.FC<RequirePermissionProps> = ({ children, allowedRoles }) => {
+const RequirePermission: React.FC<RequirePermissionProps> = ({ children, allowedRoles, allowedPermissions }) => {
   const { user } = useSelector((state: RootState) => state.auth);
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  const hasRole = allowedRoles ? allowedRoles.map(r => r.toUpperCase()).includes(user?.role.toUpperCase() || '') : true;
+  const hasPermission = allowedPermissions ? allowedPermissions.some(p => user?.permissions?.includes(p)) : true;
+
+  if (!user || !hasRole || !hasPermission) {
     return <Navigate to="/403" replace />;
   }
 

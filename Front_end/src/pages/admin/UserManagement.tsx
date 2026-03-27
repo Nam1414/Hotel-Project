@@ -1,12 +1,99 @@
-import React, { useState } from 'react';
-import { Table, Badge, Button, Input, Modal, Form, Select, Space, Tag } from 'antd';
-import { Search, Plus, Edit2, Lock, Unlock, Mail, Phone } from 'lucide-react';
-import { MOCK_USERS } from '../../constants/mockData';
+import React, { useEffect, useState } from 'react';
+import { Table, Badge, Button, Input, Modal, Form, Select, Space, Tag, Popconfirm, App } from 'antd';
+import { Search, Plus, Edit2, Lock, Unlock, Trash2 } from 'lucide-react';
+import axiosClient from '../../api/axiosClient';
 
 const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState(MOCK_USERS);
+  const [users, setUsers] = useState<any[]>([]);
+  const { message } = App.useApp();
+  const [roles, setRoles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [form] = Form.useForm();
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const data: any = await axiosClient.get('/api/UserManagement');
+      setUsers(data);
+    } catch (err) {
+      message.error('Không thể lấy danh sách người dùng');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const data: any = await axiosClient.get('/api/Roles');
+      setRoles(data);
+    } catch (err) {
+      console.error('Lỗi lấy danh sách Roles', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+    fetchRoles();
+  }, []);
+
+  const handleSaveUser = async (values: any) => {
+    try {
+      if (editingUser) {
+        await axiosClient.put(`/api/UserManagement/${editingUser.id}`, {
+          fullName: values.fullName,
+          phone: values.phone,
+          status: values.status
+        });
+        
+        if (values.roleId && values.roleId !== editingUser.roleId) {
+            await axiosClient.put(`/api/UserManagement/${editingUser.id}/change-role`, {
+                roleId: values.roleId
+            });
+        }
+        
+        message.success('Cập nhật người dùng thành công!');
+      } else {
+        await axiosClient.post('/api/UserManagement', {
+          fullName: values.fullName,
+          email: values.email,
+          password: values.password,
+          roleId: values.roleId,
+        });
+        message.success('Tạo người dùng và gửi email thành công!');
+      }
+      setIsModalOpen(false);
+      form.resetFields();
+      fetchUsers();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Có lỗi xảy ra');
+    }
+  };
+
+  const handleToggleStatus = async (id: number, currentStatus: boolean, fullName: string, phone: string) => {
+    try {
+      await axiosClient.put(`/api/UserManagement/${id}`, {
+        fullName,
+        phone,
+        status: !currentStatus
+      });
+      message.success(`${!currentStatus ? 'Mở khóa' : 'Khóa'} tài khoản thành công`);
+      fetchUsers();
+    } catch (err) {
+      message.error('Lỗi khi thay đổi trạng thái');
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
+    try {
+      await axiosClient.delete(`/api/UserManagement/${id}`);
+      message.success('Xóa người dùng thành công');
+      fetchUsers();
+    } catch (err) {
+      message.error('Lỗi khi xóa người dùng');
+    }
+  };
 
   const columns = [
     {
@@ -15,10 +102,10 @@ const UserManagement: React.FC = () => {
       render: (record: any) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-            {record.name.charAt(0)}
+            {record.fullName?.charAt(0) || '?'}
           </div>
           <div>
-            <div className="font-bold text-white">{record.name}</div>
+            <div className="font-bold text-white">{record.fullName}</div>
             <div className="text-xs text-gray-500">{record.email}</div>
           </div>
         </div>
@@ -26,11 +113,11 @@ const UserManagement: React.FC = () => {
     },
     {
       title: 'Role',
-      dataIndex: 'role',
-      key: 'role',
-      render: (role: string) => (
-        <Tag color={role === 'ADMIN' ? 'gold' : role === 'STAFF' ? 'blue' : 'default'}>
-          {role}
+      dataIndex: 'roleName',
+      key: 'roleName',
+      render: (roleName: string) => (
+        <Tag color={roleName === 'Admin' ? 'gold' : roleName === 'Staff' ? 'blue' : 'default'}>
+          {roleName}
         </Tag>
       ),
     },
@@ -38,8 +125,8 @@ const UserManagement: React.FC = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status: string) => (
-        <Badge status={status === 'active' ? 'success' : 'error'} text={<span className="text-gray-400 capitalize">{status}</span>} />
+      render: (status: boolean) => (
+        <Badge status={status ? 'success' : 'error'} text={<span className="text-gray-400 capitalize">{status ? 'Active' : 'Locked'}</span>} />
       ),
     },
     {
@@ -47,11 +134,23 @@ const UserManagement: React.FC = () => {
       key: 'actions',
       render: (record: any) => (
         <Space>
-          <Button type="text" icon={<Edit2 size={16} className="text-primary" />} />
           <Button 
             type="text" 
-            icon={record.status === 'active' ? <Lock size={16} className="text-red-400" /> : <Unlock size={16} className="text-green-400" />} 
+            icon={<Edit2 size={16} className="text-primary" />} 
+            onClick={() => {
+              setEditingUser(record);
+              form.setFieldsValue(record);
+              setIsModalOpen(true);
+            }}
           />
+          <Button 
+            type="text" 
+            onClick={() => handleToggleStatus(record.id, record.status, record.fullName, record.phone)}
+            icon={record.status ? <Lock size={16} className="text-red-400" /> : <Unlock size={16} className="text-green-400" />} 
+          />
+          <Popconfirm title="Xóa người dùng này?" onConfirm={() => handleDeleteUser(record.id)}>
+              <Button type="text" icon={<Trash2 size={16} className="text-gray-500 hover:text-red-500" />} />
+          </Popconfirm>
         </Space>
       ),
     },
@@ -64,7 +163,14 @@ const UserManagement: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
           <Input placeholder="Search by name, email..." className="input-luxury pl-12" />
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="btn-gold flex items-center space-x-2">
+        <button 
+          onClick={() => {
+            setEditingUser(null);
+            form.resetFields();
+            setIsModalOpen(true);
+          }} 
+          className="btn-gold flex items-center space-x-2"
+        >
           <Plus size={20} />
           <span>ADD NEW USER</span>
         </button>
@@ -74,37 +180,64 @@ const UserManagement: React.FC = () => {
         columns={columns} 
         dataSource={users} 
         rowKey="id"
+        loading={loading}
         pagination={{ pageSize: 5 }}
       />
 
       <Modal
-        title={<span className="text-white font-display text-xl">Add New User</span>}
+        title={<span className="text-white font-display text-xl">{editingUser ? 'Edit User' : 'Add New User'}</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
         className="luxury-modal"
         centered
+        forceRender
       >
-        <Form form={form} layout="vertical" className="mt-6">
-          <Form.Item label={<span className="text-gray-400">Full Name</span>} name="name" rules={[{ required: true }]}>
+        <Form form={form} layout="vertical" className="mt-6" onFinish={handleSaveUser}>
+          <Form.Item label={<span className="text-gray-400">Full Name</span>} name="fullName" rules={[{ required: true }]}>
             <Input className="input-luxury" placeholder="Enter full name" />
           </Form.Item>
-          <Form.Item label={<span className="text-gray-400">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
-            <Input className="input-luxury" placeholder="Enter email" />
+          
+          {!editingUser && (
+            <>
+              <Form.Item label={<span className="text-gray-400">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
+                <Input className="input-luxury" placeholder="Enter email" />
+              </Form.Item>
+              <Form.Item label={<span className="text-gray-400">Password</span>} name="password" rules={[{ required: true, min: 6 }]}>
+                <Input.Password className="input-luxury" placeholder="Enter password (min 6 chars)" />
+              </Form.Item>
+            </>
+          )}
+
+          <Form.Item label={<span className="text-gray-400">Phone Number</span>} name="phone">
+            <Input className="input-luxury" placeholder="Enter phone number" />
           </Form.Item>
-          <Form.Item label={<span className="text-gray-400">Role</span>} name="role" rules={[{ required: true }]}>
+
+          <Form.Item label={<span className="text-gray-400">Role</span>} name="roleId" rules={[{ required: true }]}>
             <Select 
               className="luxury-select"
-              options={[
-                { value: 'USER', label: 'USER' },
-                { value: 'STAFF', label: 'STAFF' },
-                { value: 'ADMIN', label: 'ADMIN' },
-              ]}
+              placeholder="Select a role"
+              options={roles.map(r => ({ value: r.id, label: r.name }))}
             />
           </Form.Item>
+
+          {editingUser && (
+            <Form.Item label={<span className="text-gray-400">Status</span>} name="status">
+              <Select 
+                className="luxury-select"
+                options={[
+                  { value: true, label: 'Active' },
+                  { value: false, label: 'Locked' }
+                ]}
+              />
+            </Form.Item>
+          )}
+
           <div className="flex gap-4 mt-8">
             <Button onClick={() => setIsModalOpen(false)} className="flex-grow h-12 border-white/10 text-white hover:bg-white/5">CANCEL</Button>
-            <Button type="primary" className="flex-grow h-12 bg-primary border-none text-dark-base font-bold">CREATE USER</Button>
+            <Button type="primary" htmlType="submit" className="flex-grow h-12 bg-primary border-none text-dark-base font-bold">
+              {editingUser ? 'SAVE CHANGES' : 'CREATE USER'}
+            </Button>
           </div>
         </Form>
       </Modal>
