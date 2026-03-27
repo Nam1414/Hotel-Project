@@ -27,7 +27,7 @@ public class NotificationsController : ControllerBase
         var userId = int.Parse(userIdString);
 
         var notifications = await _context.Notifications
-            .Where(n => n.UserId == userId)
+            .Where(n => n.UserId == userId || n.UserId == null)
             .OrderByDescending(n => n.CreatedAt)
             .Take(50)
             .ToListAsync();

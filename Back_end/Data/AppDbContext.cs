@@ -1,4 +1,5 @@
 using HotelManagementAPI.Models;
+using HotelManagementAPI.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace HotelManagementAPI.Data;
@@ -141,13 +142,14 @@ public class AppDbContext : DbContext
             entity.ToTable("Notifications");
             entity.HasKey(n => n.Id);
 
-            // Sửa lại toàn bộ tên cột thành chữ thường và có gạch dưới
             entity.Property(n => n.Id).HasColumnName("id");
-            entity.Property(n => n.UserId).HasColumnName("user_id");
-            entity.Property(n => n.Message).HasColumnName("message");
-            entity.Property(n => n.Type).HasColumnName("type");
-            entity.Property(n => n.IsRead).HasColumnName("is_read");
-            entity.Property(n => n.CreatedAt).HasColumnName("created_at");
+            entity.Property(n => n.UserId).HasColumnName("user_id").IsRequired(false);
+            entity.Property(n => n.Title).HasColumnName("title").HasMaxLength(255).IsRequired();
+            entity.Property(n => n.Content).HasColumnName("content").IsRequired();
+            entity.Property(n => n.Type).HasColumnName("type").HasMaxLength(50).HasConversion<string>();
+            entity.Property(n => n.ReferenceLink).HasColumnName("reference_link").HasMaxLength(255);
+            entity.Property(n => n.IsRead).HasColumnName("is_read").IsRequired();
+            entity.Property(n => n.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
         });
     }
 }

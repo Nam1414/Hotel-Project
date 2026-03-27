@@ -49,12 +49,12 @@ builder.Services.AddAuthentication(options =>
     {
         OnMessageReceived = context =>
         {
-            var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
+            var token = context.Request.Query["access_token"];
 
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
+            if (path.StartsWithSegments("/notificationHub") && !string.IsNullOrEmpty(token))
             {
-                context.Token = accessToken;
+                context.Token = token;
             }
             return Task.CompletedTask;
         },
@@ -162,7 +162,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
         policy
-            .SetIsOriginAllowed(_ => true) // Cho phép SignalR từ bất kỳ origin nào (hoặc cấu chỉ định origin cụ thể)
+            .WithOrigins("http://localhost:5173")
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials() // BẮT BUỘC cho SignalR

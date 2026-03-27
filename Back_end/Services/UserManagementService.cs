@@ -1,6 +1,7 @@
 using HotelManagementAPI.Data;
 using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Models;
+using HotelManagementAPI.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace HotelManagementAPI.Services;
@@ -74,8 +75,9 @@ public class UserManagementService : IUserManagementService
         {
             await _notificationService.SendNotificationAsync(
                 user.Id,
-                "Tài khoản của bạn đã bị khóa bởi Admin.",
-                "Security"
+                "Tài khoản bị khóa",
+                "Tài khoản của bạn đã bị khóa bởi Admin. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.",
+                NotificationType.Security
             );
         }
         // Gửi thông báo nếu tài khoản được mở khóa
@@ -83,8 +85,9 @@ public class UserManagementService : IUserManagementService
         {
             await _notificationService.SendNotificationAsync(
                 user.Id,
-                "Tài khoản của bạn đã được kích hoạt trở lại.",
-                "Account"
+                "Tài khoản đã kích hoạt",
+                "Tài khoản của bạn đã được kích hoạt trở lại. Bây giờ bạn có thể đăng nhập vào hệ thống.",
+                NotificationType.Account
             );
         }
 
@@ -119,8 +122,9 @@ public class UserManagementService : IUserManagementService
         // Thông báo khi quyền thay đổi
         await _notificationService.SendNotificationAsync(
             userId,
+            "Cập nhật quyền hạn",
             $"Quyền của bạn đã được thay đổi từ [{oldRoleName}] sang [{newRole?.Name}].",
-            "PermissionUpdate"
+            NotificationType.PermissionUpdate
         );
 
         return true;

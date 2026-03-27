@@ -1,6 +1,7 @@
 using HotelManagementAPI.Data;
 using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Models;
+using HotelManagementAPI.Enums;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -168,7 +169,7 @@ public class RolesController : ControllerBase
         // Notify users
         var roleName = await _context.Roles.Where(r => r.Id == dto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
         var permissionName = await _context.Permissions.Where(p => p.Id == dto.PermissionId).Select(p => p.Name).FirstOrDefaultAsync();
-        await _notificationService.SendToRoleAsync(dto.RoleId, $"Quyền [{permissionName}] đã được thêm vào nhóm [{roleName}]", "PermissionUpdate");
+        await _notificationService.SendToRoleAsync(dto.RoleId, "Cập nhật quyền hạn nhóm", $"Quyền [{permissionName}] đã được thêm vào nhóm [{roleName}]", NotificationType.PermissionUpdate);
 
         return Ok(new { message = "Gán quyền thành công" });
     }
@@ -190,7 +191,7 @@ public class RolesController : ControllerBase
         // Notify users
         var roleName = await _context.Roles.Where(r => r.Id == dto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
         var permissionName = await _context.Permissions.Where(p => p.Id == dto.PermissionId).Select(p => p.Name).FirstOrDefaultAsync();
-        await _notificationService.SendToRoleAsync(dto.RoleId, $"Quyền [{permissionName}] đã bị gỡ khỏi nhóm [{roleName}]", "PermissionUpdate");
+        await _notificationService.SendToRoleAsync(dto.RoleId, "Cập nhật quyền hạn nhóm", $"Quyền [{permissionName}] đã bị gỡ khỏi nhóm [{roleName}]", NotificationType.PermissionUpdate);
 
         return Ok(new { message = "Gỡ quyền thành công" });
     }
