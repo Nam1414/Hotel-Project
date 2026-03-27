@@ -140,12 +140,14 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("Notifications");
             entity.HasKey(n => n.Id);
-            entity.Property(n => n.Id).HasColumnName("Id");
-            entity.Property(n => n.UserId).HasColumnName("UserId");
-            entity.Property(n => n.Message).HasColumnName("Message");
-            entity.Property(n => n.Type).HasColumnName("Type");
-            entity.Property(n => n.IsRead).HasColumnName("IsRead");
-            entity.Property(n => n.CreatedAt).HasColumnName("CreatedAt");
+
+            // Sửa lại toàn bộ tên cột thành chữ thường và có gạch dưới
+            entity.Property(n => n.Id).HasColumnName("id");
+            entity.Property(n => n.UserId).HasColumnName("user_id");
+            entity.Property(n => n.Message).HasColumnName("message");
+            entity.Property(n => n.Type).HasColumnName("type");
+            entity.Property(n => n.IsRead).HasColumnName("is_read");
+            entity.Property(n => n.CreatedAt).HasColumnName("created_at");
         });
     }
 }
