@@ -23,7 +23,8 @@ public class NotificationService : INotificationService
         var notification = new Notification
         {
             UserId = userId,
-            Message = message,
+            Title = message, // Có thể dùng type làm title tạm thời
+            Content = message, //message sẽ được lưu vào content
             Type = type,
             CreatedAt = DateTime.UtcNow,
             IsRead = false
@@ -36,8 +37,10 @@ public class NotificationService : INotificationService
         await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", new
         {
             notification.Id,
-            notification.Message,
+            notification.Title,
+            notification.Content,
             notification.Type,
+            notification.IsRead,
             notification.CreatedAt
         });
     }
@@ -53,5 +56,19 @@ public class NotificationService : INotificationService
         {
             await SendNotificationAsync(userId, message, type);
         }
+    }
+
+    // Thêm method mới — gửi theo tên Role (không cần biết roleId)
+    public async Task SendToRoleByNameAsync(
+        string roleName, string message, string type = "General")
+    {
+        var roleId = await _context.Roles
+            .Where(r => r.Name == roleName)
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync();
+
+        if (roleId == 0) return; // Role không tồn tại → bỏ qua
+
+        await SendToRoleAsync(roleId, message, type);
     }
 }

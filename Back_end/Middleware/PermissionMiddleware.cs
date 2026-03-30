@@ -1,23 +1,39 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 
 namespace HotelManagementAPI.Middleware;
 
+// ══════════════════════════════════════════════════════════════
+// ATTRIBUTE — Đánh dấu permission trực tiếp trên Action/Controller
+// ══════════════════════════════════════════════════════════════
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
+public class RequirePermissionAttribute : Attribute
+{
+    public string Permission { get; }
+    public RequirePermissionAttribute(string permission)
+        => Permission = permission;
+}
+
+// ══════════════════════════════════════════════════════════════
+// MIDDLEWARE — Kết hợp Attribute-based + Route-map-based
+// ══════════════════════════════════════════════════════════════
 public class PermissionMiddleware
 {
     private readonly RequestDelegate _next;
 
-    // Định nghĩa mapping: [Route pattern] → [Permission cần có]
-    // Key: "{METHOD}:{path_prefix}"
+    // Fallback mapping khi endpoint KHÔNG có [RequirePermission]
+    // Key: "{METHOD}:{path_prefix}" — path phải lowercase
     private static readonly Dictionary<string, string> _permissionMap = new()
     {
-        { "GET:/api/usermanagement", "user.view" },
-        { "POST:/api/usermanagement", "user.create" },
-        { "PUT:/api/usermanagement", "user.edit" },
+        { "GET:/api/usermanagement",    "user.view"   },
+        { "POST:/api/usermanagement",   "user.create" },
+        { "PUT:/api/usermanagement",    "user.edit"   },
         { "DELETE:/api/usermanagement", "user.delete" },
-        { "GET:/api/roles", "role.view" },
-        { "POST:/api/roles", "role.manage" },
-        { "PUT:/api/roles", "role.manage" },
-        { "DELETE:/api/roles", "role.manage" },
+        { "GET:/api/roles",             "role.view"   },
+        { "POST:/api/roles",            "role.manage" },
+        { "PUT:/api/roles",             "role.manage" },
+        { "DELETE:/api/roles",          "role.manage" },
     };
 
     public PermissionMiddleware(RequestDelegate next)
@@ -27,55 +43,74 @@ public class PermissionMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var path = context.Request.Path.Value?.ToLower() ?? "";
-        var method = context.Request.Method.ToUpper();
+        // ── Bước 1: Xác định permission yêu cầu ──────────────────────────
+        // Ưu tiên 1: [RequirePermission] attribute trên endpoint (attribute-based)
+        var endpoint = context.GetEndpoint();
+        var requiredPermission = endpoint?
+            .Metadata.GetMetadata<RequirePermissionAttribute>()
+            ?.Permission;
 
-        // Tìm permission yêu cầu dựa trên route
-        var requiredPermission = GetRequiredPermission(method, path);
-
-        if (requiredPermission != null)
+        // Ưu tiên 2: Route map — fallback nếu endpoint không có attribute
+        if (requiredPermission == null)
         {
-            // Kiểm tra đã đăng nhập chưa
-            if (!context.User.Identity?.IsAuthenticated ?? true)
-            {
-                context.Response.StatusCode = 401;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    statusCode = 401,
-                    message = "Bạn chưa đăng nhập!"
-                });
-                return;
-            }
+            var path   = context.Request.Path.Value?.ToLower() ?? "";
+            var method = context.Request.Method.ToUpper();
+            requiredPermission = GetRequiredPermissionFromMap(method, path);
+        }
 
-            // Admin bypass tất cả permission check
-            var isAdmin = context.User.IsInRole("Admin");
-            if (!isAdmin)
-            {
-                // Lấy danh sách permission từ JWT claims
-                var userPermissions = context.User.Claims
-                    .Where(c => c.Type == "permission")
-                    .Select(c => c.Value)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Không yêu cầu permission → cho qua toàn bộ
+        if (requiredPermission == null)
+        {
+            await _next(context);
+            return;
+        }
 
-                if (!userPermissions.Contains(requiredPermission))
-                {
-                    context.Response.StatusCode = 403;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        statusCode = 403,
-                        message = $"Bạn không có quyền [{requiredPermission}] để thực hiện thao tác này!"
-                    });
-                    return;
-                }
-            }
+        // ── Bước 2: Kiểm tra đã đăng nhập chưa → 401 ────────────────────
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            context.Response.StatusCode    = 401;
+            context.Response.ContentType   = "application/json";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                statusCode = 401,
+                message    = "Bạn chưa đăng nhập!",
+                required   = requiredPermission
+            });
+            return;
+        }
+
+        // ── Bước 3: Admin bypass — bỏ qua toàn bộ permission check ───────
+        if (context.User.IsInRole("Admin"))
+        {
+            await _next(context);
+            return;
+        }
+
+        // ── Bước 4: Kiểm tra permission từ JWT Claims → 403 ──────────────
+        var userPermissions = context.User.Claims
+            .Where(c => c.Type == "permission")
+            .Select(c => c.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase); // OrdinalIgnoreCase: tránh lỗi case
+
+        if (!userPermissions.Contains(requiredPermission))
+        {
+            context.Response.StatusCode    = 403;
+            context.Response.ContentType   = "application/json";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                statusCode       = 403,
+                message          = $"Bạn không có quyền [{requiredPermission}] để thực hiện thao tác này!",
+                required         = requiredPermission,
+                your_permissions = userPermissions   // Trả về để debug dễ hơn
+            });
+            return;
         }
 
         await _next(context);
     }
 
-    private static string? GetRequiredPermission(string method, string path)
+    // Helper: tìm permission từ _permissionMap dựa vào method + path prefix
+    private static string? GetRequiredPermissionFromMap(string method, string path)
     {
         foreach (var entry in _permissionMap)
         {
@@ -87,7 +122,9 @@ public class PermissionMiddleware
     }
 }
 
-// Extension method để đăng ký
+// ══════════════════════════════════════════════════════════════
+// EXTENSION METHOD — Đăng ký middleware vào pipeline
+// ══════════════════════════════════════════════════════════════
 public static class PermissionMiddlewareExtensions
 {
     public static IApplicationBuilder UsePermissionMiddleware(this IApplicationBuilder builder)

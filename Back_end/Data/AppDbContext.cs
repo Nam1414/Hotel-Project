@@ -23,6 +23,9 @@ public class AppDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<MinibarItem> MinibarItems { get; set; }
     public DbSet<RoomMinibarStock> RoomMinibarStocks { get; set; }
+    public DbSet<Equipment> Equipments { get; set; }
+    public DbSet<Membership> Memberships { get; set; }
+    
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -134,18 +137,34 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(n => n.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        // Membership -> User (n-1)
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.Membership)
+            .WithMany(m => m.Users)
+            .HasForeignKey(u => u.MembershipId);
 
+        modelBuilder.Entity<Equipment>()
+            .Property(e => e.DefaultPriceIfLost)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Equipment>()
+            .Property(e => e.BasePrice)
+            .HasColumnType("decimal(18, 2)");
+        
         // Notifications column mapping
         modelBuilder.Entity<Notification>(entity =>
         {
             entity.ToTable("Notifications");
             entity.HasKey(n => n.Id);
-            entity.Property(n => n.Id).HasColumnName("Id");
-            entity.Property(n => n.UserId).HasColumnName("UserId");
-            entity.Property(n => n.Message).HasColumnName("Message");
-            entity.Property(n => n.Type).HasColumnName("Type");
-            entity.Property(n => n.IsRead).HasColumnName("IsRead");
-            entity.Property(n => n.CreatedAt).HasColumnName("CreatedAt");
+            entity.Property(n => n.Id).HasColumnName("id");
+            entity.Property(n => n.UserId).HasColumnName("user_id");
+            entity.Property(n => n.Title).HasColumnName("title");
+            entity.Property(n => n.Content).HasColumnName("content");
+            entity.Property(n => n.Type).HasColumnName("type");
+            entity.Property(n => n.ReferenceLink).HasColumnName("reference_link");
+            entity.Property(n => n.IsRead).HasColumnName("is_read");
+            entity.Property(n => n.CreatedAt).HasColumnName("created_at");
         });
     }
 }
