@@ -24,6 +24,9 @@ public class AppDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<MinibarItem> MinibarItems { get; set; }
     public DbSet<RoomMinibarStock> RoomMinibarStocks { get; set; }
+    public DbSet<Equipment> Equipments { get; set; }
+    public DbSet<Membership> Memberships { get; set; }
+    
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -135,13 +138,26 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(n => n.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+        
+        // Membership -> User (n-1)
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.Membership)
+            .WithMany(m => m.Users)
+            .HasForeignKey(u => u.MembershipId);
 
+        modelBuilder.Entity<Equipment>()
+            .Property(e => e.DefaultPriceIfLost)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Equipment>()
+            .Property(e => e.BasePrice)
+            .HasColumnType("decimal(18, 2)");
+        
         // Notifications column mapping
         modelBuilder.Entity<Notification>(entity =>
         {
             entity.ToTable("Notifications");
             entity.HasKey(n => n.Id);
-
             entity.Property(n => n.Id).HasColumnName("id");
             entity.Property(n => n.UserId).HasColumnName("user_id").IsRequired(false);
             entity.Property(n => n.Title).HasColumnName("title").HasMaxLength(255).IsRequired();

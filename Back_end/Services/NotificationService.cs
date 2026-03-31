@@ -26,6 +26,7 @@ public class NotificationService : INotificationService
     {
         try
         {
+<<<<<<< HEAD
             // 1. Lưu vào Database
             var notification = new Notification
             {
@@ -37,6 +38,15 @@ public class NotificationService : INotificationService
                 CreatedAt = DateTime.Now,
                 IsRead = false
             };
+=======
+            UserId = userId,
+            Title = message, // Có thể dùng type làm title tạm thời
+            Content = message, //message sẽ được lưu vào content
+            Type = type,
+            CreatedAt = DateTime.UtcNow,
+            IsRead = false
+        };
+>>>>>>> origin/nam_nt
 
             _context.Notifications.Add(notification);
             await _context.SaveChangesAsync();
@@ -60,9 +70,19 @@ public class NotificationService : INotificationService
         }
         catch (Exception ex)
         {
+<<<<<<< HEAD
             // Log lỗi nhưng không làm crash luồng chính
             Console.WriteLine($"[NotificationService Error]: {ex.Message}");
         }
+=======
+            notification.Id,
+            notification.Title,
+            notification.Content,
+            notification.Type,
+            notification.IsRead,
+            notification.CreatedAt
+        });
+>>>>>>> origin/nam_nt
     }
 
     public async Task SendToRoleAsync(int roleId, string title, string content, NotificationType type = NotificationType.Info, string? referenceLink = null)
@@ -142,5 +162,19 @@ public class NotificationService : INotificationService
         {
             Console.WriteLine($"[NotificationService Error]: {ex.Message}");
         }
+    }
+
+    // Thêm method mới — gửi theo tên Role (không cần biết roleId)
+    public async Task SendToRoleByNameAsync(
+        string roleName, string message, string type = "General")
+    {
+        var roleId = await _context.Roles
+            .Where(r => r.Name == roleName)
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync();
+
+        if (roleId == 0) return; // Role không tồn tại → bỏ qua
+
+        await SendToRoleAsync(roleId, message, type);
     }
 }
