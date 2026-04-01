@@ -67,12 +67,12 @@ const Home: React.FC = () => {
       <WhyChooseKant />
 
       {/* Featured Rooms */}
-      <section className="py-24 bg-dark-navy">
+      <section className="py-24 bg-slate-50 dark:bg-dark-navy transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-end mb-16">
             <div>
               <span className="text-primary font-bold tracking-widest uppercase text-xs mb-4 block">Our Selection</span>
-              <h2 className="text-4xl md:text-5xl font-display font-bold text-white">Featured Rooms</h2>
+              <h2 className="text-4xl md:text-5xl font-display font-bold text-[var(--text-title)]">Featured Rooms</h2>
             </div>
             <Link to="/rooms" className="hidden md:flex items-center text-primary font-bold hover:text-gold-light transition-colors">
               VIEW ALL <ArrowRight size={20} className="ml-2" />
@@ -84,7 +84,7 @@ const Home: React.FC = () => {
               <motion.div 
                 key={room.id}
                 whileHover={{ y: -10 }}
-                className="group relative bg-dark-base rounded-2xl overflow-hidden border border-white/5"
+                className="group relative bg-[var(--card-bg)] rounded-2xl overflow-hidden border border-[var(--border-color)] shadow-sm"
               >
                 <div className="relative h-72 overflow-hidden">
                   <img 
@@ -93,7 +93,7 @@ const Home: React.FC = () => {
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute top-4 right-4 bg-primary text-dark-base px-4 py-1 rounded-full font-bold text-sm">
+                  <div className="absolute top-4 right-4 bg-primary text-white px-4 py-1 rounded-full font-bold text-sm">
                     ${room.price}/night
                   </div>
                 </div>
@@ -102,10 +102,10 @@ const Home: React.FC = () => {
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} size={14} fill={i < Math.floor(room.rating) ? "currentColor" : "none"} />
                     ))}
-                    <span className="ml-2 text-xs font-bold text-gray-400">{room.rating} Rating</span>
+                    <span className="ml-2 text-xs font-bold text-[var(--text-muted)]">{room.rating} Rating</span>
                   </div>
-                  <h3 className="text-2xl font-display font-bold text-white mb-4">{room.name}</h3>
-                  <div className="flex items-center space-x-4 text-gray-400 text-sm mb-8">
+                  <h3 className="text-2xl font-display font-bold text-[var(--text-title)] mb-4">{room.name}</h3>
+                  <div className="flex items-center space-x-4 text-[var(--text-muted)] text-sm mb-8">
                     <span className="flex items-center"><Wifi size={14} className="mr-1" /> Wifi</span>
                     <span className="flex items-center"><Coffee size={14} className="mr-1" /> Breakfast</span>
                   </div>

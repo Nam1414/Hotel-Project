@@ -24,12 +24,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden"
+            className="absolute right-0 mt-2 w-80 md:w-96 bg-white dark:bg-dark-navy rounded-2xl shadow-2xl border border-gray-100 dark:border-white/5 z-50 overflow-hidden"
           >
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div className="p-4 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
               <div>
-                <h3 className="font-bold text-gray-800">Notifications</h3>
-                <p className="text-xs text-gray-500">{unreadCount} unread messages</p>
+                <h3 className="font-bold text-gray-800 dark:text-white">Notifications</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{unreadCount} unread messages</p>
               </div>
               <div className="flex space-x-2">
                 <button 
@@ -49,11 +49,16 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
               </div>
             </div>
 
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
               {notifications.length > 0 ? (
-                notifications.map((n) => (
-                  <NotificationItem key={n.id} notification={n} />
-                ))
+                <div className="divide-y divide-gray-50 dark:divide-white/5">
+                  <div className="px-4 py-2 bg-gray-50/50 dark:bg-white/5">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Recent Notifications</span>
+                  </div>
+                  {notifications.map((n) => (
+                    <NotificationItem key={n.id} notification={n} />
+                  ))}
+                </div>
               ) : (
                 <div className="p-8 text-center">
                   <p className="text-gray-400 text-sm">No notifications yet</p>

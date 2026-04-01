@@ -22,7 +22,7 @@ const WhyChooseKant: React.FC = () => {
   ];
 
   return (
-    <section className="py-24 px-4 bg-[#F9F6F1]">
+    <section className="py-24 px-4 bg-[var(--bg-main)] transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           <div>
@@ -39,7 +39,7 @@ const WhyChooseKant: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-4xl md:text-6xl font-display font-bold text-gray-800 mb-8 leading-tight"
+              className="text-4xl md:text-6xl font-serif font-medium text-[var(--text-title)] mb-8 leading-tight italic"
             >
               Why Choose KANT?
             </motion.h2>
@@ -48,7 +48,7 @@ const WhyChooseKant: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2 }}
-              className="text-gray-500 text-lg leading-relaxed mb-10 max-w-xl"
+              className="text-[var(--text-muted)] text-lg leading-relaxed mb-10 max-w-xl"
             >
               Experience refined luxury and exceptional service that goes beyond the ordinary. 
               We create moments that last a lifetime.
@@ -68,10 +68,10 @@ const WhyChooseKant: React.FC = () => {
                 className="group"
               >
                 <div className="w-10 h-[1px] bg-primary/40 mb-4 group-hover:w-full transition-all duration-500" />
-                <h4 className="text-xl font-display font-bold text-gray-800 mb-2 group-hover:text-primary transition-colors">
+                <h4 className="text-xl font-sans font-bold text-[var(--text-title)] mb-2 group-hover:text-primary transition-colors tracking-tight">
                   {feature.title}
                 </h4>
-                <p className="text-gray-500 text-sm leading-relaxed">
+                <p className="text-[var(--text-muted)] text-sm leading-relaxed">
                   {feature.description}
                 </p>
               </motion.div>

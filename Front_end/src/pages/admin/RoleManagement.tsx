@@ -17,7 +17,7 @@ const RoleManagement: React.FC = () => {
       render: (name: string) => (
         <div className="flex items-center space-x-3">
           <Shield size={20} className="text-primary" />
-          <span className="font-bold text-white tracking-widest">{name}</span>
+          <span className="font-bold text-title tracking-widest">{name}</span>
         </div>
       ),
     },
@@ -27,7 +27,7 @@ const RoleManagement: React.FC = () => {
       key: 'permissions',
       render: (perms: string[]) => (
         <div className="flex flex-wrap gap-2">
-          {perms.map(p => <Tag key={p} color="gold" className="text-[10px] uppercase font-bold">{p}</Tag>)}
+          {perms.map(p => <Tag key={p} color="gold" className="text-[10px] uppercase font-bold tracking-widest">{p}</Tag>)}
         </div>
       ),
     },
@@ -35,7 +35,7 @@ const RoleManagement: React.FC = () => {
       title: 'Active Users',
       dataIndex: 'users',
       key: 'users',
-      render: (val: number) => <span className="text-gray-400">{val} users</span>,
+      render: (val: number) => <span className="text-muted font-medium">{val} users</span>,
     },
     {
       title: 'Actions',
@@ -50,12 +50,24 @@ const RoleManagement: React.FC = () => {
   ];
 
   return (
-    <div className="glass-card p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-display font-bold text-white">Roles & Permissions</h2>
-        <button className="btn-gold">CREATE NEW ROLE</button>
+    <div className="space-y-10 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-4xl">Roles & Permissions</h1>
+          <p className="text-muted mt-1">Define system access levels and user capabilities</p>
+        </div>
+        <Button type="primary" className="btn-gold h-12">Create New Role</Button>
       </div>
-      <Table columns={columns} dataSource={roles} rowKey="id" pagination={false} />
+
+      <div className="admin-card !p-0 overflow-hidden">
+        <Table 
+          columns={columns} 
+          dataSource={roles} 
+          rowKey="id" 
+          pagination={false}
+          className="custom-table"
+        />
+      </div>
     </div>
   );
 };

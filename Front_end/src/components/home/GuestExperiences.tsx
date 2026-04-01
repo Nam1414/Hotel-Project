@@ -25,7 +25,7 @@ const GuestExperiences: React.FC = () => {
   ];
 
   return (
-    <section className="py-24 px-4 bg-white">
+    <section className="py-24 px-4 bg-[var(--card-bg)] transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <motion.h3 
@@ -41,7 +41,7 @@ const GuestExperiences: React.FC = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-4xl md:text-6xl font-display font-bold text-gray-800 mb-6"
+            className="text-4xl md:text-6xl font-serif font-medium text-[var(--text-title)] mb-6 italic"
           >
             What Our Guests Say
           </motion.h2>

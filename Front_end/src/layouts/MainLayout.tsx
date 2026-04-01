@@ -3,7 +3,8 @@ import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
-import { LogOut, User, Bell, Menu, X } from 'lucide-react';
+import { useThemeStore } from '../store/themeStore';
+import { LogOut, User, Bell, Menu, X, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import NotificationBell from '../components/notification/NotificationBell';
@@ -11,6 +12,7 @@ import Footer from '../components/common/Footer';
 
 const MainLayout: React.FC = () => {
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { isDarkMode, toggleTheme } = useThemeStore();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
@@ -21,25 +23,33 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F9F6F1]">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
+    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'dark' : ''} bg-[var(--bg-main)] text-[var(--text-body)]`}>
+      <header className="sticky top-0 z-50 bg-[var(--card-bg)]/80 backdrop-blur-lg border-b border-[var(--border-color)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center">
-              <Link to="/" className="text-2xl font-display font-bold text-primary tracking-widest">
+              <Link to="/" className="text-2xl font-display font-black text-primary tracking-widest">
                 KANT
               </Link>
             </div>
 
             <nav className="hidden md:flex items-center space-x-12">
-              <Link to="/" className="text-xs font-bold text-gray-400 hover:text-primary tracking-[0.2em] transition-colors">HOME</Link>
-              <Link to="/rooms" className="text-xs font-bold text-gray-400 hover:text-primary tracking-[0.2em] transition-colors">ROOMS</Link>
-              <Link to="/services" className="text-xs font-bold text-gray-400 hover:text-primary tracking-[0.2em] transition-colors">SERVICES</Link>
-              <Link to="/about" className="text-xs font-bold text-gray-400 hover:text-primary tracking-[0.2em] transition-colors">ABOUT</Link>
-              <Link to="/contact" className="text-xs font-bold text-gray-400 hover:text-primary tracking-[0.2em] transition-colors">CONTACT</Link>
+              <Link to="/" className="text-xs font-bold text-[var(--text-muted)] hover:text-primary tracking-[0.2em] transition-colors">HOME</Link>
+              <Link to="/rooms" className="text-xs font-bold text-[var(--text-muted)] hover:text-primary tracking-[0.2em] transition-colors">ROOMS</Link>
+              <Link to="/services" className="text-xs font-bold text-[var(--text-muted)] hover:text-primary tracking-[0.2em] transition-colors">SERVICES</Link>
+              <Link to="/about" className="text-xs font-bold text-[var(--text-muted)] hover:text-primary tracking-[0.2em] transition-colors">ABOUT</Link>
+              <Link to="/contact" className="text-xs font-bold text-[var(--text-muted)] hover:text-primary tracking-[0.2em] transition-colors">CONTACT</Link>
             </nav>
 
             <div className="hidden md:flex items-center space-x-6">
+              <button
+                onClick={toggleTheme}
+                className="p-2.5 rounded-xl border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-primary/5 transition-all shadow-sm"
+                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {isDarkMode ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} className="text-indigo-500" />}
+              </button>
+
               {isAuthenticated ? (
                 <div className="flex items-center space-x-6">
                   <NotificationBell />
@@ -78,14 +88,14 @@ const MainLayout: React.FC = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-white border-b border-gray-100 overflow-hidden"
+              className="md:hidden bg-white dark:bg-dark-base border-b border-gray-100 dark:border-white/5 overflow-hidden"
             >
               <div className="px-4 pt-2 pb-6 space-y-1">
-                <Link to="/" className="block px-3 py-4 text-xs font-bold text-gray-500 hover:text-primary tracking-widest">HOME</Link>
-                <Link to="/rooms" className="block px-3 py-4 text-xs font-bold text-gray-500 hover:text-primary tracking-widest">ROOMS</Link>
-                <Link to="/services" className="block px-3 py-4 text-xs font-bold text-gray-500 hover:text-primary tracking-widest">SERVICES</Link>
-                <Link to="/about" className="block px-3 py-4 text-xs font-bold text-gray-500 hover:text-primary tracking-widest">ABOUT</Link>
-                <Link to="/contact" className="block px-3 py-4 text-xs font-bold text-gray-500 hover:text-primary tracking-widest">CONTACT</Link>
+                <Link to="/" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">HOME</Link>
+                <Link to="/rooms" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ROOMS</Link>
+                <Link to="/services" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">SERVICES</Link>
+                <Link to="/about" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ABOUT</Link>
+                <Link to="/contact" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">CONTACT</Link>
                 {!isAuthenticated && (
                   <Link to="/login" className="block px-3 py-4 text-xs font-bold text-primary tracking-widest">LOGIN</Link>
                 )}
@@ -95,7 +105,7 @@ const MainLayout: React.FC = () => {
         </AnimatePresence>
       </header>
 
-      <main className="flex-grow">
+      <main className="flex-grow transition-colors duration-300">
         <Outlet />
       </main>
 

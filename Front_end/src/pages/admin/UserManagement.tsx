@@ -18,8 +18,8 @@ const UserManagement: React.FC = () => {
             {record.name.charAt(0)}
           </div>
           <div>
-            <div className="font-bold text-white">{record.name}</div>
-            <div className="text-xs text-gray-500">{record.email}</div>
+            <div className="font-bold text-title">{record.name}</div>
+            <div className="text-xs text-muted">{record.email}</div>
           </div>
         </div>
       ),
@@ -58,53 +58,70 @@ const UserManagement: React.FC = () => {
   ];
 
   return (
-    <div className="glass-card p-8">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <Input placeholder="Search by name, email..." className="input-luxury pl-12" />
+    <div className="space-y-10 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-4xl">User Management</h1>
+          <p className="text-muted mt-1">Manage staff accounts and system permissions</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="btn-gold flex items-center space-x-2">
-          <Plus size={20} />
-          <span>ADD NEW USER</span>
-        </button>
+        <Button 
+          type="primary" 
+          icon={<Plus size={18} />} 
+          onClick={() => setIsModalOpen(true)}
+          className="btn-gold h-12"
+        >
+          Add New User
+        </Button>
       </div>
 
-      <Table 
-        columns={columns} 
-        dataSource={users} 
-        rowKey="id"
-        pagination={{ pageSize: 5 }}
-      />
+      <div className="admin-card !p-0 overflow-hidden">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4">
+          <Input 
+            prefix={<Search size={18} className="text-slate-400" />} 
+            placeholder="Search by name, email..." 
+            className="max-w-md h-12 rounded-xl"
+          />
+        </div>
+        <Table 
+          columns={columns} 
+          dataSource={users} 
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+          className="custom-table"
+        />
+      </div>
 
       <Modal
-        title={<span className="text-white font-display text-xl">Add New User</span>}
+        title={<span className="text-2xl">Add New User</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
-        className="luxury-modal"
         centered
+        width={500}
       >
-        <Form form={form} layout="vertical" className="mt-6">
-          <Form.Item label={<span className="text-gray-400">Full Name</span>} name="name" rules={[{ required: true }]}>
-            <Input className="input-luxury" placeholder="Enter full name" />
-          </Form.Item>
-          <Form.Item label={<span className="text-gray-400">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
-            <Input className="input-luxury" placeholder="Enter email" />
-          </Form.Item>
-          <Form.Item label={<span className="text-gray-400">Role</span>} name="role" rules={[{ required: true }]}>
-            <Select 
-              className="luxury-select"
-              options={[
-                { value: 'USER', label: 'USER' },
-                { value: 'STAFF', label: 'STAFF' },
-                { value: 'ADMIN', label: 'ADMIN' },
-              ]}
-            />
-          </Form.Item>
-          <div className="flex gap-4 mt-8">
-            <Button onClick={() => setIsModalOpen(false)} className="flex-grow h-12 border-white/10 text-white hover:bg-white/5">CANCEL</Button>
-            <Button type="primary" className="flex-grow h-12 bg-primary border-none text-dark-base font-bold">CREATE USER</Button>
+        <Form form={form} layout="vertical" className="mt-8">
+          <div className="space-y-6">
+            <Form.Item label="Full Name" name="name" rules={[{ required: true }]}>
+              <Input placeholder="Enter full name" className="h-12 rounded-xl" />
+            </Form.Item>
+            <Form.Item label="Email Address" name="email" rules={[{ required: true, type: 'email' }]}>
+              <Input placeholder="Enter email" className="h-12 rounded-xl" />
+            </Form.Item>
+            <Form.Item label="Role" name="role" rules={[{ required: true }]}>
+              <Select 
+                placeholder="Select role"
+                className="h-12"
+                options={[
+                  { value: 'USER', label: 'USER' },
+                  { value: 'STAFF', label: 'STAFF' },
+                  { value: 'ADMIN', label: 'ADMIN' },
+                ]}
+              />
+            </Form.Item>
+          </div>
+          <div className="flex gap-4 mt-10">
+            <Button onClick={() => setIsModalOpen(false)} className="flex-grow h-12 rounded-xl border-slate-200 dark:border-slate-700 font-bold tracking-wider text-xs uppercase">Cancel</Button>
+            <Button type="primary" className="flex-grow h-12 btn-gold">Create User</Button>
           </div>
         </Form>
       </Modal>

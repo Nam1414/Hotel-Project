@@ -56,20 +56,38 @@ const BookingManagement: React.FC = () => {
   ];
 
   return (
-    <div className="glass-card p-8">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <Input placeholder="Search bookings..." className="input-luxury pl-12" />
+    <div className="space-y-10 pb-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-4xl">Booking Management</h1>
+          <p className="text-muted mt-1">Manage all guest reservations and check-ins</p>
         </div>
         <div className="flex items-center space-x-4">
-          <button className="btn-outline-gold flex items-center space-x-2">
-            <Calendar size={20} />
-            <span>CALENDAR VIEW</span>
-          </button>
+          <Button 
+            icon={<Calendar size={20} />} 
+            className="h-12 rounded-xl border-slate-200 dark:border-slate-700 font-bold tracking-wider text-xs uppercase"
+          >
+            Calendar View
+          </Button>
+          <Button type="primary" className="btn-gold h-12">New Booking</Button>
         </div>
       </div>
-      <Table columns={columns} dataSource={MOCK_BOOKINGS} rowKey="id" />
+
+      <div className="admin-card !p-0 overflow-hidden">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4">
+          <Input 
+            prefix={<Search size={18} className="text-slate-400" />} 
+            placeholder="Search bookings..." 
+            className="max-w-md h-12 rounded-xl"
+          />
+        </div>
+        <Table 
+          columns={columns} 
+          dataSource={MOCK_BOOKINGS} 
+          rowKey="id" 
+          className="custom-table"
+        />
+      </div>
     </div>
   );
 };

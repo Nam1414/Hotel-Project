@@ -24,6 +24,10 @@ const RoomManagement = lazy(() => import('../pages/admin/RoomManagement'));
 const BookingManagement = lazy(() => import('../pages/admin/BookingManagement'));
 const RoleManagement = lazy(() => import('../pages/admin/RoleManagement'));
 const Inventory = lazy(() => import('../pages/admin/Inventory'));
+const DamageManagement = lazy(() => import('../pages/admin/DamageManagement'));
+const CleaningManagement = lazy(() => import('../pages/admin/CleaningManagement'));
+const CMS = lazy(() => import('../pages/admin/CMS'));
+const VoucherManagement = lazy(() => import('../pages/admin/VoucherManagement'));
 
 const StaffLayout = lazy(() => import('../layouts/StaffLayout'));
 const StaffDashboard = lazy(() => import('../pages/staff/StaffDashboard'));
@@ -90,6 +94,10 @@ const AppRoutes: React.FC = () => {
           />
           <Route path="bookings" element={<BookingManagement />} />
           <Route path="inventory" element={<Inventory />} />
+          <Route path="damage" element={<DamageManagement />} />
+          <Route path="cleaning" element={<CleaningManagement />} />
+          <Route path="cms" element={<CMS />} />
+          <Route path="vouchers" element={<VoucherManagement />} />
           <Route 
             path="roles" 
             element={
@@ -112,8 +120,10 @@ const AppRoutes: React.FC = () => {
           }
         >
           <Route index element={<StaffDashboard />} />
-          <Route path="bookings" element={<div className="p-8">Staff Booking Management (Coming Soon)</div>} />
-          <Route path="rooms" element={<div className="p-8">Staff Room Management (Coming Soon)</div>} />
+          <Route path="bookings" element={<BookingManagement />} />
+          <Route path="rooms" element={<CleaningManagement />} />
+          <Route path="damage" element={<DamageManagement />} />
+          <Route path="inventory" element={<Inventory />} />
         </Route>
 
 

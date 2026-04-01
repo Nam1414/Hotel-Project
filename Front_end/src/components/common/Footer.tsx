@@ -1,64 +1,132 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Twitter } from 'lucide-react';
+import { 
+  Facebook, 
+  Instagram, 
+  Twitter, 
+  Linkedin, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  ArrowRight,
+  Globe
+} from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-white border-t border-gray-100 py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-          <div className="col-span-1 md:col-span-2">
-            <Link to="/" className="text-3xl font-display font-bold text-primary tracking-widest mb-6 block">KANT</Link>
-            <p className="text-gray-500 max-w-md leading-relaxed mb-8">
-              Experience the pinnacle of luxury and comfort at KANT Hotel. Our world-class amenities and personalized service ensure an unforgettable stay in the heart of the city.
-            </p>
-            <div className="flex space-x-6">
-              <a href="#" className="text-gray-400 hover:text-primary hover:scale-110 transition-all duration-300">
-                <Facebook size={20} strokeWidth={1.5} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-primary hover:scale-110 transition-all duration-300">
-                <Instagram size={20} strokeWidth={1.5} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-primary hover:scale-110 transition-all duration-300">
-                <Twitter size={20} strokeWidth={1.5} />
-              </a>
-            </div>
-          </div>
+    <footer className="relative bg-[var(--bg-main)] text-[var(--text-body)] border-t border-[var(--border-color)] transition-colors duration-300">
+      {/* Subtle Gradient Top Border */}
+      <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-50" />
+      
+      <div className="max-w-7xl mx-auto px-6 py-8 md:py-10 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-10">
           
-          <div>
-            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-[0.2em] mb-8">Navigation</h3>
-            <ul className="space-y-4">
-              <li><Link to="/rooms" className="text-gray-500 hover:text-primary transition-colors text-sm font-medium">Rooms</Link></li>
-              <li><Link to="/services" className="text-gray-500 hover:text-primary transition-colors text-sm font-medium">Services</Link></li>
-              <li><Link to="/about" className="text-gray-500 hover:text-primary transition-colors text-sm font-medium">About Us</Link></li>
-              <li><Link to="/contact" className="text-gray-500 hover:text-primary transition-colors text-sm font-medium">Contact</Link></li>
+          {/* 1. BRAND */}
+          <div className="flex flex-col space-y-3 text-center md:text-left">
+            <Link to="/" className="text-2xl font-display font-black text-primary tracking-widest hover:opacity-80 transition-opacity">
+              KANT
+            </Link>
+            <p className="text-xs leading-relaxed max-w-xs mx-auto md:mx-0 opacity-80">
+              The ultimate luxury hotel management system. Elevating hospitality standards through precision and elegant technology.
+            </p>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-primary/70">
+              Luxury & Premium Service
+            </span>
+          </div>
+
+          {/* 2. QUICK LINKS */}
+          <div className="text-center md:text-left">
+            <h3 className="text-xs font-bold text-[var(--text-title)] uppercase tracking-[0.2em] mb-4">
+              Quick Links
+            </h3>
+            <ul className="space-y-2">
+              {[
+                { name: 'Dashboard', path: '/admin/dashboard' },
+                { name: 'Rooms', path: '/admin/rooms' },
+                { name: 'Inventory', path: '/admin/inventory' },
+                { name: 'Booking', path: '/admin/vouchers' },
+                { name: 'CMS', path: '/admin/cms' },
+              ].map((link) => (
+                <li key={link.name}>
+                  <Link 
+                    to={link.path} 
+                    className="text-xs font-bold text-[var(--text-muted)] hover:text-primary tracking-[0.2em] uppercase transition-all duration-300 flex items-center justify-center md:justify-start group"
+                  >
+                    <span className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300 mr-2">
+                      <ArrowRight size={10} />
+                    </span>
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          <div>
-            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-[0.2em] mb-8">Contact</h3>
-            <ul className="space-y-4 text-sm text-gray-500">
-              <li className="flex flex-col">
-                <span className="text-gray-400 text-[10px] uppercase font-bold mb-1">Address</span>
-                123 Luxury Ave, Paradise City
+          {/* 3. CONTACT */}
+          <div className="text-center md:text-left">
+            <h3 className="text-xs font-bold text-[var(--text-title)] uppercase tracking-[0.2em] mb-4">
+              Contact Us
+            </h3>
+            <ul className="space-y-3">
+              <li className="flex items-center justify-center md:justify-start space-x-3 group">
+                <div className="p-1.5 bg-primary/5 rounded-lg group-hover:bg-primary/10 transition-colors">
+                  <MapPin size={12} className="text-primary" />
+                </div>
+                <span className="text-xs font-bold text-[var(--text-muted)] tracking-[0.1em] uppercase">123 Luxury Ave, Paradise City</span>
               </li>
-              <li className="flex flex-col">
-                <span className="text-gray-400 text-[10px] uppercase font-bold mb-1">Phone</span>
-                +1 (555) 123-4567
+              <li className="flex items-center justify-center md:justify-start space-x-3 group">
+                <div className="p-1.5 bg-primary/5 rounded-lg group-hover:bg-primary/10 transition-colors">
+                  <Phone size={12} className="text-primary" />
+                </div>
+                <span className="text-xs font-bold text-[var(--text-muted)] tracking-[0.1em] uppercase">+1 (555) 123-4567</span>
               </li>
-              <li className="flex flex-col">
-                <span className="text-gray-400 text-[10px] uppercase font-bold mb-1">Email</span>
-                contact@kant.com
+              <li className="flex items-center justify-center md:justify-start space-x-3 group">
+                <div className="p-1.5 bg-primary/5 rounded-lg group-hover:bg-primary/10 transition-colors">
+                  <Mail size={12} className="text-primary" />
+                </div>
+                <span className="text-xs font-bold text-[var(--text-muted)] tracking-[0.1em] uppercase">contact@kant.com</span>
               </li>
             </ul>
           </div>
+
+          {/* 4. SOCIAL / ACTION */}
+          <div className="flex flex-col items-center md:items-start space-y-4">
+            <h3 className="text-xs font-bold text-[var(--text-title)] uppercase tracking-[0.2em]">
+              Connect With Us
+            </h3>
+            <div className="flex space-x-3">
+              {[
+                { icon: Facebook, name: 'Facebook' },
+                { icon: Instagram, name: 'Instagram' },
+                { icon: Twitter, name: 'Twitter' },
+                { icon: Linkedin, name: 'Linkedin' },
+              ].map((social) => (
+                <a 
+                  key={social.name}
+                  href="#" 
+                  className="p-1.5 bg-primary/5 rounded-lg text-[var(--text-muted)] hover:bg-primary hover:text-white transition-all duration-300 hover:-translate-y-1 shadow-sm"
+                  aria-label={social.name}
+                >
+                  <social.icon size={16} strokeWidth={1.5} />
+                </a>
+              ))}
+            </div>
+            <button className="btn-gold w-full md:w-auto flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-[10px] font-bold tracking-widest group">
+              <span>GET SUPPORT</span>
+              <Globe size={12} className="group-hover:rotate-12 transition-transform" />
+            </button>
+          </div>
         </div>
-        
-        <div className="mt-16 pt-8 border-t border-gray-50 flex flex-col md:flex-row justify-between items-center text-gray-400 text-[10px] font-bold tracking-widest uppercase">
-          <p>© 2026 KANT HOTEL ERP. ALL RIGHTS RESERVED.</p>
-          <div className="flex space-x-8 mt-4 md:mt-0">
+
+        {/* Bottom Bar */}
+        <div className="mt-8 pt-4 border-t border-[var(--border-color)] flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em] text-center md:text-left">
+            © 2026 KANT HOTEL ERP. ALL RIGHTS RESERVED.
+          </p>
+          <div className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-1 text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">
             <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
             <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-primary transition-colors">Cookies</a>
           </div>
         </div>
       </div>
@@ -67,3 +135,4 @@ const Footer: React.FC = () => {
 };
 
 export default Footer;
+

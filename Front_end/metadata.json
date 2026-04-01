@@ -1,6 +1,6 @@
 {
-  "name": "KANT Hotel ERP",
-  "description": "Enterprise-level Hotel Management System with Modern Luxury UI, RBAC, and Real-time simulations.",
+  "name": "GrandView Hotel Management",
+  "description": "A complete SaaS-style Hotel Management System featuring Dashboard, Room Management, Inventory Warehouse, Cleaning, Booking, and CMS modules.",
   "requestFramePermissions": [
     "camera",
     "microphone",

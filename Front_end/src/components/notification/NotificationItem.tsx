@@ -18,7 +18,7 @@ const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => 
   return (
     <div 
       onClick={() => dispatch(markAsRead(notification.id))}
-      className={`p-4 border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50 ${!notification.isRead ? 'bg-primary/5' : ''}`}
+      className={`p-4 border-b border-gray-50 dark:border-white/5 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-white/5 ${!notification.isRead ? 'bg-primary/5 dark:bg-primary/10' : ''}`}
     >
       <div className="flex space-x-3">
         <div className="mt-1">
@@ -26,12 +26,12 @@ const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => 
         </div>
         <div className="flex-1">
           <div className="flex justify-between items-start">
-            <h4 className={`text-sm font-semibold ${!notification.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
+            <h4 className={`text-sm font-semibold ${!notification.isRead ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
               {notification.title}
             </h4>
-            <span className="text-[10px] text-gray-400">{notification.time}</span>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">{notification.time}</span>
           </div>
-          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
             {notification.description}
           </p>
         </div>

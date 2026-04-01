@@ -27,7 +27,7 @@ const About: React.FC = () => {
 
       {/* Introduction */}
       <section className="py-24 px-4 max-w-4xl mx-auto text-center">
-        <h2 className="text-3xl md:text-5xl font-display text-gray-800 mb-10 italic">"Redefining Modern Luxury"</h2>
+        <h2 className="text-3xl md:text-5xl font-sans font-black text-gray-800 mb-10">"Redefining Modern Luxury"</h2>
         <p className="text-gray-600 text-lg leading-relaxed mb-8">
           Founded on the principles of elegance, sophistication, and unparalleled service, 
           KANT Hotel has been a beacon of luxury since its inception. We believe that 

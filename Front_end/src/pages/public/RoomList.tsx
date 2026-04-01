@@ -19,7 +19,7 @@ const RoomList: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <span className="text-primary font-bold tracking-widest uppercase text-xs mb-4 block">Our Sanctuary</span>
-          <h1 className="text-5xl md:text-6xl font-display font-bold text-white mb-6">Suites & Rooms</h1>
+          <h1 className="text-5xl md:text-6xl font-sans font-black text-white mb-6 tracking-tighter">Suites & Rooms</h1>
           <p className="text-gray-400 max-w-2xl mx-auto leading-relaxed">
             Explore our collection of meticulously designed rooms, each offering a unique blend of luxury, comfort, and breathtaking views.
           </p>
@@ -91,7 +91,7 @@ const RoomList: React.FC = () => {
                   ))}
                   <span className="ml-2 text-xs font-bold text-gray-400">{room.rating} Rating</span>
                 </div>
-                <h3 className="text-2xl font-display font-bold text-white mb-4">{room.name}</h3>
+                <h3 className="text-2xl font-sans font-bold text-white mb-4 tracking-tight">{room.name}</h3>
                 <div className="flex flex-wrap gap-4 text-gray-400 text-sm mb-8">
                   <span className="flex items-center"><Wifi size={14} className="mr-1" /> Wifi</span>
                   <span className="flex items-center"><Coffee size={14} className="mr-1" /> Breakfast</span>
