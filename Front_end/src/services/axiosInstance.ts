@@ -7,11 +7,11 @@ export const BASE_URL = 'http://localhost:5206/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true, // Gửi HttpOnly cookie (refreshToken) tự động
+  withCredentials: true,                    // Gửi HttpOnly cookie (refreshToken) tự động
   headers: { 'Content-Type': 'application/json' },
 });
 
-// ── Request Interceptor: Đính kèm accessToken ─────────────────────────────────
+// ── Request Interceptor: Đính kèm accessToken ──────────────────────────────
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = store.getState().auth.accessToken;
   if (token && config.headers) {
@@ -20,11 +20,14 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// ── Response Interceptor: Tự động refresh khi 401 ────────────────────────────
+// ── Response Interceptor ────────────────────────────────────────────────────
 let isRefreshing = false;
-let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+let failedQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (err: unknown) => void;
+}> = [];
 
-const processQueue = (error: any, token: string | null) => {
+const processQueue = (error: unknown, token: string | null) => {
   failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
     else prom.resolve(token!);
@@ -32,21 +35,44 @@ const processQueue = (error: any, token: string | null) => {
   failedQueue = [];
 };
 
+/**
+ * Redirect helper – dùng window.location để force full navigation,
+ * tránh React Router không re-render khi state chưa clear.
+ */
+const redirectTo = (path: '/login' | '/401') => {
+  // Chỉ redirect nếu chưa ở trang đó (tránh loop)
+  if (!window.location.pathname.startsWith(path)) {
+    window.location.href = path;
+  }
+};
+
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Nếu là 401 và chưa retry
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
+
+    // ── Case 403: Đã đăng nhập nhưng sai role/permission → /401 ────────────
+    if (error.response?.status === 403) {
+      redirectTo('/401');
+      return Promise.reject(error);
+    }
+
+    // ── Case 401: Chưa đăng nhập / token hết hạn → thử refresh ─────────────
     if (error.response?.status === 401 && !originalRequest._retry) {
+
       // Nếu đang refresh → xếp hàng chờ
       if (isRefreshing) {
-        return new Promise((resolve, reject) => {
+        return new Promise<string>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        }).then((token) => {
-          originalRequest.headers!.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        });
+        })
+          .then((token) => {
+            originalRequest.headers!.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
       }
 
       originalRequest._retry = true;
@@ -55,18 +81,25 @@ api.interceptors.response.use(
       const currentToken = store.getState().auth.accessToken;
 
       try {
+        // Gọi refresh (dùng plainAxios bên trong authApi – không qua interceptor)
         const data = await authApi.refreshToken(currentToken || '');
         const newToken = data.accessToken;
+
         store.dispatch(setAccessToken(newToken));
         processQueue(null, newToken);
+
         originalRequest.headers!.Authorization = `Bearer ${newToken}`;
-        return api(originalRequest);
+        return api(originalRequest);                // Retry request gốc
+
       } catch (refreshError) {
         processQueue(refreshError, null);
-        // Refresh fail → đăng xuất
+
+        // Refresh fail hoàn toàn → clear auth + về login
         store.dispatch(clearAuth());
-        window.location.href = '/login';
+        redirectTo('/login');
+
         return Promise.reject(refreshError);
+
       } finally {
         isRefreshing = false;
       }

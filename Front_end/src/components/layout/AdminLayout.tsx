@@ -14,6 +14,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { path: '/admin/users', label: 'Người dùng', icon: '👥', roles: ['Admin'] },
   { path: '/admin/staff', label: 'Nhân sự', icon: '🏨', roles: ['Admin', 'Manager'] },
+  { path: '/admin/equipment', label: 'Quản lý vật tư',  icon: '🗂️', roles: ['Admin', 'Manager'] },
 ];
 
 const AdminLayout: React.FC = () => {
