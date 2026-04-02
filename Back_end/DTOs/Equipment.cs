@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace HotelManagementAPI.Models;
+namespace HotelManagementAPI.DTOs;
 
 [Table("Equipments")]
-public class Equipment
+public class EquipmentSnapshotDto
 {
     [Key]
     [Column("id")]
@@ -40,7 +40,6 @@ public class Equipment
     [Column("liquidated_quantity")]
     public int LiquidatedQuantity { get; set; }
 
-    // Computed — không lưu DB
     [NotMapped]
     public int InStockQuantity =>
         TotalQuantity - InUseQuantity - DamagedQuantity - LiquidatedQuantity;

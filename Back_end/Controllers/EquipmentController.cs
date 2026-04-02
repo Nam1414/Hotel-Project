@@ -443,7 +443,7 @@ public class EquipmentController : ControllerBase
         var inv = await _context.RoomInventories.FindAsync(roomInventoryId);
         if (inv == null) return;
 
-        inv.AvailableRooms = Math.Max(0, inv.AvailableRooms - damagedQty);
+        inv.Quantity = Math.Max(0, (inv.Quantity ?? 0) - damagedQty);
     
     }
 
@@ -452,7 +452,7 @@ public class EquipmentController : ControllerBase
         var inv = await _context.RoomInventories.FindAsync(roomInventoryId);
         if (inv == null) return;
 
-        inv.AvailableRooms += qty;
+        inv.Quantity = (inv.Quantity ?? 0) + qty;
     }
 }
 

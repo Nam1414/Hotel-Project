@@ -1,103 +1,121 @@
-# Hotel Management System
+﻿# Hotel Management System
 
-Hệ thống quản lý khách sạn full-stack gồm `Back_end` (ASP.NET Core Web API) và `Front_end` (React + TypeScript). Project tập trung vào các nghiệp vụ quản trị nội bộ như đăng nhập và phân quyền, quản lý người dùng, phòng, vật tư, minibar, bài viết, điểm tham quan và thông báo thời gian thực.
+Hệ thống quản lý khách sạn full-stack gồm `Back_end` (ASP.NET Core Web API) và `Front_end` (React + TypeScript). Project tập trung vào vận hành nội bộ khách sạn: xác thực và phân quyền, quản lý người dùng, phòng, vật tư, hỏng/mất, thông báo thời gian thực, nội dung và upload ảnh qua Cloudinary.
 
-## 1. Tổng quan công nghệ
+## Tổng quan nhanh
+
+- Backend: ASP.NET Core Web API, Entity Framework Core, SQL Server, JWT, SignalR, Swagger, Cloudinary.
+- Frontend: React 19, TypeScript, Vite, Redux Toolkit, React Router, Ant Design, Axios.
+- Database: cài bằng script SQL trong `Back_end/sql`, không đi theo EF migrations.
+- Kiến trúc: frontend gọi REST API, nhận notification qua SignalR, route/UI được chặn theo permission.
+
+## Công nghệ sử dụng
 
 ### Backend
-- ASP.NET Core Web API (`net10.0`)
+
+- .NET 10
+- ASP.NET Core Web API
 - Entity Framework Core + SQL Server
-- JWT Access Token + Refresh Token qua cookie
-- Role-based authorization + permission middleware
-- SignalR cho thông báo thời gian thực
-- Swagger/OpenAPI
-- Cloudinary để lưu ảnh
-- BCrypt để băm mật khẩu
+- JWT access token + refresh token
+- SignalR
+- CloudinaryDotNet
+- BCrypt.Net
+- Swagger / OpenAPI
 
 ### Frontend
-- React 19 + TypeScript
-- Vite 6
-- Ant Design 6
+
+- React 19
+- TypeScript
+- Vite
 - Redux Toolkit
-- Zustand
-- React Router 7
+- React Router
 - Axios
-- Framer Motion
+- Ant Design
+- Lucide React
 - SignalR client
 
-## 2. Chức năng chính
+## Chức năng chính
 
 ### Xác thực và phân quyền
-- Đăng nhập bằng JWT.
-- Tự cấp lại access token bằng refresh token.
-- Phân quyền theo `Role` và `Permission`.
-- Chặn route và chức năng trên frontend theo permission.
 
-### Quản lý người dùng
-- Tạo, cập nhật, xóa người dùng.
-- Lọc danh sách người dùng theo email, số điện thoại, trạng thái.
-- Đổi role cho người dùng.
-- Quản lý hồ sơ người dùng.
+- Đăng nhập bằng JWT.
+- Refresh token qua cookie `HttpOnly`.
+- Phân quyền theo `Role` và `Permission`.
+- Tự điều hướng người dùng sau khi login vào trang phù hợp với quyền hiện có.
+- Chặn route frontend và API backend theo permission.
+
+### Quản lý người dùng và vai trò
+
+- CRUD người dùng.
+- Gán role và quản lý quyền.
+- Trang hồ sơ cá nhân.
+- Upload avatar người dùng lên Cloudinary.
 
 ### Quản lý phòng và hạng phòng
-- CRUD phòng.
-- CRUD hạng phòng.
-- Tạo hàng loạt phòng.
-- Clone/sync vật tư từ phòng mẫu sang các phòng khác.
-- Quản lý ảnh phòng và tiện ích đi kèm.
 
-### Quản lý vật tư, minibar và mất mát/hư hỏng
-- Quản lý thiết bị/vật tư trong phòng.
-- Theo dõi tồn kho sử dụng theo phòng.
-- Quản lý minibar và tồn minibar theo từng phòng.
-- Ghi nhận mất mát, hư hỏng và chi phí bồi thường.
+- CRUD phòng và hạng phòng.
+- Tạo hàng loạt phòng.
+- Clone/sync vật tư theo phòng mẫu.
+- Quản lý ảnh phòng và tiện ích.
+
+### Quản lý vật tư và hỏng/mất
+
+- CRUD vật tư.
+- Nhập vật tư từ Excel.
+- Theo dõi tồn kho, đang dùng, hỏng/mất.
+- Upload ảnh vật tư.
+- Ghi nhận hỏng/mất và upload ảnh minh chứng.
+- Quản lý bồi thường vật tư.
 
 ### Nội dung và dữ liệu mở rộng
+
 - Quản lý bài viết và danh mục bài viết.
-- Quản lý tiện ích khách sạn.
+- Quản lý tiện ích.
 - Quản lý điểm tham quan.
-- Quản lý membership.
+- Upload ảnh điểm tham quan lên Cloudinary.
+- Membership và dữ liệu mở rộng khác.
 
 ### Thông báo thời gian thực
-- Backend map hub tại `/notificationHub`.
-- Frontend có kết nối SignalR để nhận `ReceiveNotification`.
-- Thông báo được đẩy vào Redux store và hiển thị qua Ant Design notification.
 
-## 3. Cấu trúc thư mục
+- SignalR hub tại `/notificationHub`.
+- Thông báo hiển thị trên frontend theo thời gian thực.
+- Thông báo nghiệp vụ được lưu vào database để không mất khi refresh.
+
+## Cấu trúc thư mục
 
 ```text
 Hotel-Project/
 |-- Back_end/
-|   |-- Controllers/        # API controllers
-|   |-- Data/               # AppDbContext
-|   |-- DTOs/               # Request/response models
-|   |-- Enums/              # Notification enums
-|   |-- Hubs/               # SignalR hubs
-|   |-- Middleware/         # Refresh token, permission middleware
-|   |-- Models/             # Entity models
-|   |-- Services/           # Business services
-|   |-- sql/                # SQL install/patch scripts
-|   |-- Program.cs          # DI, auth, CORS, Swagger, SignalR
-|   `-- appsettings.json    # Local configuration
+|   |-- Controllers/
+|   |-- Data/
+|   |-- DTOs/
+|   |-- Enums/
+|   |-- Hubs/
+|   |-- Middleware/
+|   |-- Models/
+|   |-- Services/
+|   |-- sql/
+|   |-- Program.cs
+|   `-- appsettings.json
 |
 |-- Front_end/
 |   |-- src/
-|   |   |-- api/            # Axios client
-|   |   |-- components/     # UI components
-|   |   |-- hooks/          # Notification, SignalR, utilities
-|   |   |-- layouts/        # Admin/Staff layouts
-|   |   |-- pages/          # Auth/Admin/Staff pages
-|   |   |-- routes/         # Protected routes
-|   |   `-- store/          # Redux/Zustand state
+|   |   |-- api/
+|   |   |-- components/
+|   |   |-- hooks/
+|   |   |-- layouts/
+|   |   |-- pages/
+|   |   |-- routes/
+|   |   |-- services/
+|   |   `-- store/
 |   `-- package.json
 |
-|-- README.md
-`-- .gitignore
+`-- README.md
 ```
 
-## 4. Các API/module backend hiện có
+## Backend hiện có
 
-Project hiện có các controller sau:
+Các controller chính trong `Back_end/Controllers`:
 
 - `AuthController`
 - `UserManagementController`
@@ -108,6 +126,7 @@ Project hiện có các controller sau:
 - `RoomItemsController`
 - `InventoryController`
 - `EquipmentsController`
+- `EquipmentController`
 - `MinibarController`
 - `LossAndDamagesController`
 - `NotificationsController`
@@ -117,60 +136,83 @@ Project hiện có các controller sau:
 - `ArticleCategoriesController`
 - `DbFixController`
 
-## 5. Các màn hình frontend hiện có
+## Frontend hiện có
 
-### Authentication
+Các màn hình admin chính trong `Front_end/src/pages/admin`:
+
+- Dashboard
+- User Management
+- Rooms
+- Room Types
+- Cleaning
+- Inventory
+- Damage / Loss
+- Role Management
+- Profile
+- Attractions
+
+Route chính đang dùng:
+
 - `/login`
 - `/register`
-
-### Admin
 - `/admin`
 - `/admin/users`
 - `/admin/rooms`
+- `/admin/room-types`
+- `/admin/cleaning`
 - `/admin/bookings`
 - `/admin/inventory`
+- `/admin/inventory/damages`
 - `/admin/roles`
+- `/admin/profile`
+- `/admin/attractions`
 
-### Staff
-- Có `StaffLayout` và `StaffDashboard` trong source, sẵn sàng để mở rộng thêm route nghiệp vụ staff.
-
-## 6. Yêu cầu môi trường
+## Yêu cầu môi trường
 
 ### Backend
+
 - .NET SDK 10.0
 - SQL Server
 
 ### Frontend
+
 - Node.js 20+
 - npm
 
-## 7. Cài đặt database
+## Cài đặt database
 
-Project đang đi theo hướng cài database bằng script SQL có sẵn thay vì EF migration.
+Project dùng script SQL có sẵn trong `Back_end/sql`.
 
-### Cách nhanh nhất cho máy mới
+### Cài mới
+
 1. Mở SQL Server Management Studio.
 2. Chạy file `Back_end/sql/00_MASTER_INSTALL.sql`.
 3. Script sẽ tạo database `HotelManagementDB` và seed dữ liệu nền.
 
-### Khi database đã tồn tại và cần đồng bộ thêm
-- Xem thứ tự patch trong `Back_end/sql/README_RUN_ORDER.sql`.
-- Một số file patch quan trọng:
-  - `patch_users_add_token_columns.sql`
-  - `patch_rooms_add_is_active.sql`
-  - `patch_room_images_add_public_id.sql`
-  - `patch_article_categories_add_columns.sql`
-  - `patch_articles_add_columns.sql`
-  - `patch_attractions_add_fields.sql`
-  - `patch_memberships_add_created_at.sql`
-  - `patch_equipments_rename_columns.sql`
-  - `patch_fix_null_active_status.sql`
-  - `create_minibar_tables.sql`
-  - `create_room_items_table.sql`
+### Patch thêm cho database cũ
 
-## 8. Cấu hình backend
+- Xem thứ tự chạy trong `Back_end/sql/README_RUN_ORDER.sql`.
+- Một số patch quan trọng:
+- `patch_users_add_token_columns.sql`
+- `patch_rooms_add_is_active.sql`
+- `patch_room_images_add_public_id.sql`
+- `patch_article_categories_add_columns.sql`
+- `patch_articles_add_columns.sql`
+- `patch_attractions_add_fields.sql`
+- `patch_memberships_add_created_at.sql`
+- `patch_equipments_rename_columns.sql`
+- `patch_fix_null_active_status.sql`
+- `create_minibar_tables.sql`
+- `create_room_items_table.sql`
+- `setup_equipment_module.sql`
 
-Chỉnh file `Back_end/appsettings.json` cho phù hợp máy chạy:
+Ngoài ra backend hiện có `DatabaseSchemaInitializer` để tự vá một số khác biệt schema cho module hỏng/mất vật tư khi app khởi động.
+
+## Cấu hình backend
+
+Chỉnh `Back_end/appsettings.json` hoặc dùng biến môi trường / secret manager.
+
+Ví dụ cấu hình:
 
 ```json
 {
@@ -180,7 +222,9 @@ Chỉnh file `Back_end/appsettings.json` cho phù hợp máy chạy:
   "JwtSettings": {
     "Secret": "your-secret",
     "Issuer": "HotelManagementAPI",
-    "Audience": "HotelManagementClient"
+    "Audience": "HotelManagementClient",
+    "AccessTokenExpireMinutes": 480,
+    "RefreshTokenExpireDays": 7
   },
   "Cloudinary": {
     "CloudName": "your-cloud-name",
@@ -196,11 +240,27 @@ Chỉnh file `Back_end/appsettings.json` cho phù hợp máy chạy:
 }
 ```
 
-Lưu ý:
-- Không nên dùng nguyên các giá trị bí mật đang nằm trong file cấu hình hiện tại khi deploy thật.
-- Nên chuyển secret sang User Secrets, biến môi trường hoặc hệ thống secret manager.
+### Lưu ý bảo mật
 
-## 9. Chạy backend
+- File `Back_end/appsettings.json` hiện đang chứa secret thật. Bạn nên đổi ngay toàn bộ JWT secret, Cloudinary key và email app password trước khi deploy hoặc chia sẻ repo.
+- Khuyến nghị chuyển các giá trị nhạy cảm sang:
+- User Secrets
+- biến môi trường
+- secret manager của môi trường deploy
+
+## Cấu hình frontend
+
+Tạo file `Front_end/.env`:
+
+```env
+VITE_API_URL=http://localhost:5206
+```
+
+Nếu không khai báo, frontend sẽ fallback về `http://localhost:5206`.
+
+## Chạy project local
+
+### 1. Chạy backend
 
 ```powershell
 cd Back_end
@@ -208,7 +268,7 @@ dotnet restore
 dotnet run
 ```
 
-Mặc định backend chạy tại:
+Backend mặc định:
 
 - `http://localhost:5206`
 - `https://localhost:7259`
@@ -217,17 +277,7 @@ Swagger UI:
 
 - `http://localhost:5206/`
 
-## 10. Cấu hình frontend
-
-Frontend gọi API qua biến môi trường:
-
-```env
-VITE_API_URL=http://localhost:5206
-```
-
-Nếu không khai báo, code hiện tại sẽ fallback về `http://localhost:5206`.
-
-## 11. Chạy frontend
+### 2. Chạy frontend
 
 ```powershell
 cd Front_end
@@ -235,48 +285,75 @@ npm install
 npm run dev
 ```
 
-Mặc định frontend chạy tại:
+Frontend mặc định:
 
 - `http://localhost:5173`
 
-## 12. Luồng xác thực
+## Luồng xác thực
 
-1. Người dùng đăng nhập qua `POST /api/Auth/login`.
-2. Backend trả về `accessToken` và ghi `refreshToken` vào cookie `HttpOnly`.
+1. User đăng nhập qua `POST /api/Auth/login`.
+2. Backend trả về `accessToken` và set `refreshToken` trong cookie `HttpOnly`.
 3. Frontend lưu access token vào `localStorage`.
-4. Axios tự gắn `Authorization: Bearer <token>` cho các request tiếp theo.
-5. Khi token hết hạn, backend hỗ trợ `POST /api/Auth/refresh-token`.
+4. Axios tự gắn header `Authorization: Bearer <token>`.
+5. Khi access token hết hạn, frontend gọi `POST /api/Auth/refresh-token`.
+6. Nếu không còn phiên hợp lệ, người dùng sẽ bị đưa về `/login`.
 
-## 13. Real-time notification
+## Upload ảnh trong project
 
-- Backend map SignalR hub ở `/notificationHub`.
-- Frontend sử dụng `@microsoft/signalr` trong hook `useNotification`.
-- Client lắng nghe event `ReceiveNotification`.
-- Dữ liệu notification được đẩy vào Redux slice `notificationSlice`.
+Các module đã có upload ảnh qua Cloudinary:
 
-Ghi chú:
-- Trong source vẫn còn file `Front_end/src/hooks/useSignalR.ts` dùng để mô phỏng sự kiện. Hook kết nối SignalR thực tế hiện nằm ở `useNotification.ts`.
+- Avatar người dùng
+- Ảnh hạng phòng
+- Ảnh vật tư
+- Ảnh hỏng/mất vật tư
+- Ảnh điểm tham quan
 
-## 14. Tài khoản mẫu
+Một số API upload tiêu biểu:
 
-Script SQL hiện có seed sẵn tài khoản:
+- `POST /api/UserProfile/avatar`
+- `POST /api/RoomTypes/{id}/images`
+- `POST /api/Equipment/{id}/image`
+- `POST /api/Equipment/damage/{id}/image`
+- `POST /api/Attractions/{id}/image`
+
+## Notification realtime
+
+- Backend dùng SignalR hub tại `/notificationHub`.
+- Frontend kết nối hub để nhận event `ReceiveNotification`.
+- Notification được hiển thị ở bell component trong admin layout.
+- Thông báo nghiệp vụ được lưu database để không mất khi reload trang.
+
+## Tài khoản mẫu
+
+Script SQL hiện có seed sẵn:
 
 - Email: `admin@hotel.com`
 - Password: `Admin@123`
 
-Tài khoản này phù hợp để test nhanh sau khi chạy script cài database.
+Nếu database của bạn đã thay đổi seed, hãy kiểm tra lại trong script SQL trước khi test.
 
-## 15. Gợi ý quy trình chạy local
+## Kiểm tra nhanh sau khi cài
 
-1. Chạy `00_MASTER_INSTALL.sql`.
-2. Cập nhật `Back_end/appsettings.json`.
-3. Chạy backend bằng `dotnet run`.
-4. Tạo `.env` cho frontend nếu muốn đổi API URL.
-5. Chạy frontend bằng `npm run dev`.
-6. Truy cập `http://localhost:5173` và đăng nhập bằng tài khoản mẫu.
+1. Chạy database script.
+2. Cập nhật cấu hình backend.
+3. Chạy backend và mở Swagger.
+4. Chạy frontend.
+5. Đăng nhập bằng tài khoản admin mẫu.
+6. Kiểm tra các màn:
+- Dashboard
+- User Management
+- Inventory
+- Profile
+- Attractions
+- Notification bell
 
-## 16. Ghi chú hiện trạng
+## Ghi chú phát triển
 
-- Repo đang chứa cả mã nguồn lẫn thư mục build như `bin/`, `obj/`, `temp_obj/`; nên cân nhắc dọn `.gitignore` nếu muốn repo sạch hơn.
-- README này mô tả theo hiện trạng source code hiện có trong repo.
-- Nếu tiếp tục phát triển production, nên bổ sung file `.env.example` cho frontend và cấu hình secret an toàn cho backend.
+- Backend đang dùng cả `PermissionMiddleware` và route guard trên frontend để đồng bộ phân quyền.
+- Frontend admin shell đã có điều hướng theo permission để tránh rơi vào trang 401 không cần thiết sau login.
+- Một số file trong repo còn dấu hiệu thử nghiệm hoặc trùng màn hình cũ/mới. Khi cleanup có thể gom lại để giảm trùng lặp.
+- Nếu tiếp tục phát triển production, nên bổ sung:
+- `.env.example` cho frontend
+- `appsettings.example.json` cho backend
+- tài liệu seed role/permission
+- checklist deploy và rotate secrets

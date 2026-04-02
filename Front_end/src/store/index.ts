@@ -4,6 +4,8 @@ import roomReducer from './slices/roomSlice';
 import bookingReducer from './slices/bookingSlice';
 import staffReducer from './slices/staffSlice';
 import notificationReducer from './slices/notificationSlice';
+import userReducer from './slices/userSlice';
+import roleReducer from './slices/roleSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +14,8 @@ export const store = configureStore({
     booking: bookingReducer,
     staff: staffReducer,
     notifications: notificationReducer,
+    users: userReducer,
+    roles: roleReducer,
   },
 });
 

@@ -26,14 +26,14 @@ public class PermissionMiddleware
     // Key: "{METHOD}:{path_prefix}" — path phải lowercase
     private static readonly Dictionary<string, string> _permissionMap = new()
     {
-        { "GET:/api/usermanagement",    "USER_VIEW"   },
-        { "POST:/api/usermanagement",   "USER_CREATE" },
-        { "PUT:/api/usermanagement",    "USER_EDIT"   },
-        { "DELETE:/api/usermanagement", "USER_DELETE" },
-        { "GET:/api/roles",             "ROLE_VIEW"   },
-        { "POST:/api/roles",            "ROLE_MANAGE" },
-        { "PUT:/api/roles",             "ROLE_MANAGE" },
-        { "DELETE:/api/roles",          "ROLE_MANAGE" },
+        { "GET:/api/usermanagement",    "MANAGE_USERS" },
+        { "POST:/api/usermanagement",   "MANAGE_USERS" },
+        { "PUT:/api/usermanagement",    "MANAGE_USERS" },
+        { "DELETE:/api/usermanagement", "MANAGE_USERS" },
+        { "GET:/api/roles",             "MANAGE_ROLES" },
+        { "POST:/api/roles",            "MANAGE_ROLES" },
+        { "PUT:/api/roles",             "MANAGE_ROLES" },
+        { "DELETE:/api/roles",          "MANAGE_ROLES" },
         { "GET:/api/equipments",        "MANAGE_INVENTORY" },
         { "POST:/api/equipments",       "MANAGE_INVENTORY" },
         { "PUT:/api/equipments",        "MANAGE_INVENTORY" },

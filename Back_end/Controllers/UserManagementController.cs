@@ -1,4 +1,5 @@
 using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Middleware;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ namespace HotelManagementAPI.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[RequirePermission("MANAGE_USERS")]
 public class UserManagementController : ControllerBase
 {
     private readonly IUserManagementService _userService;

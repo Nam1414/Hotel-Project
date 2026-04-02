@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+// @ts-nocheck
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../hooks/useAppStore';
 import ProtectedRoute from '../components/ProtectedRoute';

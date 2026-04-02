@@ -10,6 +10,9 @@ public class LossAndDamage
     [Column("id")]
     public int Id { get; set; }
 
+    [Column("equipment_id")]
+    public int EquipmentId { get; set; }
+
     [Column("booking_detail_id")]
     public int? BookingDetailId { get; set; }
 
@@ -25,12 +28,19 @@ public class LossAndDamage
     [Column("description")]
     public string? Description { get; set; }
 
-    [Column("created_at")]
-    public DateTime? CreatedAt { get; set; }
-
-    [Column("ImageUrl")]
+    [Column("image_url")]
     public string? ImageUrl { get; set; }
 
-    [ForeignKey("RoomInventoryId")]
+    [Column("status")]
+    [MaxLength(20)]
+    public string Status { get; set; } = "pending";
+
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    [ForeignKey(nameof(EquipmentId))]
+    public Equipment? Equipment { get; set; }
+
+    [ForeignKey(nameof(RoomInventoryId))]
     public RoomInventory? RoomInventory { get; set; }
 }

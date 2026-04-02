@@ -17,7 +17,7 @@ const RequirePermission: React.FC<RequirePermissionProps> = ({ children, allowed
   const hasPermission = allowedPermissions ? allowedPermissions.some(p => user?.permissions?.includes(p)) : true;
 
   if (!user || !hasRole || !hasPermission) {
-    return <Navigate to="/403" replace />;
+    return <Navigate to="/401" replace />;
   }
 
   return <>{children}</>;

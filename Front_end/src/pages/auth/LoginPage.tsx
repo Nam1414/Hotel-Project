@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../hooks/useAppStore';
 import { loginThunk } from '../../store/slices/authSlice';
+import { canAccessPath, getAuthorizedHomePath } from '../../utils/authNavigation';
 
 const LoginPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -10,17 +11,24 @@ const LoginPage: React.FC = () => {
   const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
   const loading = useAppSelector((s) => s.auth.loading);
   const error = useAppSelector((s) => s.auth.error);
+  const user = useAppSelector((s) => s.auth.user);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
 
   // Lấy returnUrl nếu bị redirect từ ProtectedRoute
-  const from = (location.state as any)?.from?.pathname || '/admin/users';
+  const from = (location.state as any)?.from?.pathname;
 
   useEffect(() => {
-    if (isAuthenticated) navigate(from, { replace: true });
-  }, [isAuthenticated, from, navigate]);
+    if (!isAuthenticated || !user) return;
+
+    const destination = canAccessPath(user, from)
+      ? from!
+      : getAuthorizedHomePath(user);
+
+    navigate(destination, { replace: true });
+  }, [from, isAuthenticated, navigate, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +126,8 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1.5px solid #e2e8f0',
     borderRadius: 10,
     fontSize: 15,
+    color: '#0f172a',
+    background: '#f8fafc',
     outline: 'none',
     transition: 'border-color 0.2s',
     width: '100%',
@@ -135,6 +145,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 18,
     padding: 0,
     lineHeight: 1,
+    color: '#475569',
   },
   errorBox: {
     background: '#fef2f2',

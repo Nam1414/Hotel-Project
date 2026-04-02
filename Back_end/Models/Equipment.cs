@@ -1,8 +1,3 @@
-// ============================================================
-// Back_end/Models/Equipment.cs
-// Map sang bảng Equipments trong HotelManagementDB
-// ============================================================
-
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -45,6 +40,10 @@ public class Equipment
     [Column("liquidated_quantity")]
     public int LiquidatedQuantity { get; set; }
 
+    [NotMapped]
+    public int InStockQuantity =>
+        TotalQuantity - InUseQuantity - DamagedQuantity - LiquidatedQuantity;
+
     [Column("base_price", TypeName = "decimal(18,2)")]
     public decimal BasePrice { get; set; }
 
@@ -67,53 +66,5 @@ public class Equipment
     [Column("updated_at")]
     public DateTime? UpdatedAt { get; set; }
 
-    // Navigation
     public ICollection<LossAndDamage> LossAndDamages { get; set; } = new List<LossAndDamage>();
-}
-
-
-// ============================================================
-// Back_end/Models/LossAndDamage.cs
-// Map sang bảng Loss_And_Damages
-// ============================================================
-
-[Table("Loss_And_Damages")]
-public class LossAndDamage
-{
-    [Key]
-    [Column("id")]
-    public int Id { get; set; }
-
-    [Column("equipment_id")]
-    public int EquipmentId { get; set; }
-
-    [Column("booking_detail_id")]
-    public int? BookingDetailId { get; set; }
-
-    [Column("room_inventory_id")]
-    public int? RoomInventoryId { get; set; }
-
-    [Column("quantity")]
-    public int Quantity { get; set; }
-
-    [Column("penalty_amount", TypeName = "decimal(18,2)")]
-    public decimal PenaltyAmount { get; set; }
-
-    [Column("description")]
-    public string? Description { get; set; }
-
-    [Column("image_url")]
-    public string? ImageUrl { get; set; }
-
-    /// <summary>pending | confirmed | cancelled</summary>
-    [Column("status")]
-    [MaxLength(20)]
-    public string Status { get; set; } = "pending";
-
-    [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    // Navigation
-    [ForeignKey(nameof(EquipmentId))]
-    public Equipment? Equipment { get; set; }
 }

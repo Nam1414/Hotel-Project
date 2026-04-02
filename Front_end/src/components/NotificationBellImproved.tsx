@@ -1,4 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Bell } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/useAppStore';
 import {
   selectNotifications,
@@ -7,47 +9,72 @@ import {
   markAsRead,
   markAllAsRead,
 } from '../store/slices/notificationSlice';
-import api from '../services/axiosInstance';
 import { setNotifications } from '../store/slices/notificationSlice';
+import api from '../services/axiosInstance';
 
-const NotificationBell: React.FC = () => {
+const NotificationBellImproved: React.FC = () => {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector(selectNotifications);
   const unreadCount = useAppSelector(selectUnreadCount);
   const connected = useAppSelector(selectSignalRConnected);
-
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 52, right: 24 });
 
-  // Load lịch sử notification khi mount
   useEffect(() => {
     api.get('/Notifications')
       .then((res) => dispatch(setNotifications(res.data)))
-      .catch(() => {/* ignore */});
+      .catch(() => {});
   }, [dispatch]);
 
-  // Đóng dropdown khi click ngoài
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const clickedOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(target);
+      const clickedOutsideButton = buttonRef.current && !buttonRef.current.contains(target);
+
+      if (clickedOutsideDropdown && clickedOutsideButton) {
         setOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleMarkRead = async (id: string | number) => {
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) return;
+
+    const updatePosition = () => {
+      const rect = buttonRef.current!.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 12,
+        right: Math.max(window.innerWidth - rect.right, 16),
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open]);
+
+  const handleMarkRead = (id: string | number) => {
     dispatch(markAsRead(id));
     api.put(`/Notifications/${id}/read`).catch(() => {});
   };
 
-  const handleMarkAllRead = async () => {
+  const handleMarkAllRead = () => {
     dispatch(markAllAsRead());
     api.put('/Notifications/read-all').catch(() => {});
   };
 
-  const TYPE_COLORS: Record<string, string> = {
+  const typeColors: Record<string, string> = {
     Security: '#ef4444',
     Account: '#22c55e',
     PermissionUpdate: '#f59e0b',
@@ -56,13 +83,18 @@ const NotificationBell: React.FC = () => {
 
   return (
     <div style={styles.wrapper} ref={dropdownRef}>
-      {/* Bell button */}
-      <button style={styles.bell} onClick={() => setOpen((v) => !v)} title="Thông báo">
-        🔔
+      <button
+        type="button"
+        ref={buttonRef}
+        style={styles.bell}
+        onClick={() => setOpen((v) => !v)}
+        title="Thông báo"
+        aria-label="Mở thông báo"
+      >
+        <Bell size={20} strokeWidth={2.2} />
         {unreadCount > 0 && (
           <span style={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
         )}
-        {/* SignalR connection dot */}
         <span
           style={{
             ...styles.connDot,
@@ -72,13 +104,19 @@ const NotificationBell: React.FC = () => {
         />
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div style={styles.dropdown}>
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            ...styles.dropdown,
+            top: dropdownPosition.top,
+            right: dropdownPosition.right,
+          }}
+        >
           <div style={styles.dropHeader}>
             <span style={styles.dropTitle}>Thông báo</span>
             {unreadCount > 0 && (
-              <button style={styles.readAllBtn} onClick={handleMarkAllRead}>
+              <button type="button" style={styles.readAllBtn} onClick={handleMarkAllRead}>
                 Đọc tất cả
               </button>
             )}
@@ -100,7 +138,7 @@ const NotificationBell: React.FC = () => {
                   <span
                     style={{
                       ...styles.typeDot,
-                      background: TYPE_COLORS[n.type] ?? '#94a3b8',
+                      background: typeColors[n.type] ?? '#94a3b8',
                     }}
                   />
                   <div style={styles.itemBody}>
@@ -119,7 +157,8 @@ const NotificationBell: React.FC = () => {
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -129,17 +168,23 @@ const styles: Record<string, React.CSSProperties> = {
   wrapper: { position: 'relative' },
   bell: {
     position: 'relative',
-    background: 'none',
-    border: 'none',
-    fontSize: 22,
+    width: 44,
+    height: 44,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'rgba(255,255,255,0.08)',
+    color: '#f8fafc',
+    border: '1px solid rgba(255,255,255,0.12)',
     cursor: 'pointer',
-    padding: '4px 6px',
-    borderRadius: 8,
+    padding: 0,
+    borderRadius: 14,
+    boxShadow: '0 10px 30px rgba(15, 23, 42, 0.18)',
   },
   badge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
+    top: -4,
+    right: -4,
     background: '#ef4444',
     color: '#fff',
     fontSize: 10,
@@ -155,23 +200,21 @@ const styles: Record<string, React.CSSProperties> = {
   },
   connDot: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 8,
-    height: 8,
+    bottom: 6,
+    right: 6,
+    width: 9,
+    height: 9,
     borderRadius: '50%',
-    border: '1.5px solid #fff',
+    border: '2px solid #0f172a',
   },
   dropdown: {
-    position: 'absolute',
-    top: 44,
-    right: 0,
+    position: 'fixed',
     width: 340,
     background: '#fff',
     borderRadius: 12,
     boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
     border: '1px solid #e2e8f0',
-    zIndex: 1000,
+    zIndex: 9999,
     overflow: 'hidden',
   },
   dropHeader: {
@@ -215,4 +258,4 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-export default NotificationBell;
+export default NotificationBellImproved;

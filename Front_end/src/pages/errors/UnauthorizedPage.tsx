@@ -1,10 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../../hooks/useAppStore';
+import { getAuthorizedHomePath } from '../../utils/authNavigation';
 
 const UnauthorizedPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.auth.user);
+  const homePath = getAuthorizedHomePath(user);
 
   return (
     <div style={styles.wrapper}>
@@ -21,7 +23,7 @@ const UnauthorizedPage: React.FC = () => {
             ← Quay lại
           </button>
           {user ? (
-            <button style={styles.homeBtn} onClick={() => navigate('/admin/users')}>
+            <button style={styles.homeBtn} onClick={() => navigate(homePath)}>
               Về trang chủ
             </button>
           ) : (

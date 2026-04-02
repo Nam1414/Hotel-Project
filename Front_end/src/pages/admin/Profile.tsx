@@ -1,123 +1,244 @@
-import React, { useState } from 'react';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Shield, 
-  Bell, 
-  Moon, 
-  Sun, 
-  Camera, 
-  Lock, 
-  History,
-  CheckCircle2,
-  AlertCircle,
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  User,
+  Mail,
+  Phone,
+  Shield,
+  Bell,
+  Moon,
+  Sun,
+  Camera,
+  Lock,
   Save,
-  LogOut
+  LogOut,
+  Loader2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Form, Input, Button, Switch, Tabs, Upload, message, Avatar, Badge } from 'antd';
+import { Form, Input, Button, Switch, Tabs, message, Avatar, Badge } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/themeStore';
+import { userProfileApi, UserProfileDto } from '../../services/userProfileApi';
+import { useAppDispatch } from '../../hooks/useAppStore';
+import { logout, updateUser } from '../../store/slices/authSlice';
+
+type GeneralFormValues = {
+  fullName: string;
+  email: string;
+  phone?: string;
+  role?: string;
+};
+
+type PasswordFormValues = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
 
 const Profile: React.FC = () => {
   const { isDarkMode, toggleTheme } = useThemeStore();
-  const [form] = Form.useForm();
-  const [passwordForm] = Form.useForm();
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const [form] = Form.useForm<GeneralFormValues>();
+  const [passwordForm] = Form.useForm<PasswordFormValues>();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [profile, setProfile] = useState<UserProfileDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  const user = {
-    name: 'Admin User',
-    email: 'admin@luxuryhotel.com',
-    phone: '+1 234 567 890',
-    role: 'Super Admin',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200',
-    lastLogin: '2026-03-31 09:45 AM',
-    status: 'Active'
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await userProfileApi.getProfile();
+        setProfile(data);
+        form.setFieldsValue({
+          fullName: data.fullName,
+          email: data.email,
+          phone: data.phone ?? '',
+          role: data.role ?? '',
+        });
+      } catch (error: any) {
+        message.error(error.response?.data?.message || 'Khong tai duoc thong tin tai khoan');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadProfile();
+  }, [form]);
+
+  const handleSaveProfile = async (values: GeneralFormValues) => {
+    setSavingProfile(true);
+
+    try {
+      await userProfileApi.updateProfile({
+        fullName: values.fullName.trim(),
+        phone: values.phone?.trim() || '',
+      });
+
+      const nextProfile = {
+        ...profile,
+        fullName: values.fullName.trim(),
+        phone: values.phone?.trim() || '',
+      } as UserProfileDto;
+
+      setProfile(nextProfile);
+      dispatch(updateUser({ fullName: nextProfile.fullName, name: nextProfile.fullName }));
+      message.success('Da cap nhat thong tin ca nhan');
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Khong the cap nhat thong tin');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
-  const activityLog = [
-    { id: 1, action: 'Updated Room 101 status', time: '2 hours ago', icon: CheckCircle2, color: 'text-green-500' },
-    { id: 2, action: 'Changed system settings', time: '5 hours ago', icon: AlertCircle, color: 'text-amber-500' },
-    { id: 3, action: 'Logged in from New Device', time: 'Yesterday', icon: Shield, color: 'text-blue-500' },
-  ];
+  const handleChangePassword = async (values: PasswordFormValues) => {
+    setSavingPassword(true);
+
+    try {
+      await userProfileApi.changePassword({
+        oldPassword: values.currentPassword,
+        newPassword: values.newPassword,
+      });
+      passwordForm.resetFields();
+      message.success('Da doi mat khau thanh cong');
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Khong the doi mat khau');
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      const response = await userProfileApi.uploadAvatar(file);
+      const nextProfile = {
+        ...profile,
+        avatarUrl: response.url,
+      } as UserProfileDto;
+
+      setProfile(nextProfile);
+      dispatch(updateUser({ avatar: response.url }));
+      message.success('Da cap nhat anh dai dien');
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Khong the tai anh dai dien');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="max-w-6xl mx-auto space-y-12 pb-10"
     >
       <div className="flex flex-col md:flex-row gap-10">
-        {/* Left Column - Profile Summary */}
         <div className="w-full md:w-1/3 space-y-8">
           <div className="admin-card text-center">
             <div className="relative inline-block mb-8">
-              <Avatar size={140} src={user.avatar} className="border-4 border-white dark:border-slate-800 shadow-2xl" />
-              <button className="absolute bottom-1 right-1 p-3 bg-primary text-white rounded-full shadow-lg hover:scale-110 transition-transform">
+              <Avatar
+                size={140}
+                src={profile?.avatarUrl || undefined}
+                className="border-4 border-white dark:border-slate-800 shadow-2xl"
+              >
+                {profile?.fullName?.charAt(0)?.toUpperCase()}
+              </Avatar>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute bottom-1 right-1 p-3 bg-primary text-white rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-60 disabled:hover:scale-100"
+              >
                 <Camera size={18} />
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
             </div>
-            <h1 className="text-4xl mb-2">{user.name}</h1>
-            <p className="text-muted font-medium tracking-wide uppercase text-xs mb-6">{user.role}</p>
-            <Badge status="success" text={<span className="text-sm font-bold text-title">{user.status}</span>} />
-            
+            <h1 className="text-4xl mb-2">{profile?.fullName}</h1>
+            <p className="text-muted font-medium tracking-wide uppercase text-xs mb-6">{profile?.role || 'User'}</p>
+            <Badge status="success" text={<span className="text-sm font-bold text-title">Active</span>} />
+
             <div className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800 space-y-5 text-left">
               <div className="flex items-center space-x-4 text-body">
                 <Mail size={18} className="text-primary" />
-                <span className="text-sm font-medium">{user.email}</span>
+                <span className="text-sm font-medium">{profile?.email}</span>
               </div>
               <div className="flex items-center space-x-4 text-body">
                 <Phone size={18} className="text-primary" />
-                <span className="text-sm font-medium">{user.phone}</span>
+                <span className="text-sm font-medium">{profile?.phone || 'Chua cap nhat'}</span>
               </div>
               <div className="flex items-center space-x-4 text-body">
                 <Shield size={18} className="text-primary" />
-                <span className="text-sm font-medium">Last login: {user.lastLogin}</span>
+                <span className="text-sm font-medium">{profile?.role || 'User'}</span>
               </div>
             </div>
 
-            <Button block danger icon={<LogOut size={18} />} className="mt-10 h-14 rounded-xl flex items-center justify-center font-bold tracking-wider text-xs uppercase">
-              Sign Out
+            <Button
+              block
+              danger
+              icon={<LogOut size={18} />}
+              onClick={handleLogout}
+              className="mt-10 h-14 rounded-xl flex items-center justify-center font-bold tracking-wider text-xs uppercase"
+            >
+              Dang xuat
             </Button>
-          </div>
-
-          <div className="admin-card">
-            <h2 className="text-2xl mb-8 flex items-center space-x-3">
-              <History size={24} className="text-primary" />
-              <span>Recent Activity</span>
-            </h2>
-            <div className="space-y-8">
-              {activityLog.map((log) => (
-                <div key={log.id} className="flex space-x-4">
-                  <div className={`w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center shrink-0`}>
-                    <log.icon size={18} className={`${log.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-title">{log.action}</p>
-                    <p className="text-xs text-muted mt-1">{log.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 
-        {/* Right Column - Settings Tabs */}
         <div className="w-full md:w-2/3">
           <div className="admin-card">
-            <Tabs 
+            <Tabs
               defaultActiveKey="1"
               className="custom-tabs"
               items={[
                 {
                   key: '1',
-                  label: <span className="flex items-center space-x-2 px-2 py-1"><User size={18} /><span>General</span></span>,
+                  label: (
+                    <span className="flex items-center space-x-2 px-2 py-1">
+                      <User size={18} />
+                      <span>General</span>
+                    </span>
+                  ),
                   children: (
-                    <Form form={form} layout="vertical" className="mt-10 space-y-6" initialValues={user}>
+                    <Form form={form} layout="vertical" className="mt-10 space-y-6" onFinish={handleSaveProfile}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Form.Item label="Full Name" name="name" required>
+                        <Form.Item
+                          label="Full Name"
+                          name="fullName"
+                          rules={[{ required: true, message: 'Vui long nhap ho ten' }]}
+                        >
                           <Input className="h-14 rounded-xl font-medium" />
                         </Form.Item>
-                        <Form.Item label="Email Address" name="email" required>
+                        <Form.Item label="Email Address" name="email">
                           <Input className="h-14 rounded-xl font-medium" disabled />
                         </Form.Item>
                       </div>
@@ -129,42 +250,82 @@ const Profile: React.FC = () => {
                           <Input className="h-14 rounded-xl font-medium" disabled />
                         </Form.Item>
                       </div>
-                      <Form.Item label="Bio" name="bio">
-                        <Input.TextArea rows={5} className="rounded-xl font-medium p-4" placeholder="Tell us about yourself..." />
-                      </Form.Item>
                       <div className="pt-4">
-                        <Button type="primary" icon={<Save size={18} />} className="btn-gold h-14 px-10">
+                        <Button
+                          htmlType="submit"
+                          type="primary"
+                          icon={<Save size={18} />}
+                          loading={savingProfile}
+                          className="btn-gold h-14 px-10"
+                        >
                           Save Changes
                         </Button>
                       </div>
                     </Form>
-                  )
+                  ),
                 },
                 {
                   key: '2',
-                  label: <span className="flex items-center space-x-2 px-2 py-1"><Lock size={18} /><span>Security</span></span>,
+                  label: (
+                    <span className="flex items-center space-x-2 px-2 py-1">
+                      <Lock size={18} />
+                      <span>Security</span>
+                    </span>
+                  ),
                   children: (
-                    <Form passwordForm={passwordForm} layout="vertical" className="mt-10 space-y-6">
-                      <Form.Item label="Current Password" name="currentPassword" required>
+                    <Form form={passwordForm} layout="vertical" className="mt-10 space-y-6" onFinish={handleChangePassword}>
+                      <Form.Item
+                        label="Current Password"
+                        name="currentPassword"
+                        rules={[{ required: true, message: 'Vui long nhap mat khau hien tai' }]}
+                      >
                         <Input.Password className="h-14 rounded-xl" />
                       </Form.Item>
-                      <Form.Item label="New Password" name="newPassword" required>
+                      <Form.Item
+                        label="New Password"
+                        name="newPassword"
+                        rules={[
+                          { required: true, message: 'Vui long nhap mat khau moi' },
+                          { min: 6, message: 'Mat khau moi phai co it nhat 6 ky tu' },
+                        ]}
+                      >
                         <Input.Password className="h-14 rounded-xl" />
                       </Form.Item>
-                      <Form.Item label="Confirm New Password" name="confirmPassword" required>
+                      <Form.Item
+                        label="Confirm New Password"
+                        name="confirmPassword"
+                        dependencies={['newPassword']}
+                        rules={[
+                          { required: true, message: 'Vui long xac nhan mat khau moi' },
+                          ({ getFieldValue }) => ({
+                            validator(_, value) {
+                              if (!value || getFieldValue('newPassword') === value) {
+                                return Promise.resolve();
+                              }
+
+                              return Promise.reject(new Error('Mat khau xac nhan khong khop'));
+                            },
+                          }),
+                        ]}
+                      >
                         <Input.Password className="h-14 rounded-xl" />
                       </Form.Item>
                       <div className="pt-4">
-                        <Button type="primary" className="btn-gold h-14 px-10">
+                        <Button htmlType="submit" type="primary" loading={savingPassword} className="btn-gold h-14 px-10">
                           Update Password
                         </Button>
                       </div>
                     </Form>
-                  )
+                  ),
                 },
                 {
                   key: '3',
-                  label: <span className="flex items-center space-x-2 px-2 py-1"><Bell size={18} /><span>Preferences</span></span>,
+                  label: (
+                    <span className="flex items-center space-x-2 px-2 py-1">
+                      <Bell size={18} />
+                      <span>Preferences</span>
+                    </span>
+                  ),
                   children: (
                     <div className="mt-10 space-y-10">
                       <div className="space-y-6">
@@ -184,27 +345,25 @@ const Profile: React.FC = () => {
                       </div>
 
                       <div className="space-y-6">
-                        <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Notifications</h4>
-                        <div className="grid grid-cols-1 gap-4">
-                          {[
-                            { title: 'Email Notifications', desc: 'Receive daily reports and alerts via email' },
-                            { title: 'Push Notifications', desc: 'Get real-time updates on your browser' },
-                            { title: 'Booking Alerts', desc: 'Notify when new bookings are confirmed' },
-                            { title: 'Inventory Alerts', desc: 'Notify when stock levels are low' },
-                          ].map((pref, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                              <div>
-                                <p className="font-bold text-title">{pref.title}</p>
-                                <p className="text-xs text-muted mt-1">{pref.desc}</p>
-                              </div>
-                              <Switch defaultChecked />
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Avatar</h4>
+                        <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 gap-4">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                              <Camera size={24} className="text-primary" />
                             </div>
-                          ))}
+                            <div>
+                              <p className="font-bold text-title">Cloudinary Upload</p>
+                              <p className="text-xs text-muted">Cap nhat anh dai dien truc tiep tu trang ho so</p>
+                            </div>
+                          </div>
+                          <Button onClick={() => fileInputRef.current?.click()} loading={uploadingAvatar} className="rounded-xl">
+                            Tai anh
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  )
-                }
+                  ),
+                },
               ]}
             />
           </div>

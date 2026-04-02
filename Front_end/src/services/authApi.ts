@@ -20,7 +20,7 @@ export const authApi = {
   },
 
   logout: async () => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem('token');
     await plainAxios.post(
       '/Auth/logout',
       {},

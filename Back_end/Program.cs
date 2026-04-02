@@ -111,6 +111,7 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAttractionService, AttractionService>();
 builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<INotificationService, PersistedNotificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>(); // Đăng ký NotificationService
 builder.Services.AddScoped<IEmailService, EmailService>(); // Đăng ký EmailService
 
@@ -173,7 +174,10 @@ builder.Services.AddCors(options =>
 // =============================================
 // BUILD APP
 // =============================================
+builder.Services.AddScoped<INotificationService, PersistedNotificationService>();
 var app = builder.Build();
+
+await DatabaseSchemaInitializer.EnsureEquipmentDamageSchemaAsync(app.Services);
 
 // =============================================
 // MIDDLEWARE PIPELINE

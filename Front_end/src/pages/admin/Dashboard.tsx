@@ -1,127 +1,163 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Users, 
-  CalendarCheck, 
-  DollarSign, 
-  TrendingUp, 
-  ArrowUpRight, 
-  ArrowDownRight,
-  Bell,
-  Clock
-} from 'lucide-react';
-import { Table, Badge } from 'antd';
-import { MOCK_BOOKINGS, MOCK_ROOMS } from '../../constants/mockData';
+// @ts-nocheck
+import React, { useEffect, useMemo, useState } from 'react';
+import { Badge, Card, Col, List, Row, Statistic, Table, Tag, Typography } from 'antd';
+import { BellRing, BedDouble, Boxes, CircleAlert } from 'lucide-react';
+import { adminApi, NotificationDto, RoomDto } from '../../services/adminApi';
 
 const Dashboard: React.FC = () => {
-  const stats = [
-    { label: 'Total Revenue', value: '$124,500', icon: DollarSign, trend: '+12.5%', isUp: true },
-    { label: 'Active Bookings', value: '42', icon: CalendarCheck, trend: '+5.2%', isUp: true },
-    { label: 'Total Guests', value: '1,280', icon: Users, trend: '-2.4%', isUp: false },
-    { label: 'Occupancy Rate', value: '88%', icon: TrendingUp, trend: '+8.1%', isUp: true },
-  ];
+  const [rooms, setRooms] = useState<RoomDto[]>([]);
+  const [notifications, setNotifications] = useState<NotificationDto[]>([]);
+  const [stockSummary, setStockSummary] = useState<{
+    overall: { total: number; inUse: number; damaged: number; inStock: number };
+  }>({
+    overall: { total: 0, inUse: 0, damaged: 0, inStock: 0 },
+  });
+  const [loading, setLoading] = useState(true);
 
-  const columns = [
-    {
-      title: 'Booking ID',
-      dataIndex: 'id',
-      key: 'id',
-      render: (text: string) => <span className="font-bold text-primary">{text}</span>,
-    },
-    {
-      title: 'Room',
-      dataIndex: 'roomId',
-      key: 'roomId',
-      render: (id: string) => MOCK_ROOMS.find(r => r.id === id)?.name || 'Unknown',
-    },
-    {
-      title: 'Check In',
-      dataIndex: 'checkIn',
-      key: 'checkIn',
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Badge 
-          status={status === 'confirmed' ? 'success' : status === 'completed' ? 'default' : 'processing'} 
-          text={<span className="text-white capitalize">{status}</span>} 
-        />
+  useEffect(() => {
+    const loadDashboard = async () => {
+      setLoading(true);
+      try {
+        const result = await adminApi.getDashboardSummary();
+        setRooms(result.rooms);
+        setNotifications(result.notifications);
+        setStockSummary(result.stockSummary);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, []);
+
+  const summary = useMemo(() => {
+    const active = rooms.filter((room) => room.isActive);
+    const occupied = active.filter((room) => room.status === 'Occupied').length;
+    const dirty = active.filter((room) => (room.cleaningStatus || '').toLowerCase() === 'dirty').length;
+    const maintenance = active.filter((room) => room.status === 'Maintenance').length;
+
+    return {
+      totalRooms: active.length,
+      occupied,
+      dirty,
+      maintenance,
+      occupancyRate: active.length ? Math.round((occupied / active.length) * 100) : 0,
+    };
+  }, [rooms]);
+
+  const attentionRooms = useMemo(
+    () =>
+      rooms.filter(
+        (room) =>
+          room.status === 'Maintenance' ||
+          room.status === 'Cleaning' ||
+          (room.cleaningStatus || '').toLowerCase() === 'dirty'
       ),
-    },
-    {
-      title: 'Total',
-      dataIndex: 'total',
-      key: 'total',
-      render: (val: number) => <span className="font-bold">${val}</span>,
-    },
-  ];
+    [rooms]
+  );
 
   return (
-    <div className="space-y-8">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, idx) => (
-          <motion.div 
-            key={idx}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
-            className="glass-card p-6"
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-primary/10 rounded-xl text-primary">
-                <stat.icon size={24} />
-              </div>
-              <div className={`flex items-center text-xs font-bold px-2 py-1 rounded-full ${stat.isUp ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                {stat.trend} {stat.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-              </div>
-            </div>
-            <h3 className="text-gray-400 text-sm font-medium mb-1">{stat.label}</h3>
-            <p className="text-3xl font-display font-bold text-white">{stat.value}</p>
-          </motion.div>
-        ))}
-      </div>
+    <div className="space-y-6">
+      <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
+        Dashboard vận hành
+      </Typography.Title>
+      <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
+        Tổng quan nhanh về phòng, vệ sinh, vật tư và thông báo mới nhất.
+      </Typography.Paragraph>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Bookings Table */}
-        <div className="lg:col-span-2 glass-card p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h3 className="text-xl font-display font-bold text-white">Recent Bookings</h3>
-            {/* <button className="text-sm text-primary font-bold hover:underline">View All</button> */}
-          </div>
-          <Table 
-            columns={columns} 
-            dataSource={MOCK_BOOKINGS} 
-            pagination={false}
-            rowKey="id"
-          />
-        </div>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={12} xl={6}>
+          <Card className="glass-card" loading={loading}>
+            <Statistic title="Tổng phòng hoạt động" value={summary.totalRooms} prefix={<BedDouble size={18} />} />
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={6}>
+          <Card className="glass-card" loading={loading}>
+            <Statistic title="Tỉ lệ lấp đầy" value={summary.occupancyRate} suffix="%" />
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={6}>
+          <Card className="glass-card" loading={loading}>
+            <Statistic title="Phòng cần dọn" value={summary.dirty} prefix={<CircleAlert size={18} />} />
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={6}>
+          <Card className="glass-card" loading={loading}>
+            <Statistic title="Vật tư trong kho" value={stockSummary.overall.inStock} prefix={<Boxes size={18} />} />
+          </Card>
+        </Col>
+      </Row>
 
-        {/* Notifications / Activity */}
-        <div className="glass-card p-8">
-          <h3 className="text-xl font-display font-bold text-white mb-8">Live Activity</h3>
-          <div className="space-y-6">
-            {[
-              { title: 'New Booking', desc: 'John Doe booked Deluxe King', time: '2 mins ago', icon: Bell },
-              { title: 'Check-out', desc: 'Room 102 has been vacated', time: '15 mins ago', icon: Clock },
-              { title: 'System Update', desc: 'Inventory sync completed', time: '1 hour ago', icon: TrendingUp },
-            ].map((activity, idx) => (
-              <div key={idx} className="flex space-x-4">
-                <div className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-primary shrink-0">
-                  <activity.icon size={18} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">{activity.title}</h4>
-                  <p className="text-xs text-gray-400 mb-1">{activity.desc}</p>
-                  <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">{activity.time}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={15}>
+          <Card className="glass-card" title={<span style={{ color: '#fff' }}>Phòng cần chú ý</span>}>
+            <Table
+              rowKey="id"
+              loading={loading}
+              dataSource={attentionRooms}
+              pagination={{ pageSize: 6 }}
+              scroll={{ x: 720 }}
+              columns={[
+                {
+                  title: 'Số phòng',
+                  dataIndex: 'roomNumber',
+                  render: (value: string) => <strong style={{ color: '#fff' }}>{value}</strong>,
+                },
+                {
+                  title: 'Hạng',
+                  dataIndex: 'roomTypeName',
+                  render: (value: string) => <Tag color="blue">{value}</Tag>,
+                },
+                {
+                  title: 'Tầng',
+                  dataIndex: 'floor',
+                  render: (value?: number | null) => value ?? '-',
+                },
+                {
+                  title: 'Trạng thái phòng',
+                  dataIndex: 'status',
+                  render: (value: string) => <Badge status={value === 'Maintenance' ? 'error' : 'processing'} text={value} />,
+                },
+                {
+                  title: 'Vệ sinh',
+                  dataIndex: 'cleaningStatus',
+                  render: (value?: string | null) => (
+                    <Tag color={(value || '').toLowerCase() === 'dirty' ? 'red' : 'gold'}>
+                      {value || 'Chưa cập nhật'}
+                    </Tag>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} xl={9}>
+          <Card className="glass-card" title={<span style={{ color: '#fff' }}>Thông báo gần đây</span>}>
+            <List
+              loading={loading}
+              dataSource={notifications.slice(0, 8)}
+              locale={{ emptyText: 'Chưa có thông báo' }}
+              renderItem={(item) => (
+                <List.Item>
+                  <List.Item.Meta
+                    avatar={<BellRing size={18} color="#C6A96B" />}
+                    title={<span style={{ color: '#fff' }}>{item.title}</span>}
+                    description={
+                      <div>
+                        <div style={{ color: '#9ca3af', marginBottom: 4 }}>{item.content}</div>
+                        <small style={{ color: '#6b7280' }}>
+                          {new Date(item.createdAt).toLocaleString('vi-VN')}
+                        </small>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };

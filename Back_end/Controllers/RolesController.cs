@@ -1,5 +1,6 @@
 using HotelManagementAPI.Data;
 using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Middleware;
 using HotelManagementAPI.Models;
 using HotelManagementAPI.Enums;
 using HotelManagementAPI.Services;
@@ -13,6 +14,7 @@ namespace HotelManagementAPI.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize] // Tất cả endpoint cần đăng nhập
+[RequirePermission("MANAGE_ROLES")]
 public class RolesController : ControllerBase
 {
     private readonly AppDbContext _context;
