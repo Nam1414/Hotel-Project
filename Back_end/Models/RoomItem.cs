@@ -24,6 +24,9 @@ public class RoomItem
     [Column("price_if_lost")]
     public decimal PriceIfLost { get; set; } = 0;
 
+    [Column("created_at")]
+    public DateTime? CreatedAt { get; set; }
+
     // Navigation
     [ForeignKey("RoomId")]
     public Room? Room { get; set; }

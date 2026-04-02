@@ -44,7 +44,7 @@ public class ArticlesController : ControllerBase
             query = query.Where(a => a.CategoryId == categoryId.Value);
 
         var articles = await query
-            .OrderByDescending(a => a.PublishedAt)
+            .OrderByDescending(a => a.CreatedAt ?? DateTime.Now)
             .Skip((page - 1) * 10)
             .Take(10)
             .Select(a => new
@@ -52,9 +52,9 @@ public class ArticlesController : ControllerBase
                 a.Id,
                 a.Title,
                 a.Slug,
-                a.ThumbnailUrl,
-                PublishedAt = a.PublishedAt,
-                Author = a.Author!.FullName,
+                ThumbnailUrl = a.ImageUrl,       // property ImageUrl → DB column: thumbnail_url
+                PublishedAt  = a.CreatedAt ?? DateTime.Now,  // property CreatedAt → DB column: published_at
+                Author   = a.Author!.FullName,
                 Category = a.Category!.Name
             })
             .ToListAsync();
@@ -81,10 +81,10 @@ public class ArticlesController : ControllerBase
             article.Title,
             article.Slug,
             article.Content,
-            article.ThumbnailUrl,
-            PublishedAt = article.PublishedAt,
-            UpdatedAt = article.UpdatedAt,
-            Author = article.Author!.FullName,
+            ThumbnailUrl = article.ImageUrl,      // property ImageUrl → DB column: thumbnail_url
+            PublishedAt  = article.CreatedAt ?? DateTime.Now,  // property CreatedAt → DB column: published_at
+            UpdatedAt    = article.UpdatedAt ?? DateTime.Now,
+            Author   = article.Author!.FullName,
             Category = new { article.Category!.Id, article.Category.Name }
         });
     }
@@ -109,13 +109,13 @@ public class ArticlesController : ControllerBase
 
         var article = new Article
         {
-            Title = dto.Title,
-            Slug = slug,
-            Content = dto.Content,
+            Title      = dto.Title,
+            Slug       = slug,
+            Content    = dto.Content,
             CategoryId = dto.CategoryId,
-            AuthorId = int.Parse(authorIdClaim), // Lấy từ Token
-            PublishedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            AuthorId   = int.Parse(authorIdClaim), // Lấy từ Token
+            CreatedAt  = DateTime.UtcNow,          // → DB column: published_at
+            UpdatedAt  = DateTime.UtcNow           // → DB column: updated_at (thêm qua SQL patch)
         };
 
         _context.Articles.Add(article);
@@ -147,9 +147,9 @@ public class ArticlesController : ControllerBase
             article.Title = dto.Title;
         }
 
-        article.Content = dto.Content;
+        article.Content    = dto.Content;
         article.CategoryId = dto.CategoryId;
-        article.UpdatedAt = DateTime.UtcNow;
+        article.UpdatedAt  = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return Ok(article);
@@ -196,7 +196,7 @@ public class ArticlesController : ControllerBase
         var (url, publicId) = await _cloudinaryService.UploadImageAsync(file, "HotelManagement/Articles");
 
         // Bước 3: Lưu URL và PublicId mới
-        article.ThumbnailUrl = url;
+        article.ImageUrl = url;
         article.ThumbnailPublicId = publicId;
         article.UpdatedAt = DateTime.UtcNow;
 
@@ -205,7 +205,7 @@ public class ArticlesController : ControllerBase
         return Ok(new
         {
             message = "Upload ảnh bìa thành công",
-            thumbnailUrl = article.ThumbnailUrl
+            thumbnailUrl = article.ImageUrl
         });
     }
 }

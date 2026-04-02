@@ -26,25 +26,26 @@ public class PermissionMiddleware
     // Key: "{METHOD}:{path_prefix}" — path phải lowercase
     private static readonly Dictionary<string, string> _permissionMap = new()
     {
-<<<<<<< HEAD
-        { "GET:/api/usermanagement", "MANAGE_USERS" },
-        { "POST:/api/usermanagement", "MANAGE_USERS" },
-        { "PUT:/api/usermanagement", "MANAGE_USERS" },
-        { "DELETE:/api/usermanagement", "MANAGE_USERS" },
-        { "GET:/api/roles", "MANAGE_ROLES" },
-        { "POST:/api/roles", "MANAGE_ROLES" },
-        { "PUT:/api/roles", "MANAGE_ROLES" },
-        { "DELETE:/api/roles", "MANAGE_ROLES" },
-=======
-        { "GET:/api/usermanagement",    "user.view"   },
-        { "POST:/api/usermanagement",   "user.create" },
-        { "PUT:/api/usermanagement",    "user.edit"   },
-        { "DELETE:/api/usermanagement", "user.delete" },
-        { "GET:/api/roles",             "role.view"   },
-        { "POST:/api/roles",            "role.manage" },
-        { "PUT:/api/roles",             "role.manage" },
-        { "DELETE:/api/roles",          "role.manage" },
->>>>>>> origin/nam_nt
+        { "GET:/api/usermanagement",    "USER_VIEW"   },
+        { "POST:/api/usermanagement",   "USER_CREATE" },
+        { "PUT:/api/usermanagement",    "USER_EDIT"   },
+        { "DELETE:/api/usermanagement", "USER_DELETE" },
+        { "GET:/api/roles",             "ROLE_VIEW"   },
+        { "POST:/api/roles",            "ROLE_MANAGE" },
+        { "PUT:/api/roles",             "ROLE_MANAGE" },
+        { "DELETE:/api/roles",          "ROLE_MANAGE" },
+        { "GET:/api/equipments",        "MANAGE_INVENTORY" },
+        { "POST:/api/equipments",       "MANAGE_INVENTORY" },
+        { "PUT:/api/equipments",        "MANAGE_INVENTORY" },
+        { "DELETE:/api/equipments",     "MANAGE_INVENTORY" },
+        { "GET:/api/inventory",         "MANAGE_INVENTORY" },
+        { "POST:/api/inventory",        "MANAGE_INVENTORY" },
+        { "PUT:/api/inventory",         "MANAGE_INVENTORY" },
+        { "DELETE:/api/inventory",      "MANAGE_INVENTORY" },
+        { "GET:/api/lossanddamages",    "MANAGE_INVENTORY" },
+        { "POST:/api/lossanddamages",   "MANAGE_INVENTORY" },
+        { "PUT:/api/lossanddamages",    "MANAGE_INVENTORY" },
+        { "DELETE:/api/lossanddamages", "MANAGE_INVENTORY" },
     };
 
     public PermissionMiddleware(RequestDelegate next)

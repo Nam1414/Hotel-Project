@@ -16,4 +16,7 @@ public class MinibarItem
 
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
+
+    [Column("created_at")]
+    public DateTime? CreatedAt { get; set; }
 }

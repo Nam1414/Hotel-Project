@@ -12,7 +12,6 @@ public class NotificationHub : Hub
     
     public override async Task OnConnectedAsync()
     {
-<<<<<<< HEAD
         var userId = Context.UserIdentifier;
         var role = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
 
@@ -39,24 +38,6 @@ public class NotificationHub : Hub
             System.Console.WriteLine($"[SignalR] Client Disconnected. ConnectionId: {Context.ConnectionId}, Role: {role}");
         }
 
-=======
-        // Tự động join group dựa vào Role trong JWT
-        var role = Context.User?.FindFirst(ClaimTypes.Role)?.Value;
-        if (!string.IsNullOrEmpty(role))
-            await Groups.AddToGroupAsync(Context.ConnectionId, role);
-
-        await base.OnConnectedAsync();
-    }
-    
-        // Client gọi để join group theo role
-    public async Task JoinRoleGroup(string roleName)
-    {
-        await Groups.AddToGroupAsync(Context.ConnectionId, roleName);
-    }
-
-    public override async Task OnDisconnectedAsync(Exception? exception)
-    {
->>>>>>> origin/nam_nt
         await base.OnDisconnectedAsync(exception);
     }
 }

@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HotelManagementAPI.Models;
 
+// DB Roles: id, name, description (không có is_active, created_at)
 [Table("Roles")]
 public class Role
 {

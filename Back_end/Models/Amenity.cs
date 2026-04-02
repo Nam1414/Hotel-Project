@@ -19,6 +19,9 @@ public class Amenity
     [Column("icon_url")]
     public string? IconUrl { get; set; }
 
+    [Column("is_active")]
+    public bool IsActive { get; set; } = true;
+
     // Many-to-Many relationship
     [JsonIgnore]
     public ICollection<RoomType>? RoomTypes { get; set; }

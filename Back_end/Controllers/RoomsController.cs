@@ -23,9 +23,9 @@ public class RoomsController : ControllerBase
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> GetAll([FromQuery] int? roomTypeId)
+    public async Task<IActionResult> GetAll([FromQuery] int? roomTypeId, [FromQuery] int? floor, [FromQuery] string? roomNumber)
     {
-        var result = await _roomService.GetAllRoomsAsync(roomTypeId);
+        var result = await _roomService.GetAllRoomsAsync(roomTypeId, floor, roomNumber);
         return Ok(result);
     }
 
@@ -34,7 +34,7 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var result = await _roomService.GetRoomByIdAsync(id);
-        if (result == null) return NotFound(new { message = "Ph√≤ng kh√¥ng t·ªìn t·∫°i" });
+        if (result == null) return NotFound(new { message = "PhÚng khÙng t?n t?i" });
         return Ok(result);
     }
 
@@ -51,7 +51,7 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomDto dto)
     {
         var result = await _roomService.UpdateRoomAsync(id, dto);
-        if (result == null) return NotFound(new { message = "Ph√≤ng kh√¥ng t·ªìn t·∫°i" });
+        if (result == null) return NotFound(new { message = "PhÚng khÙng t?n t?i" });
         return Ok(result);
     }
 
@@ -60,35 +60,136 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _roomService.DeleteRoomAsync(id);
-        if (!result) return NotFound(new { message = "Ph√≤ng kh√¥ng t·ªìn t·∫°i" });
-        return Ok(new { message = "ƒê√£ v√¥ hi·ªáu h√≥a ph√≤ng th√†nh c√¥ng" });
+        if (!result) return NotFound(new { message = "PhÚng khÙng t?n t?i" });
+        return Ok(new { message = "–„ vÙ hi?u hÛa phÚng th‡nh cÙng" });
     }
 
-    // ‚îÄ‚îÄ‚îÄ POST /api/Rooms/bulk-create ‚îÄ‚îÄ‚îÄ
+    [HttpPost("{id}/clone-items")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> CloneItems(int id, [FromBody] CloneRoomItemsDto dto)
+    {
+        var targetRoom = await _context.Rooms.FindAsync(id);
+        if (targetRoom == null) return NotFound(new { message = "PhÚng m?c tiÍu khÙng t?n t?i" });
+
+        var templateRoom = await _context.Rooms.FindAsync(dto.TemplateRoomId);
+        if (templateRoom == null) return NotFound(new { message = "PhÚng m?u khÙng t?n t?i" });
+
+        var templateInventories = await LoadTemplateInventoriesAsync(dto.TemplateRoomId);
+        var oldInventories = await _context.RoomInventories
+            .Where(ri => ri.RoomId == id)
+            .ToListAsync();
+
+        var affectedEquipmentIds = oldInventories.Select(ri => ri.EquipmentId).ToHashSet();
+        foreach (var inventory in templateInventories)
+            affectedEquipmentIds.Add(inventory.EquipmentId);
+
+        _context.RoomInventories.RemoveRange(oldInventories);
+        _context.RoomInventories.AddRange(templateInventories.Select(item => new RoomInventory
+        {
+            RoomId = id,
+            EquipmentId = item.EquipmentId,
+            Quantity = item.Quantity,
+            PriceIfLost = item.PriceIfLost,
+            Note = item.Note,
+            IsActive = item.IsActive,
+            ItemType = item.ItemType
+        }));
+
+        await _context.SaveChangesAsync();
+        await RecalculateEquipmentUsageAsync(affectedEquipmentIds);
+
+        return Ok(new
+        {
+            message = $"–„ copy th‡nh cÙng {templateInventories.Count} v?t tu t? phÚng {templateRoom.RoomNumber} sang phÚng {targetRoom.RoomNumber}"
+        });
+    }
+
+    [HttpPost("{id}/sync-items")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> SyncItems(int id)
+    {
+        var templateRoom = await _context.Rooms.FindAsync(id);
+        if (templateRoom == null) return NotFound(new { message = "PhÚng m?u khÙng t?n t?i" });
+
+        var targetRooms = await _context.Rooms
+            .Where(r => r.RoomTypeId == templateRoom.RoomTypeId && r.Id != id && r.IsActive)
+            .ToListAsync();
+
+        if (!targetRooms.Any())
+            return Ok(new { message = "KhÙng cÛ phÚng n‡o c˘ng h?ng d? d?ng b?" });
+
+        var templateItems = await LoadTemplateInventoriesAsync(id);
+        var targetRoomIds = targetRooms.Select(r => r.Id).ToList();
+
+        var oldItems = await _context.RoomInventories
+            .Where(ri => ri.RoomId.HasValue && targetRoomIds.Contains(ri.RoomId.Value))
+            .ToListAsync();
+
+        var affectedEquipmentIds = oldItems.Select(ri => ri.EquipmentId).ToHashSet();
+        foreach (var item in templateItems)
+            affectedEquipmentIds.Add(item.EquipmentId);
+
+        _context.RoomInventories.RemoveRange(oldItems);
+
+        var newItems = new List<RoomInventory>();
+        foreach (var room in targetRooms)
+        {
+            newItems.AddRange(templateItems.Select(item => new RoomInventory
+            {
+                RoomId = room.Id,
+                EquipmentId = item.EquipmentId,
+                Quantity = item.Quantity,
+                PriceIfLost = item.PriceIfLost,
+                Note = item.Note,
+                IsActive = item.IsActive,
+                ItemType = item.ItemType
+            }));
+        }
+
+        _context.RoomInventories.AddRange(newItems);
+        await _context.SaveChangesAsync();
+        await RecalculateEquipmentUsageAsync(affectedEquipmentIds);
+
+        return Ok(new
+        {
+            message = $"–„ d?ng b? {templateItems.Count} v?t tu t? phÚng {templateRoom.RoomNumber} sang {targetRooms.Count} phÚng c˘ng h?ng."
+        });
+    }
+
     [HttpPost("bulk-create")]
     [Authorize(Roles = "Admin,Manager")]
-    public async Task<IActionResult> BulkCreate([FromBody] BulkCreateRoomDto dto)
+    public async Task<IActionResult> BulkCreate([FromBody] BulkCreateRoomsRequestDto dto)
     {
         var roomTypeExists = await _context.RoomTypes
             .AnyAsync(rt => rt.Id == dto.RoomTypeId && rt.IsActive);
 
         if (!roomTypeExists)
-            return BadRequest(new { message = "H·∫°ng ph√≤ng kh√¥ng t·ªìn t·∫°i" });
+            return BadRequest(new { message = "H?ng phÚng khÙng t?n t?i" });
 
         if (dto.Count <= 0 || dto.Count > 50)
-            return BadRequest(new { message = "S·ªë l∆∞·ª£ng ph√≤ng ph·∫£i t·ª´ 1 ƒë·∫øn 50" });
+            return BadRequest(new { message = "S? lu?ng phÚng ph?i t? 1 d?n 50" });
+
+        var templateInventories = new List<RoomInventory>();
+        if (dto.TemplateRoomId.HasValue)
+        {
+            var templateRoomExists = await _context.Rooms.AnyAsync(r => r.Id == dto.TemplateRoomId.Value);
+            if (!templateRoomExists)
+                return BadRequest(new { message = "PhÚng m?u khÙng t?n t?i" });
+
+            templateInventories = await LoadTemplateInventoriesAsync(dto.TemplateRoomId.Value);
+        }
 
         var createdRooms = new List<object>();
         var errors = new List<string>();
+        var affectedEquipmentIds = templateInventories.Select(ri => ri.EquipmentId).ToHashSet();
 
         for (int i = 0; i < dto.Count; i++)
         {
-            // T·∫°o s·ªë ph√≤ng: Floor=2, Start=1 ‚Üí "201", "202"...
-            var roomNumber = $"{dto.Floor}{(dto.StartNumber + i):D2}";
+            var roomNumber = BuildRoomNumber(dto.Floor, dto.StartNumber + i);
 
             if (await _context.Rooms.AnyAsync(r => r.RoomNumber == roomNumber))
             {
-                errors.Add($"Ph√≤ng {roomNumber} ƒë√£ t·ªìn t·∫°i, b·ªè qua");
+                errors.Add($"PhÚng {roomNumber} d„ t?n t?i, b? qua");
                 continue;
             }
 
@@ -96,33 +197,27 @@ public class RoomsController : ControllerBase
             {
                 RoomTypeId = dto.RoomTypeId,
                 RoomNumber = roomNumber,
-                Status     = "Available",
-                IsActive   = true,
-                CreatedAt  = DateTime.UtcNow,
-                UpdatedAt  = DateTime.UtcNow
+                Floor = dto.Floor,
+                Status = "Available",
+                CleaningStatus = "Clean",
+                IsActive = true
             };
 
             _context.Rooms.Add(room);
             await _context.SaveChangesAsync();
 
-            // Clone v·∫≠t t∆∞ t·ª´ ph√≤ng m·∫´u (d√πng RoomItems ‚Äî b·∫£ng ƒëang c√≥)
             if (dto.TemplateRoomId.HasValue)
             {
-                var templateItems = await _context.RoomItems
-                    .Where(ri => ri.RoomId == dto.TemplateRoomId.Value)
-                    .ToListAsync();
-
-                foreach (var item in templateItems)
+                _context.RoomInventories.AddRange(templateInventories.Select(item => new RoomInventory
                 {
-                    _context.RoomItems.Add(new RoomItem
-                    {
-                        RoomId      = room.Id,
-                        ItemName    = item.ItemName,
-                        Quantity    = item.Quantity,
-                        PriceIfLost = item.PriceIfLost
-                    });
-                }
-                await _context.SaveChangesAsync();
+                    RoomId = room.Id,
+                    EquipmentId = item.EquipmentId,
+                    Quantity = item.Quantity,
+                    PriceIfLost = item.PriceIfLost,
+                    Note = item.Note,
+                    IsActive = item.IsActive,
+                    ItemType = item.ItemType
+                }));
             }
 
             createdRooms.Add(new
@@ -134,11 +229,85 @@ public class RoomsController : ControllerBase
             });
         }
 
+        await _context.SaveChangesAsync();
+        await RecalculateEquipmentUsageAsync(affectedEquipmentIds);
+
         return Ok(new
         {
-            message  = $"ƒê√£ t·∫°o {createdRooms.Count} ph√≤ng th√†nh c√¥ng",
-            created  = createdRooms,
-            skipped  = errors
+            message = $"–„ t?o {createdRooms.Count} phÚng th‡nh cÙng",
+            created = createdRooms,
+            skipped = errors
         });
+    }
+
+    private async Task<List<RoomInventory>> LoadTemplateInventoriesAsync(int templateRoomId)
+    {
+        var roomInventories = await _context.RoomInventories
+            .Where(ri => ri.RoomId == templateRoomId)
+            .AsNoTracking()
+            .ToListAsync();
+
+        if (roomInventories.Count > 0)
+            return roomInventories;
+
+        var legacyItems = await _context.RoomItems
+            .Where(ri => ri.RoomId == templateRoomId)
+            .AsNoTracking()
+            .ToListAsync();
+
+        if (legacyItems.Count == 0)
+            return new List<RoomInventory>();
+
+        var equipmentByName = await _context.Equipments
+            .Where(e => e.IsActive)
+            .ToDictionaryAsync(e => e.Name.Trim().ToLower());
+
+        var converted = new List<RoomInventory>();
+        foreach (var item in legacyItems)
+        {
+            if (!equipmentByName.TryGetValue(item.ItemName.Trim().ToLower(), out var equipment))
+                continue;
+
+            converted.Add(new RoomInventory
+            {
+                EquipmentId = equipment.Id,
+                Quantity = item.Quantity,
+                PriceIfLost = item.PriceIfLost,
+                Note = "Migrated from legacy Room_Items",
+                IsActive = true,
+                ItemType = "Asset"
+            });
+        }
+
+        return converted;
+    }
+
+    private static string BuildRoomNumber(int floor, int sequenceNumber)
+    {
+        if (sequenceNumber >= 100)
+            return sequenceNumber.ToString();
+
+        return $"{floor}{sequenceNumber:D2}";
+    }
+
+    private async Task RecalculateEquipmentUsageAsync(IEnumerable<int> equipmentIds)
+    {
+        var distinctEquipmentIds = equipmentIds.Distinct().ToList();
+        if (distinctEquipmentIds.Count == 0) return;
+
+        var usageByEquipment = await _context.RoomInventories
+            .Where(ri => distinctEquipmentIds.Contains(ri.EquipmentId) && (ri.IsActive ?? true))
+            .GroupBy(ri => ri.EquipmentId)
+            .Select(g => new { EquipmentId = g.Key, Quantity = g.Sum(x => x.Quantity ?? 0) })
+            .ToDictionaryAsync(x => x.EquipmentId, x => x.Quantity);
+
+        var equipments = await _context.Equipments
+            .Where(e => distinctEquipmentIds.Contains(e.Id))
+            .ToListAsync();
+
+        foreach (var equipment in equipments)
+            equipment.InUseQuantity = usageByEquipment.TryGetValue(equipment.Id, out var quantity) ? quantity : 0;
+
+        await _context.SaveChangesAsync();
     }
 }

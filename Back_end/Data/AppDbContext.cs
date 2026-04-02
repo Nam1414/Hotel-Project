@@ -26,11 +26,11 @@ public class AppDbContext : DbContext
     public DbSet<RoomMinibarStock> RoomMinibarStocks { get; set; }
     public DbSet<Equipment> Equipments { get; set; }
     public DbSet<Membership> Memberships { get; set; }
-    
+    public DbSet<LossAndDamage> LossAndDamages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Composite key Role_Permissions
+        // ─── Role_Permissions (composite key) ───────────────────────────────────
         modelBuilder.Entity<RolePermission>()
             .HasKey(rp => new { rp.RoleId, rp.PermissionId });
 
@@ -44,43 +44,59 @@ public class AppDbContext : DbContext
             .WithMany(p => p.RolePermissions)
             .HasForeignKey(rp => rp.PermissionId);
 
-        // User → Role
+        // ─── User → Role ─────────────────────────────────────────────────────────
         modelBuilder.Entity<User>()
             .HasOne(u => u.Role)
             .WithMany(r => r.Users)
             .HasForeignKey(u => u.RoleId);
 
-        // Article → Category
+        // ─── User → Membership ───────────────────────────────────────────────────
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.Membership)
+            .WithMany(m => m.Users)
+            .HasForeignKey(u => u.MembershipId);
+
+        // ─── Article → Category + Author ────────────────────────────────────────
         modelBuilder.Entity<Article>()
             .HasOne(a => a.Category)
             .WithMany(c => c.Articles)
             .HasForeignKey(a => a.CategoryId);
 
-        // Article → Author (User)
         modelBuilder.Entity<Article>()
             .HasOne(a => a.Author)
             .WithMany()
             .HasForeignKey(a => a.AuthorId);
 
-        // Room -> RoomType (n-1)
+        // ─── Room → RoomType ─────────────────────────────────────────────────────
         modelBuilder.Entity<Room>()
             .HasOne(r => r.RoomType)
             .WithMany(rt => rt.Rooms)
             .HasForeignKey(r => r.RoomTypeId);
 
-        // RoomResources (RoomType -> Images)
+        // ─── RoomImage → RoomType ────────────────────────────────────────────────
         modelBuilder.Entity<RoomImage>()
             .HasOne(ri => ri.RoomType)
             .WithMany(rt => rt.Images)
             .HasForeignKey(ri => ri.RoomTypeId);
 
-        // RoomInventory -> RoomType (n-1)
+        // ─── RoomInventory → Room ────────────────────────────────────────────────
+        // RoomInventory chứa thiết bị trong phòng (room_id → Rooms, EquipmentId → Equipments)
         modelBuilder.Entity<RoomInventory>()
-            .HasOne(ri => ri.RoomType)
-            .WithMany(rt => rt.Inventories)
-            .HasForeignKey(ri => ri.RoomTypeId);
+            .HasOne(ri => ri.Room)
+            .WithMany()
+            .HasForeignKey(ri => ri.RoomId);
 
-        // Many-to-Many: RoomType <-> Amenity
+        modelBuilder.Entity<RoomInventory>()
+            .HasOne(ri => ri.Equipment)
+            .WithMany()
+            .HasForeignKey(ri => ri.EquipmentId);
+
+        modelBuilder.Entity<LossAndDamage>()
+            .HasOne(ld => ld.RoomInventory)
+            .WithMany()
+            .HasForeignKey(ld => ld.RoomInventoryId);
+
+        // ─── RoomType ↔ Amenity (Many-to-Many) ──────────────────────────────────
         modelBuilder.Entity<RoomType>()
             .HasMany(rt => rt.Amenities)
             .WithMany(a => a.RoomTypes)
@@ -90,38 +106,7 @@ public class AppDbContext : DbContext
                 j => j.HasOne<RoomType>().WithMany().HasForeignKey("room_type_id")
             );
 
-        // Precision for decimal
-        modelBuilder.Entity<RoomType>()
-            .Property(rt => rt.BasePrice)
-            .HasColumnType("decimal(18, 2)");
-
-        modelBuilder.Entity<RoomInventory>()
-            .Property(ri => ri.PriceOverride)
-            .HasColumnType("decimal(18, 2)");
-
-        modelBuilder.Entity<Attraction>()
-            .Property(a => a.DistanceKm)
-            .HasColumnType("decimal(5, 2)");
-
-        // Precision for Latitude/Longitude in Attraction
-        modelBuilder.Entity<Attraction>()
-            .Property(a => a.Latitude)
-            .HasColumnType("decimal(18, 10)");
-
-        modelBuilder.Entity<Attraction>()
-            .Property(a => a.Longitude)
-            .HasColumnType("decimal(18, 10)");
-
-        modelBuilder.Entity<RoomItem>()
-            .Property(ri => ri.PriceIfLost)
-            .HasColumnType("decimal(18, 2)");
-
-        // MinibarItem -> Price precision
-        modelBuilder.Entity<MinibarItem>()
-            .Property(m => m.Price)
-            .HasColumnType("decimal(18, 2)");
-
-        // RoomMinibarStock -> Room & MinibarItem
+        // ─── RoomMinibarStock → Room + MinibarItem ───────────────────────────────
         modelBuilder.Entity<RoomMinibarStock>()
             .HasOne(rms => rms.Room)
             .WithMany()
@@ -132,28 +117,7 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(rms => rms.MinibarItemId);
 
-        // Notification -> User (n-1)
-        modelBuilder.Entity<Notification>()
-            .HasOne(n => n.User)
-            .WithMany()
-            .HasForeignKey(n => n.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-        
-        // Membership -> User (n-1)
-        modelBuilder.Entity<User>()
-            .HasOne(u => u.Membership)
-            .WithMany(m => m.Users)
-            .HasForeignKey(u => u.MembershipId);
-
-        modelBuilder.Entity<Equipment>()
-            .Property(e => e.DefaultPriceIfLost)
-            .HasColumnType("decimal(18, 2)");
-
-        modelBuilder.Entity<Equipment>()
-            .Property(e => e.BasePrice)
-            .HasColumnType("decimal(18, 2)");
-        
-        // Notifications column mapping
+        // ─── Notification → User ─────────────────────────────────────────────────
         modelBuilder.Entity<Notification>(entity =>
         {
             entity.ToTable("Notifications");
@@ -166,6 +130,52 @@ public class AppDbContext : DbContext
             entity.Property(n => n.ReferenceLink).HasColumnName("reference_link").HasMaxLength(255);
             entity.Property(n => n.IsRead).HasColumnName("is_read").IsRequired();
             entity.Property(n => n.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("GETDATE()");
+
+            entity.HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
+
+        // ─── Decimal precision ───────────────────────────────────────────────────
+        modelBuilder.Entity<RoomType>()
+            .Property(rt => rt.BasePrice)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<RoomInventory>()
+            .Property(ri => ri.PriceIfLost)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.DistanceKm)
+            .HasColumnType("decimal(5, 2)");
+
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.Latitude)
+            .HasColumnType("decimal(18, 10)");
+
+        modelBuilder.Entity<Attraction>()
+            .Property(a => a.Longitude)
+            .HasColumnType("decimal(18, 10)");
+
+        modelBuilder.Entity<RoomItem>()
+            .Property(ri => ri.PriceIfLost)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<MinibarItem>()
+            .Property(m => m.Price)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Equipment>()
+            .Property(e => e.DefaultPriceIfLost)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Equipment>()
+            .Property(e => e.BasePrice)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<LossAndDamage>()
+            .Property(ld => ld.PenaltyAmount)
+            .HasColumnType("decimal(18, 2)");
     }
 }

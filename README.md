@@ -1,98 +1,282 @@
-# 🏨 Hotel Management System - Hệ Thống ERP Quản Lý Khách Sạn Toàn Diện
+# Hotel Management System
 
-Một giải pháp phần mềm quản trị khách sạn hiện đại, cung cấp hệ sinh thái đầy đủ từ backend mạnh mẽ đến frontend mượt mà. Hệ thống hỗ trợ quản lý nhân sự, đặt phòng, thiết bị, minibar và tính năng **thông báo theo thời gian thực (Real-time Notifications)**.
+Hệ thống quản lý khách sạn full-stack gồm `Back_end` (ASP.NET Core Web API) và `Front_end` (React + TypeScript). Project tập trung vào các nghiệp vụ quản trị nội bộ như đăng nhập và phân quyền, quản lý người dùng, phòng, vật tư, minibar, bài viết, điểm tham quan và thông báo thời gian thực.
 
----
+## 1. Tổng quan công nghệ
 
-## 🚀 Công Nghệ Sử Dụng
+### Backend
+- ASP.NET Core Web API (`net10.0`)
+- Entity Framework Core + SQL Server
+- JWT Access Token + Refresh Token qua cookie
+- Role-based authorization + permission middleware
+- SignalR cho thông báo thời gian thực
+- Swagger/OpenAPI
+- Cloudinary để lưu ảnh
+- BCrypt để băm mật khẩu
 
-### Backend (API Server)
-- **Framework**: .NET 8.0 (ASP.NET Core Web API)
-- **Database**: Microsoft SQL Server
-- **ORM**: Entity Framework Core
-- **Authentication**: JWT (JSON Web Token) với kiến trúc Refresh Token
-- **Real-time Engine**: **SignalR** (Auto-Negotiation: WebSockets ➔ SSE ➔ Long Polling)
-- **Security**: Phân quyền RBAC (Role-Based Access Control), Password Hashing (BCrypt.Net-Next)
-- **Cloud Storage**: Cloudinary (lưu trữ ảnh phòng, avatar)
-- **Document**: Swagger / OpenAPI
+### Frontend
+- React 19 + TypeScript
+- Vite 6
+- Ant Design 6
+- Redux Toolkit
+- Zustand
+- React Router 7
+- Axios
+- Framer Motion
+- SignalR client
 
-### Frontend (Client App)
-- **Core**: React 18 + TypeScript (build bằng Vite siêu tốc)
-- **UI Framework**: Ant Design v5 (Thiết kế hiện đại, tùy biến cao)
-- **State Management**: Redux Toolkit & Zustand
-- **Animations**: Framer Motion
-- **Fetching**: Axios (kèm Interceptors xử lý Token tự động)
+## 2. Chức năng chính
 
----
+### Xác thực và phân quyền
+- Đăng nhập bằng JWT.
+- Tự cấp lại access token bằng refresh token.
+- Phân quyền theo `Role` và `Permission`.
+- Chặn route và chức năng trên frontend theo permission.
 
-## ✨ Các Module Tính Năng Chính
+### Quản lý người dùng
+- Tạo, cập nhật, xóa người dùng.
+- Lọc danh sách người dùng theo email, số điện thoại, trạng thái.
+- Đổi role cho người dùng.
+- Quản lý hồ sơ người dùng.
 
-### 1. Phân Quyền & Bảo Mật (Auth & Roles)
-- Đăng nhập, xuất/nhập/cấp lại JWT Token an toàn.
-- Hệ thống Role linh hoạt (Admin, Manager, Receptionist,...).
-- Mapping Permissions (Quyền hạn) trực tiếp từ database lên UI bảo vệ từng Nút bấm và Route.
+### Quản lý phòng và hạng phòng
+- CRUD phòng.
+- CRUD hạng phòng.
+- Tạo hàng loạt phòng.
+- Clone/sync vật tư từ phòng mẫu sang các phòng khác.
+- Quản lý ảnh phòng và tiện ích đi kèm.
 
-### 2. Quản Lý Nhân Sự (User Management)
-- Xem, Thêm, Sửa, Xóa nhân sự, Khóa/Mở Khóa tài khoản.
-- *Thay đổi lập tức có hiệu lực ngay trong phiên làm việc của người dùng.*
+### Quản lý vật tư, minibar và mất mát/hư hỏng
+- Quản lý thiết bị/vật tư trong phòng.
+- Theo dõi tồn kho sử dụng theo phòng.
+- Quản lý minibar và tồn minibar theo từng phòng.
+- Ghi nhận mất mát, hư hỏng và chi phí bồi thường.
 
-### 3. Hệ Thống Thông Báo Hiện Thực (Real-time Notifications)
-- Cơ chế **Group Broadcasting** (Rải thông báo theo nhóm quyền).
-- Tự động reo chuông báo (Ant Design Notification) chém góc màn hình bất cứ khi nào:
-  - Có nhân sự mới được thêm vào.
-  - Tài khoản bị khóa / mở khóa hoặc thay đổi chức vụ.
-- Tích hợp **Redux** để cập nhật con số Badge trên Menu Bell không cần tải lại trang.
+### Nội dung và dữ liệu mở rộng
+- Quản lý bài viết và danh mục bài viết.
+- Quản lý tiện ích khách sạn.
+- Quản lý điểm tham quan.
+- Quản lý membership.
 
-### 4. Quản Lý Buồng Phòng (Rooms & Inventory)
-- Cấu hình loại phòng, mức giá gốc, tiện ích đi kèm (Amenities).
-- Trích xuất hàng loạt Inventory (Tồn kho): quản lý giá tự động biến động theo ngày lễ, cuối tuần.
+### Thông báo thời gian thực
+- Backend map hub tại `/notificationHub`.
+- Frontend có kết nối SignalR để nhận `ReceiveNotification`.
+- Thông báo được đẩy vào Redux store và hiển thị qua Ant Design notification.
 
-### 5. Quản Lý Vật Tư & Minibar (Management)
-- Thiết lập định mức Minibar cho từng phòng (Nước suối, Snack, Rượu,...).
-- Danh sách tài sản cố định trong phòng, tính giá bồi thường tự động khi làm hỏng.
+## 3. Cấu trúc thư mục
 
----
+```text
+Hotel-Project/
+|-- Back_end/
+|   |-- Controllers/        # API controllers
+|   |-- Data/               # AppDbContext
+|   |-- DTOs/               # Request/response models
+|   |-- Enums/              # Notification enums
+|   |-- Hubs/               # SignalR hubs
+|   |-- Middleware/         # Refresh token, permission middleware
+|   |-- Models/             # Entity models
+|   |-- Services/           # Business services
+|   |-- sql/                # SQL install/patch scripts
+|   |-- Program.cs          # DI, auth, CORS, Swagger, SignalR
+|   `-- appsettings.json    # Local configuration
+|
+|-- Front_end/
+|   |-- src/
+|   |   |-- api/            # Axios client
+|   |   |-- components/     # UI components
+|   |   |-- hooks/          # Notification, SignalR, utilities
+|   |   |-- layouts/        # Admin/Staff layouts
+|   |   |-- pages/          # Auth/Admin/Staff pages
+|   |   |-- routes/         # Protected routes
+|   |   `-- store/          # Redux/Zustand state
+|   `-- package.json
+|
+|-- README.md
+`-- .gitignore
+```
 
-## 🛠️ Hướng Dẫn Cài Đặt (Cho máy tính mới)
+## 4. Các API/module backend hiện có
 
-Chỉ với 3 bước đơn giản, bạn có thể triển khai dự án này lên bất kỳ máy tính nào:
+Project hiện có các controller sau:
 
-### Bước 1: Khai sinh Database (Chỉ 1 Click)
-Chúng tôi đã nén toàn bộ kiến trúc lịch sử, cấu trúc bảng và cả Data Mẫu vào duy nhất **1 file SQL**:
-1. Mở **SQL Server Management Studio (SSMS)**.
-2. File > Open > File... và chọn tệp: `Back_end/sql/00_MASTER_INSTALL.sql`
-3. Nhấn **F5 (Execute)**.
-*(Tuyệt đối không cần chạy thủ công các file nhỏ lẻ). Hệ thống đã tự động tạo CSDL `HotelManagementDB` và nạp sẵn hàng loạt nhân sự, dịch vụ.*
+- `AuthController`
+- `UserManagementController`
+- `UserProfileController`
+- `RolesController`
+- `RoomsController`
+- `RoomTypesController`
+- `RoomItemsController`
+- `InventoryController`
+- `EquipmentsController`
+- `MinibarController`
+- `LossAndDamagesController`
+- `NotificationsController`
+- `AmenitiesController`
+- `AttractionsController`
+- `ArticlesController`
+- `ArticleCategoriesController`
+- `DbFixController`
 
-### Bước 2: Cấu hình Backend
-1. Mở folder `Back_end` bằng Visual Studio hoặc VS Code.
-2. Kiểm tra file `appsettings.json`:
-   - Xác nhận `ConnectionStrings:DefaultConnection` trỏ đúng vào SQL Server của bạn (thường là `Server=.;`).
-   - Sửa key Cloudinary nếu muốn thay đổi kho lưu ảnh chứa hình cá nhân.
-3. Mở terminal và chạy lệnh:
-   ```bash
-   dotnet restore
-   dotnet run
-   ```
-4. API sẽ phơi tại: `http://localhost:5206` (kèm Swagger document tại `/index.html`)
+## 5. Các màn hình frontend hiện có
 
-### Bước 3: Khởi chạy Frontend
-1. Mở một terminal mới, trỏ vào folder `Front_end`.
-2. Chạy lệnh:
-   ```bash
-   npm install
-   npm run dev
-   ```
-3. Truy cập giao diện tại: `http://localhost:5173`
+### Authentication
+- `/login`
+- `/register`
 
----
+### Admin
+- `/admin`
+- `/admin/users`
+- `/admin/rooms`
+- `/admin/bookings`
+- `/admin/inventory`
+- `/admin/roles`
 
-## 🔒 Tài Khoản Đăng Nhập Mẫu
+### Staff
+- Có `StaffLayout` và `StaffDashboard` trong source, sẵn sàng để mở rộng thêm route nghiệp vụ staff.
 
-File cài đặt tự động đã nung sẵn tài khoản cao nhất để bạn trải nghiệm ngay lập tức.
-- **Tài khoản (Email)**: `admin@hotel.com`
-- **Mật khẩu**: `Admin@123`
-*(Tài khoản này sở hữu quyền tối thượng: FULL_ACCESS).*
+## 6. Yêu cầu môi trường
 
----
-*Dự án tâm huyết - Phiên bản nâng cấp 2026/03*
+### Backend
+- .NET SDK 10.0
+- SQL Server
+
+### Frontend
+- Node.js 20+
+- npm
+
+## 7. Cài đặt database
+
+Project đang đi theo hướng cài database bằng script SQL có sẵn thay vì EF migration.
+
+### Cách nhanh nhất cho máy mới
+1. Mở SQL Server Management Studio.
+2. Chạy file `Back_end/sql/00_MASTER_INSTALL.sql`.
+3. Script sẽ tạo database `HotelManagementDB` và seed dữ liệu nền.
+
+### Khi database đã tồn tại và cần đồng bộ thêm
+- Xem thứ tự patch trong `Back_end/sql/README_RUN_ORDER.sql`.
+- Một số file patch quan trọng:
+  - `patch_users_add_token_columns.sql`
+  - `patch_rooms_add_is_active.sql`
+  - `patch_room_images_add_public_id.sql`
+  - `patch_article_categories_add_columns.sql`
+  - `patch_articles_add_columns.sql`
+  - `patch_attractions_add_fields.sql`
+  - `patch_memberships_add_created_at.sql`
+  - `patch_equipments_rename_columns.sql`
+  - `patch_fix_null_active_status.sql`
+  - `create_minibar_tables.sql`
+  - `create_room_items_table.sql`
+
+## 8. Cấu hình backend
+
+Chỉnh file `Back_end/appsettings.json` cho phù hợp máy chạy:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=.;Database=HotelManagementDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "JwtSettings": {
+    "Secret": "your-secret",
+    "Issuer": "HotelManagementAPI",
+    "Audience": "HotelManagementClient"
+  },
+  "Cloudinary": {
+    "CloudName": "your-cloud-name",
+    "ApiKey": "your-api-key",
+    "ApiSecret": "your-api-secret"
+  },
+  "EmailSettings": {
+    "Email": "your-email",
+    "Password": "your-app-password",
+    "Host": "smtp.gmail.com",
+    "Port": 587
+  }
+}
+```
+
+Lưu ý:
+- Không nên dùng nguyên các giá trị bí mật đang nằm trong file cấu hình hiện tại khi deploy thật.
+- Nên chuyển secret sang User Secrets, biến môi trường hoặc hệ thống secret manager.
+
+## 9. Chạy backend
+
+```powershell
+cd Back_end
+dotnet restore
+dotnet run
+```
+
+Mặc định backend chạy tại:
+
+- `http://localhost:5206`
+- `https://localhost:7259`
+
+Swagger UI:
+
+- `http://localhost:5206/`
+
+## 10. Cấu hình frontend
+
+Frontend gọi API qua biến môi trường:
+
+```env
+VITE_API_URL=http://localhost:5206
+```
+
+Nếu không khai báo, code hiện tại sẽ fallback về `http://localhost:5206`.
+
+## 11. Chạy frontend
+
+```powershell
+cd Front_end
+npm install
+npm run dev
+```
+
+Mặc định frontend chạy tại:
+
+- `http://localhost:5173`
+
+## 12. Luồng xác thực
+
+1. Người dùng đăng nhập qua `POST /api/Auth/login`.
+2. Backend trả về `accessToken` và ghi `refreshToken` vào cookie `HttpOnly`.
+3. Frontend lưu access token vào `localStorage`.
+4. Axios tự gắn `Authorization: Bearer <token>` cho các request tiếp theo.
+5. Khi token hết hạn, backend hỗ trợ `POST /api/Auth/refresh-token`.
+
+## 13. Real-time notification
+
+- Backend map SignalR hub ở `/notificationHub`.
+- Frontend sử dụng `@microsoft/signalr` trong hook `useNotification`.
+- Client lắng nghe event `ReceiveNotification`.
+- Dữ liệu notification được đẩy vào Redux slice `notificationSlice`.
+
+Ghi chú:
+- Trong source vẫn còn file `Front_end/src/hooks/useSignalR.ts` dùng để mô phỏng sự kiện. Hook kết nối SignalR thực tế hiện nằm ở `useNotification.ts`.
+
+## 14. Tài khoản mẫu
+
+Script SQL hiện có seed sẵn tài khoản:
+
+- Email: `admin@hotel.com`
+- Password: `Admin@123`
+
+Tài khoản này phù hợp để test nhanh sau khi chạy script cài database.
+
+## 15. Gợi ý quy trình chạy local
+
+1. Chạy `00_MASTER_INSTALL.sql`.
+2. Cập nhật `Back_end/appsettings.json`.
+3. Chạy backend bằng `dotnet run`.
+4. Tạo `.env` cho frontend nếu muốn đổi API URL.
+5. Chạy frontend bằng `npm run dev`.
+6. Truy cập `http://localhost:5173` và đăng nhập bằng tài khoản mẫu.
+
+## 16. Ghi chú hiện trạng
+
+- Repo đang chứa cả mã nguồn lẫn thư mục build như `bin/`, `obj/`, `temp_obj/`; nên cân nhắc dọn `.gitignore` nếu muốn repo sạch hơn.
+- README này mô tả theo hiện trạng source code hiện có trong repo.
+- Nếu tiếp tục phát triển production, nên bổ sung file `.env.example` cho frontend và cấu hình secret an toàn cho backend.

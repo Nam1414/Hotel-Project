@@ -1,19 +1,32 @@
 namespace HotelManagementAPI.DTOs;
 
-// RoomTypes
+// ─── ROOM TYPES ────────────────────────────────────────────────────────────────
+
 public record CreateRoomTypeDto(
     string Name,
     string? Description,
     decimal BasePrice,
-    int MaxCapacity
+    int CapacityAdults,
+    int CapacityChildren,
+    int? SizeSqm = null,
+    string? BedType = null,
+    string? ViewType = null,
+    string? Slug = null,
+    string? Content = null
 );
 
 public record UpdateRoomTypeDto(
     string Name,
     string? Description,
     decimal BasePrice,
-    int MaxCapacity,
-    bool IsActive
+    int CapacityAdults,
+    int CapacityChildren,
+    bool IsActive,
+    int? SizeSqm = null,
+    string? BedType = null,
+    string? ViewType = null,
+    string? Slug = null,
+    string? Content = null
 );
 
 public record RoomTypeResponseDto(
@@ -21,8 +34,13 @@ public record RoomTypeResponseDto(
     string Name,
     string? Description,
     decimal BasePrice,
-    int MaxCapacity,
+    int CapacityAdults,
+    int CapacityChildren,
+    int? SizeSqm,
+    string? BedType,
+    string? ViewType,
     bool IsActive,
+    string? Slug,
     List<RoomImageResponseDto>? Images = null,
     List<AmenityDto>? Amenities = null
 );
@@ -30,21 +48,29 @@ public record RoomTypeResponseDto(
 public record RoomImageResponseDto(
     int Id,
     string ImageUrl,
-    bool IsPrimary
+    bool? IsPrimary,
+    bool? IsActive
 );
 
-// Rooms
+// ─── ROOMS ─────────────────────────────────────────────────────────────────────
+
 public record CreateRoomDto(
     string RoomNumber,
     int RoomTypeId,
-    string Status
+    string Status,
+    int? Floor = null,
+    string? CleaningStatus = null,
+    string? ExtensionNumber = null
 );
 
 public record UpdateRoomDto(
     string RoomNumber,
     int RoomTypeId,
     string Status,
-    bool IsActive
+    bool IsActive,
+    int? Floor = null,
+    string? CleaningStatus = null,
+    string? ExtensionNumber = null
 );
 
 public record RoomResponseDto(
@@ -53,31 +79,56 @@ public record RoomResponseDto(
     string RoomTypeName,
     int RoomTypeId,
     string Status,
-    bool IsActive
+    string? CleaningStatus,
+    bool IsActive,
+    int? Floor = null,
+    string? ExtensionNumber = null
 );
 
-// Inventory
-public record InventoryUpdateDto(
+public record CloneRoomItemsDto(
+    int TemplateRoomId
+);
+
+public record BulkCreateRoomsRequestDto(
     int RoomTypeId,
-    DateTime InventoryDate,
-    int TotalRooms,
-    int AvailableRooms,
-    decimal? PriceOverride
+    int Floor,
+    int StartNumber,
+    int Count,
+    int? TemplateRoomId
 );
 
-public record InventoryResponseDto(
+// ─── BULK CREATE ───────────────────────────────────────────────────────────────
+
+// BulkCreateRoomDto nằm trong EquipmentDtos.cs (tránh duplicate namespace)
+
+// ─── ROOM INVENTORY ────────────────────────────────────────────────────────────
+
+public record RoomInventoryResponseDto(
     int Id,
-    int RoomTypeId,
-    string RoomTypeName,
-    DateTime InventoryDate,
-    int TotalRooms,
-    int AvailableRooms,
-    decimal? PriceOverride
+    int? RoomId,
+    string? RoomNumber,
+    int EquipmentId,
+    string? EquipmentName,
+    int? Quantity,
+    decimal? PriceIfLost,
+    string? Note,
+    bool? IsActive,
+    string? ItemType
 );
 
-public record BulkUpdatePriceDto(
-    int RoomTypeId,
-    DateTime StartDate,
-    DateTime EndDate,
-    decimal? PriceOverride
+public record UpdateRoomInventoryDto(
+    int? Quantity,
+    decimal? PriceIfLost,
+    string? Note,
+    bool? IsActive
+);
+
+public record SyncRoomInventoryDto(
+    int RoomId,
+    int EquipmentId,
+    int Quantity,
+    decimal? PriceIfLost = null,
+    string? Note = null,
+    bool IsActive = true,
+    string? ItemType = null
 );

@@ -87,7 +87,7 @@ public class RoomTypesController : ControllerBase
         if (isPrimary)
         {
             // Reset other primary images
-            var primaries = await _context.RoomImages.Where(img => img.RoomTypeId == id && img.IsPrimary).ToListAsync();
+            var primaries = await _context.RoomImages.Where(img => img.RoomTypeId == id && img.IsPrimary == true).ToListAsync();
             foreach (var p in primaries) p.IsPrimary = false;
         }
 
@@ -120,7 +120,7 @@ public class RoomTypesController : ControllerBase
         if (img == null) return NotFound();
 
         // Reset all primary for this RoomType
-        var primaries = await _context.RoomImages.Where(i => i.RoomTypeId == img.RoomTypeId && i.IsPrimary).ToListAsync();
+        var primaries = await _context.RoomImages.Where(i => i.RoomTypeId == img.RoomTypeId && i.IsPrimary == true).ToListAsync();
         foreach (var p in primaries) p.IsPrimary = false;
 
         img.IsPrimary = true;

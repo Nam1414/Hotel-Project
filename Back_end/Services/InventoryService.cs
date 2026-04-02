@@ -5,6 +5,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HotelManagementAPI.Services;
 
+/// <summary>
+/// Quản lý danh sách thiết bị/vật dụng được gán cho từng phòng (Room_Inventory).
+/// Mỗi bản ghi = 1 thiết bị (Equipment) trong 1 phòng cụ thể.
+/// </summary>
 public class InventoryService : IInventoryService
 {
     private readonly AppDbContext _context;
@@ -14,76 +18,129 @@ public class InventoryService : IInventoryService
         _context = context;
     }
 
-    public async Task<IEnumerable<InventoryResponseDto>> GetInventoryAsync(DateTime startDate, DateTime endDate, int? roomTypeId = null)
+    /// <summary>Lấy danh sách thiết bị trong 1 phòng cụ thể</summary>
+    public async Task<IEnumerable<RoomInventoryResponseDto>> GetByRoomAsync(int roomId)
     {
-        var query = _context.RoomInventories.Include(ri => ri.RoomType)
-            .Where(ri => ri.InventoryDate >= startDate && ri.InventoryDate <= endDate);
-
-        if (roomTypeId.HasValue)
-        {
-            query = query.Where(ri => ri.RoomTypeId == roomTypeId.Value);
-        }
-
-        return await query.OrderBy(ri => ri.InventoryDate)
-            .Select(ri => new InventoryResponseDto(
-                ri.Id, ri.RoomTypeId, ri.RoomType!.Name, ri.InventoryDate, ri.TotalRooms, ri.AvailableRooms, ri.PriceOverride))
+        return await _context.RoomInventories
+            .Include(ri => ri.Room)
+            .Include(ri => ri.Equipment)
+            .Where(ri => ri.RoomId == roomId)
+            .OrderBy(ri => ri.ItemType)
+            .Select(ri => MapToDto(ri))
             .ToListAsync();
     }
 
-    public async Task<InventoryResponseDto?> GetByIdAsync(int id)
+    /// <summary>Lấy 1 bản ghi inventory theo Id</summary>
+    public async Task<RoomInventoryResponseDto?> GetByIdAsync(int id)
     {
-        var inv = await _context.RoomInventories.Include(ri => ri.RoomType)
+        var inv = await _context.RoomInventories
+            .Include(ri => ri.Room)
+            .Include(ri => ri.Equipment)
             .FirstOrDefaultAsync(ri => ri.Id == id);
+
         return inv == null ? null : MapToDto(inv);
     }
 
-    public async Task<InventoryResponseDto?> UpdateByIdAsync(int id, InventoryUpdateDto dto)
+    /// <summary>Thêm mới hoặc đồng bộ 1 vật tư vào phòng theo cặp RoomId + EquipmentId</summary>
+    public async Task<RoomInventoryResponseDto> SyncAsync(SyncRoomInventoryDto dto)
+    {
+        var roomExists = await _context.Rooms.AnyAsync(r => r.Id == dto.RoomId && r.IsActive);
+        if (!roomExists)
+            throw new InvalidOperationException("Phòng không tồn tại");
+
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == dto.EquipmentId && e.IsActive);
+
+        if (equipment == null)
+            throw new InvalidOperationException("Vật tư không tồn tại");
+
+        var inv = await _context.RoomInventories
+            .FirstOrDefaultAsync(ri => ri.RoomId == dto.RoomId && ri.EquipmentId == dto.EquipmentId);
+
+        if (inv == null)
+        {
+            inv = new RoomInventory
+            {
+                RoomId = dto.RoomId,
+                EquipmentId = dto.EquipmentId,
+                Quantity = dto.Quantity,
+                PriceIfLost = dto.PriceIfLost ?? equipment.DefaultPriceIfLost,
+                Note = dto.Note,
+                IsActive = dto.IsActive,
+                ItemType = dto.ItemType
+            };
+
+            _context.RoomInventories.Add(inv);
+        }
+        else
+        {
+            inv.Quantity = dto.Quantity;
+            inv.PriceIfLost = dto.PriceIfLost ?? inv.PriceIfLost ?? equipment.DefaultPriceIfLost;
+            inv.Note = dto.Note ?? inv.Note;
+            inv.IsActive = dto.IsActive;
+            inv.ItemType = dto.ItemType ?? inv.ItemType;
+        }
+
+        await _context.SaveChangesAsync();
+        await RecalculateEquipmentUsageAsync(dto.EquipmentId);
+
+        return (await GetByIdAsync(inv.Id))!;
+    }
+
+    /// <summary>Cập nhật số lượng / giá đền bù / ghi chú của 1 bản ghi inventory</summary>
+    public async Task<RoomInventoryResponseDto?> UpdateByIdAsync(int id, UpdateRoomInventoryDto dto)
     {
         var inv = await _context.RoomInventories.FindAsync(id);
         if (inv == null) return null;
 
-        inv.TotalRooms = dto.TotalRooms;
-        inv.AvailableRooms = dto.AvailableRooms;
-        inv.PriceOverride = dto.PriceOverride;
-        inv.InventoryDate = dto.InventoryDate.Date;
-        inv.RoomTypeId = dto.RoomTypeId;
+        var affectedEquipmentId = inv.EquipmentId;
+
+        if (dto.Quantity.HasValue)    inv.Quantity    = dto.Quantity;
+        if (dto.PriceIfLost.HasValue) inv.PriceIfLost = dto.PriceIfLost;
+        if (dto.Note   != null)       inv.Note        = dto.Note;
+        if (dto.IsActive.HasValue)    inv.IsActive    = dto.IsActive;
 
         await _context.SaveChangesAsync();
-        await _context.Entry(inv).Reference(x => x.RoomType).LoadAsync();
-        return MapToDto(inv);
+        await RecalculateEquipmentUsageAsync(affectedEquipmentId);
+        return await GetByIdAsync(id);
     }
 
+    /// <summary>Xóa hẳn 1 bản ghi thiết bị khỏi phòng</summary>
     public async Task<bool> DeleteByIdAsync(int id)
     {
         var inv = await _context.RoomInventories.FindAsync(id);
         if (inv == null) return false;
 
+        var affectedEquipmentId = inv.EquipmentId;
         _context.RoomInventories.Remove(inv);
         await _context.SaveChangesAsync();
+        await RecalculateEquipmentUsageAsync(affectedEquipmentId);
         return true;
     }
 
-    public async Task<InventoryResponseDto?> CloneAsync(int id)
+    // ─── MAPPER ──────────────────────────────────────────────────────────────────
+    private static RoomInventoryResponseDto MapToDto(RoomInventory ri) => new(
+        ri.Id,
+        ri.RoomId,
+        ri.Room?.RoomNumber,
+        ri.EquipmentId,
+        ri.Equipment?.Name,
+        ri.Quantity,
+        ri.PriceIfLost,
+        ri.Note,
+        ri.IsActive,
+        ri.ItemType
+    );
+
+    private async Task RecalculateEquipmentUsageAsync(int equipmentId)
     {
-        var source = await _context.RoomInventories.AsNoTracking().FirstOrDefaultAsync(ri => ri.Id == id);
-        if (source == null) return null;
+        var equipment = await _context.Equipments.FindAsync(equipmentId);
+        if (equipment == null) return;
 
-        var clone = new RoomInventory
-        {
-            RoomTypeId = source.RoomTypeId,
-            InventoryDate = source.InventoryDate.AddDays(1), // Default to next day
-            TotalRooms = source.TotalRooms,
-            AvailableRooms = source.AvailableRooms,
-            PriceOverride = source.PriceOverride
-        };
+        equipment.InUseQuantity = await _context.RoomInventories
+            .Where(ri => ri.EquipmentId == equipmentId && (ri.IsActive ?? true))
+            .SumAsync(ri => ri.Quantity ?? 0);
 
-        _context.RoomInventories.Add(clone);
         await _context.SaveChangesAsync();
-        
-        // Reload with RoomType
-        return await GetByIdAsync(clone.Id);
     }
-
-    private static InventoryResponseDto MapToDto(RoomInventory ri) => new(
-        ri.Id, ri.RoomTypeId, ri.RoomType?.Name ?? "N/A", ri.InventoryDate, ri.TotalRooms, ri.AvailableRooms, ri.PriceOverride);
 }

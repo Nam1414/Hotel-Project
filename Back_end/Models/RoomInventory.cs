@@ -2,27 +2,38 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HotelManagementAPI.Models;
 
-[Table("RoomInventory")]
+// Bảng Room_Inventory: danh sách vật dụng/thiết bị trong từng phòng
+// Mỗi record = 1 loại thiết bị (Equipment) được gán vào 1 phòng (Room)
+[Table("Room_Inventory")]
 public class RoomInventory
 {
     [Column("id")]
     public int Id { get; set; }
 
-    [Column("room_type_id")]
-    public int RoomTypeId { get; set; }
+    [Column("room_id")]
+    public int? RoomId { get; set; }
 
-    [Column("inventory_date")]
-    public DateTime InventoryDate { get; set; }
+    [Column("quantity")]
+    public int? Quantity { get; set; }
 
-    [Column("total_rooms")]
-    public int TotalRooms { get; set; }
+    [Column("price_if_lost")]
+    public decimal? PriceIfLost { get; set; }
 
-    [Column("available_rooms")]
-    public int AvailableRooms { get; set; }
+    [Column("note")]
+    public string? Note { get; set; }
 
-    [Column("price_override")]
-    public decimal? PriceOverride { get; set; }
+    [Column("is_active")]
+    public bool? IsActive { get; set; }
+
+    // Asset | Consumable
+    [Column("item_type")]
+    public string? ItemType { get; set; }
+
+    // FK → Equipments(Id) — tên cột giữ PascalCase đúng theo DB
+    [Column("EquipmentId")]
+    public int EquipmentId { get; set; }
 
     // Navigation
-    public RoomType? RoomType { get; set; }
+    public Room? Room { get; set; }
+    public Equipment? Equipment { get; set; }
 }

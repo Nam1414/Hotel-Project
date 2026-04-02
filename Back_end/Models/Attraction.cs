@@ -22,9 +22,14 @@ public class Attraction
     [Column("description")]
     public string? Description { get; set; }
 
+    [Column("address")]
+    public string? Address { get; set; }
+
     [Column("map_embed_link")]
     public string? MapEmbedLink { get; set; }
 
+    [Column("category")]
+    public string? Category { get; set; }
 
     // Cho Google Maps Marker
     [Column("latitude", TypeName = "decimal(18, 10)")]
@@ -42,8 +47,8 @@ public class Attraction
     public bool IsActive { get; set; } = true;
 
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? CreatedAt { get; set; }
 
     [Column("updated_at")]
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 }

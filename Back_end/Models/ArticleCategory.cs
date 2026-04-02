@@ -14,5 +14,15 @@ public class ArticleCategory
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
 
+    // Các cột mở rộng — thêm vào DB qua patch_article_categories_add_columns.sql
+    [Column("description")]
+    public string? Description { get; set; }
+
+    [Column("created_at")]
+    public DateTime? CreatedAt { get; set; }
+
+    [Column("updated_at")]
+    public DateTime? UpdatedAt { get; set; }
+
     public ICollection<Article> Articles { get; set; } = new List<Article>();
 }

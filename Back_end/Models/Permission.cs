@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HotelManagementAPI.Models;
 
+// DB Permissions: chỉ có id, name
 [Table("Permissions")]
 public class Permission
 {

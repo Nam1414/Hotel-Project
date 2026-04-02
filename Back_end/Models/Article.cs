@@ -23,20 +23,24 @@ public class Article
     [Column("content")]
     public string? Content { get; set; }
 
+    // DB column: thumbnail_url (đúng với schema)
     [Column("thumbnail_url")]
-    public string? ThumbnailUrl { get; set; }
+    public string? ImageUrl { get; set; }
 
+    // Thêm vào DB qua patch_articles_add_columns.sql
     [Column("thumbnail_public_id")]
     public string? ThumbnailPublicId { get; set; }
 
-    [Column("published_at")]
-    public DateTime? PublishedAt { get; set; }
-
-    [Column("updated_at")]
-    public DateTime? UpdatedAt { get; set; }
-
     [Column("is_active")]
     public bool IsActive { get; set; } = true;
+
+    // DB column: published_at (đúng với schema)
+    [Column("published_at")]
+    public DateTime? CreatedAt { get; set; }
+
+    // Thêm vào DB qua patch_articles_add_columns.sql
+    [Column("updated_at")]
+    public DateTime? UpdatedAt { get; set; }
 
     // Navigation
     public ArticleCategory? Category { get; set; }

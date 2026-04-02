@@ -88,7 +88,7 @@ public class AttractionService : IAttractionService
         a.Longitude,
         a.ImageUrl,
         a.IsActive,
-        a.CreatedAt,
-        a.UpdatedAt
+        a.CreatedAt ?? DateTime.MinValue,
+        a.UpdatedAt ?? DateTime.MinValue
     );
 }

@@ -5,6 +5,9 @@ using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.IO.Compression;
+using System.Xml.Linq;
 
 namespace HotelManagementAPI.Controllers;
 
@@ -26,7 +29,7 @@ public class EquipmentsController : ControllerBase
     // ─── GET /api/Equipments ─── Danh sách vật tư
     // Ví dụ: GET /api/Equipments?search=TV&includeInactive=true "XEM VẬT TƯ ẨN"
     [HttpGet]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? search,
         [FromQuery] bool includeInactive = false)   // ← thêm param này
@@ -69,7 +72,7 @@ public class EquipmentsController : ControllerBase
 
     // ─── GET /api/Equipments/{id} ───
     [HttpGet("{id}")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
     public async Task<IActionResult> GetById(int id)
     {
         var equipment = await _context.Equipments
@@ -83,7 +86,7 @@ public class EquipmentsController : ControllerBase
 
     // ─── POST /api/Equipments ─── Thêm vật tư mới
     [HttpPost]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
     public async Task<IActionResult> Create([FromBody] CreateEquipmentDto dto)
     {
         // Kiểm tra ItemCode trùng
@@ -115,9 +118,109 @@ public class EquipmentsController : ControllerBase
             new { id = equipment.Id }, equipment);
     }
 
+    [HttpPost("import-excel")]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
+    public async Task<IActionResult> ImportExcel([FromForm] ImportEquipmentsExcelDto request)
+    {
+        var file = request.File;
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "File import không hợp lệ" });
+
+        if (!Path.GetExtension(file.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Chỉ hỗ trợ file Excel .xlsx" });
+
+        var created = 0;
+        var updated = 0;
+        var skipped = new List<object>();
+        var rows = await ReadExcelRowsAsync(file);
+
+        for (var row = 2; row <= rows.Count; row++)
+        {
+            var cells = rows[row - 1];
+            var itemCode = GetCell(cells, 0);
+            var name = GetCell(cells, 1);
+            var category = GetCell(cells, 2);
+            var unit = GetCell(cells, 3);
+            var totalQuantityText = GetCell(cells, 4);
+            var basePriceText = GetCell(cells, 5);
+            var compensationText = GetCell(cells, 6);
+            var supplier = GetCell(cells, 7);
+
+            if (string.IsNullOrWhiteSpace(itemCode) || string.IsNullOrWhiteSpace(name))
+            {
+                skipped.Add(new { row, reason = "Thiếu item code hoặc tên vật tư" });
+                continue;
+            }
+
+            if (!TryParseInt(totalQuantityText, out var totalQuantity))
+            {
+                skipped.Add(new { row, reason = "TotalQuantity không hợp lệ" });
+                continue;
+            }
+
+            if (!TryParseDecimal(basePriceText, out var basePrice))
+            {
+                skipped.Add(new { row, reason = "BasePrice không hợp lệ" });
+                continue;
+            }
+
+            if (!TryParseDecimal(compensationText, out var defaultPriceIfLost))
+            {
+                skipped.Add(new { row, reason = "DefaultPriceIfLost không hợp lệ" });
+                continue;
+            }
+
+            var equipment = await _context.Equipments.FirstOrDefaultAsync(e => e.ItemCode == itemCode);
+            if (equipment == null)
+            {
+                _context.Equipments.Add(new Equipment
+                {
+                    ItemCode = itemCode,
+                    Name = name,
+                    Category = category,
+                    Unit = unit,
+                    TotalQuantity = totalQuantity,
+                    InUseQuantity = 0,
+                    DamagedQuantity = 0,
+                    LiquidatedQuantity = 0,
+                    BasePrice = basePrice,
+                    DefaultPriceIfLost = defaultPriceIfLost,
+                    Supplier = string.IsNullOrWhiteSpace(supplier) ? null : supplier,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+                created++;
+                continue;
+            }
+
+            equipment.Name = name;
+            equipment.Category = category;
+            equipment.Unit = unit;
+            equipment.TotalQuantity = totalQuantity;
+            equipment.BasePrice = basePrice;
+            equipment.DefaultPriceIfLost = defaultPriceIfLost;
+            equipment.Supplier = string.IsNullOrWhiteSpace(supplier) ? null : supplier;
+            equipment.IsActive = true;
+            equipment.UpdatedAt = DateTime.UtcNow;
+            updated++;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Import Excel thành công",
+            created,
+            updated,
+            skipped
+        });
+    }
+
     // ─── PUT /api/Equipments/{id} ─── Cập nhật vật tư
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
     public async Task<IActionResult> Update(
         int id, [FromBody] UpdateEquipmentDto dto)
     {
@@ -140,7 +243,7 @@ public class EquipmentsController : ControllerBase
 
     // ─── DELETE /api/Equipments/{id} ─── Soft Delete
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,HR,Nhân sự")]
     public async Task<IActionResult> Delete(int id)
     {
         var equipment = await _context.Equipments
@@ -158,7 +261,7 @@ public class EquipmentsController : ControllerBase
 
     // ─── GET /api/Equipments/stock-summary ───
     [HttpGet("stock-summary")]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
     public async Task<IActionResult> GetStockSummary()
     {
         var summary = await _context.Equipments
@@ -205,7 +308,7 @@ public class EquipmentsController : ControllerBase
 
     // ─── PUT /api/Equipments/{id}/price ───
     [HttpPut("{id}/price")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,HR,Nhân sự")]
     public async Task<IActionResult> UpdatePrice(
         int id, [FromBody] UpdatePriceDto dto)
     {
@@ -245,7 +348,7 @@ public class EquipmentsController : ControllerBase
     // ─── GET /api/Equipments/{id}/compensation ───
     // Xem giá đền bù mặc định
     [HttpGet("{id}/compensation")]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
     public async Task<IActionResult> GetCompensation(int id)
     {
         var equipment = await _context.Equipments
@@ -268,7 +371,7 @@ public class EquipmentsController : ControllerBase
     // ─── PUT /api/Equipments/{id}/compensation ───
     // Cập nhật giá đền bù riêng
     [HttpPut("{id}/compensation")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,HR,Nhân sự")]
     public async Task<IActionResult> UpdateCompensation(
         int id, [FromBody] UpdateCompensationDto dto)
     {
@@ -294,7 +397,7 @@ public class EquipmentsController : ControllerBase
     // ─── POST /api/Equipments/{id}/sync ───
     // Đồng bộ: khi vật tư bị hỏng → tự cập nhật số liệu kho
     [HttpPost("{id}/sync")]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
     public async Task<IActionResult> SyncInventory(
         int id, [FromBody] SyncInventoryDto dto)
     {
@@ -345,7 +448,7 @@ public class EquipmentsController : ControllerBase
 
     // POST /api/Equipments/{id}/restore "KHÔI PHỤC VẬT TƯ ẨN"
     [HttpPost("{id}/restore")]
-    [Authorize(Roles = "Admin,Manager")]
+    [Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
     public async Task<IActionResult> Restore(int id)
     {
         var equipment = await _context.Equipments
@@ -362,5 +465,98 @@ public class EquipmentsController : ControllerBase
             "Admin", $"Vật tư '{equipment.Name}' đã được khôi phục.", "info");
 
         return Ok(new { message = "Khôi phục vật tư thành công", equipment });
+    }
+    private static bool TryParseInt(string value, out int result)
+    {
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result)
+            || int.TryParse(value, NumberStyles.Integer, new CultureInfo("vi-VN"), out result);
+    }
+
+    private static bool TryParseDecimal(string value, out decimal result)
+    {
+        return decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out result)
+            || decimal.TryParse(value, NumberStyles.Number, new CultureInfo("vi-VN"), out result);
+    }
+
+    private static string GetCell(IReadOnlyList<string> cells, int index)
+    {
+        return index < cells.Count ? cells[index].Trim() : string.Empty;
+    }
+
+    private static async Task<List<List<string>>> ReadExcelRowsAsync(IFormFile file)
+    {
+        await using var memoryStream = new MemoryStream();
+        await file.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+
+        using var archive = new ZipArchive(memoryStream, ZipArchiveMode.Read, leaveOpen: false);
+        var sharedStrings = ReadSharedStrings(archive);
+        var sheetEntry = archive.GetEntry("xl/worksheets/sheet1.xml")
+            ?? throw new InvalidOperationException("Không tìm thấy sheet dữ liệu trong file Excel");
+
+        using var sheetStream = sheetEntry.Open();
+        var document = XDocument.Load(sheetStream);
+        XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+
+        return document.Descendants(ns + "row")
+            .Select(row => ReadRow(row, ns, sharedStrings))
+            .ToList();
+    }
+
+    private static List<string> ReadSharedStrings(ZipArchive archive)
+    {
+        var sharedStringsEntry = archive.GetEntry("xl/sharedStrings.xml");
+        if (sharedStringsEntry == null)
+            return new List<string>();
+
+        using var stream = sharedStringsEntry.Open();
+        var document = XDocument.Load(stream);
+        XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+
+        return document.Descendants(ns + "si")
+            .Select(si => string.Concat(si.Descendants(ns + "t").Select(t => t.Value)))
+            .ToList();
+    }
+
+    private static List<string> ReadRow(XElement row, XNamespace ns, IReadOnlyList<string> sharedStrings)
+    {
+        var result = new List<string>();
+
+        foreach (var cell in row.Elements(ns + "c"))
+        {
+            var reference = cell.Attribute("r")?.Value ?? string.Empty;
+            var columnIndex = GetColumnIndex(reference);
+            while (result.Count <= columnIndex)
+                result.Add(string.Empty);
+
+            result[columnIndex] = ReadCellValue(cell, ns, sharedStrings);
+        }
+
+        return result;
+    }
+
+    private static int GetColumnIndex(string cellReference)
+    {
+        var letters = new string(cellReference.TakeWhile(char.IsLetter).ToArray());
+        var index = 0;
+
+        foreach (var ch in letters)
+            index = (index * 26) + (char.ToUpperInvariant(ch) - 'A' + 1);
+
+        return Math.Max(0, index - 1);
+    }
+
+    private static string ReadCellValue(XElement cell, XNamespace ns, IReadOnlyList<string> sharedStrings)
+    {
+        var type = cell.Attribute("t")?.Value;
+
+        if (type == "inlineStr")
+            return string.Concat(cell.Descendants(ns + "t").Select(t => t.Value));
+
+        var rawValue = cell.Element(ns + "v")?.Value ?? string.Empty;
+        if (type == "s" && int.TryParse(rawValue, out var sharedIndex) && sharedIndex >= 0 && sharedIndex < sharedStrings.Count)
+            return sharedStrings[sharedIndex];
+
+        return rawValue;
     }
 }
