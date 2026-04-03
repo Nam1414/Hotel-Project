@@ -34,7 +34,7 @@ public class NotificationService : INotificationService
                 Content = content,
                 Type = type,
                 ReferenceLink = referenceLink,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
                 IsRead = false
             };
 

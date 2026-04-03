@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Badge, Card, Col, List, Row, Statistic, Table, Tag, Typography } from 'antd';
 import { BellRing, BedDouble, Boxes, CircleAlert } from 'lucide-react';
 import { adminApi, NotificationDto, RoomDto } from '../../services/adminApi';
+import { formatVietnamTime } from '../../utils/dateFormatter';
 
 const Dashboard: React.FC = () => {
   const [rooms, setRooms] = useState<RoomDto[]>([]);
@@ -148,7 +149,7 @@ const Dashboard: React.FC = () => {
                       <div>
                         <div style={{ color: '#9ca3af', marginBottom: 4, wordBreak: 'break-word' }}>{item.content}</div>
                         <small style={{ color: '#6b7280' }}>
-                          {new Date(item.createdAt).toLocaleString('vi-VN')}
+                          {formatVietnamTime(item.createdAt)}
                         </small>
                       </div>
                     }

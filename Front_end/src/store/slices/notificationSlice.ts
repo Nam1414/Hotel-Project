@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { format, addHours } from 'date-fns';
 
 export interface NotificationItem {
   id: string | number;
@@ -17,6 +18,17 @@ interface NotificationState {
   connected: boolean;
 }
 
+// Chuyển đổi UTC thành giờ Việt Nam (UTC+7)
+const formatVietnamTime = (dateString: string): string => {
+  try {
+    const utcDate = new Date(dateString);
+    const vietnamDate = addHours(utcDate, 7); // UTC+7 for Vietnam
+    return format(vietnamDate, 'HH:mm:ss dd/MM/yyyy');
+  } catch (error) {
+    return new Date(dateString).toLocaleString('vi-VN');
+  }
+};
+
 const normalizeNotification = (raw: any): NotificationItem => {
   const createdAt = raw.createdAt || raw.CreatedAt || new Date().toISOString();
   const title = raw.title || raw.Title || raw.type || raw.Type || 'Thông báo';
@@ -27,7 +39,7 @@ const normalizeNotification = (raw: any): NotificationItem => {
     title,
     description,
     message: raw.message || `${title}${description ? `: ${description}` : ''}`,
-    time: raw.time || new Date(createdAt).toLocaleTimeString('vi-VN'),
+    time: formatVietnamTime(createdAt),
     isRead: Boolean(raw.isRead ?? raw.IsRead),
     type: raw.type || raw.Type || 'update',
     createdAt,
