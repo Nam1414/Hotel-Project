@@ -8,7 +8,7 @@ public class Notification
     public int Id { get; set; }
     [Column("user_id")]
     public int UserId { get; set; }
-    [Column("message")]
+    [Column("content")]
     public string Message { get; set; } = string.Empty;
     [Column("type")]
     public string Type { get; set; } = "General";

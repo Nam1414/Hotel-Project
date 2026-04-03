@@ -117,7 +117,11 @@ builder.Services.AddScoped<INotificationService, NotificationService>(); // Đă
 // =============================================
 // 5. CONTROLLERS
 // =============================================
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 // =============================================
