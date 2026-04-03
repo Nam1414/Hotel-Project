@@ -18,7 +18,7 @@ const CleaningPage: React.FC = () => {
       const roomData = await adminApi.getRooms();
       setRooms(roomData);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the tai danh sach don phong');
+      message.error(err.response?.data?.message || 'Không thể tải danh sách đơn phòng');
     } finally {
       setLoading(false);
     }
@@ -47,16 +47,16 @@ const CleaningPage: React.FC = () => {
         cleaningStatus: nextCleaningStatus,
         status: nextStatus || record.status,
       });
-      message.success('Da cap nhat trang thai don phong');
+      message.success('Đã cập nhật trạng thái đơn phòng');
       loadData();
     } catch (err: any) {
       const statusCode = err.response?.status;
       const fallbackMessage =
         statusCode === 404
-          ? 'Backend chua nap endpoint cleaning-status. Hay restart API.'
+          ? 'Backend chưa nạp endpoint cleaning-status. Hãy restart API.'
           : statusCode === 403
-            ? 'Tai khoan hien tai khong duoc phep cap nhat don phong.'
-            : 'Khong the cap nhat trang thai';
+            ? 'Tài khoản hiện tại không được phép cập nhật đơn phòng.'
+            : 'Không thể cập nhật trạng thái';
       message.error(err.response?.data?.message || fallbackMessage);
     }
   };
@@ -65,24 +65,24 @@ const CleaningPage: React.FC = () => {
     <div className="space-y-6">
       <div>
         <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
-          {isHousekeeping ? 'Cong viec don phong' : 'Danh sach don phong'}
+          {isHousekeeping ? 'Công việc dọn phòng' : 'Danh sách dọn phòng'}
         </Typography.Title>
         <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
           {isHousekeeping
-            ? 'Nhan vien buong phong cap nhat tien do xu ly phong theo thoi gian thuc.'
-            : 'Theo doi cac phong can don va cap nhat trang thai hoan tat.'}
+            ? 'Nhân viên buồng phòng cập nhật tiến độ xử lý phòng theo thời gian thực.'
+            : 'Theo dõi các phòng cần dọn và cập nhật trạng thái hoàn tất.'}
         </Typography.Paragraph>
       </div>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <AntCard className="glass-card">
-            <Statistic title="Phong ban" value={summary.dirty} />
+            <Statistic title="Phòng bận" value={summary.dirty} />
           </AntCard>
         </Col>
         <Col xs={24} md={8}>
           <AntCard className="glass-card">
-            <Statistic title="Dang don" value={summary.cleaning} />
+            <Statistic title="Đang dọn" value={summary.cleaning} />
           </AntCard>
         </Col>
         <Col xs={24} md={8}>
@@ -120,24 +120,24 @@ const CleaningPage: React.FC = () => {
           dataSource={filteredRooms}
           scroll={{ x: 960 }}
           columns={[
-            { title: 'Phong', dataIndex: 'roomNumber', render: (value: string) => <strong style={{ color: '#fff' }}>{value}</strong> },
-            { title: 'Hang', dataIndex: 'roomTypeName', render: (value: string) => <Tag color="blue">{value}</Tag> },
-            { title: 'Tang', dataIndex: 'floor', render: (value?: number | null) => value ?? '-' },
-            { title: 'Trang thai phong', dataIndex: 'status' },
+            { title: 'Phòng', dataIndex: 'roomNumber', render: (value: string) => <strong style={{ color: '#fff' }}>{value}</strong> },
+            { title: 'Hạng', dataIndex: 'roomTypeName', render: (value: string) => <Tag color="blue">{value}</Tag> },
+            { title: 'Tầng', dataIndex: 'floor', render: (value?: number | null) => value ?? '-' },
+            { title: 'Trạng thái phòng', dataIndex: 'status' },
             {
-              title: 'Ve sinh',
+              title: 'Vệ sinh',
               dataIndex: 'cleaningStatus',
               render: (value?: string | null) => (
                 <Tag color={(value || '').toLowerCase() === 'dirty' ? 'red' : (value || '').toLowerCase() === 'clean' ? 'green' : 'gold'}>
-                  {value || 'Chua cap nhat'}
+                  {value || 'Chưa cập nhật'}
                 </Tag>
               ),
             },
             {
-              title: 'Cap nhat',
+              title: 'Cập nhật',
               render: (_, record: RoomDto) => (
                 <Space wrap>
-                  <Button onClick={() => updateCleaning(record, 'Dirty', 'Cleaning')}>Danh dau ban</Button>
+                  <Button onClick={() => updateCleaning(record, 'Dirty', 'Cleaning')}>Dánh dấu bận</Button>
                   <Button onClick={() => updateCleaning(record, 'Inspecting', 'Cleaning')}>Dang don</Button>
                   <Button type="primary" onClick={() => updateCleaning(record, 'Clean', 'Available')}>
                     Hoan tat

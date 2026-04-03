@@ -43,7 +43,7 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var result = await _userService.GetUserByIdAsync(id);
-        if (result == null) return NotFound(new { message = "Nguoi dung khong ton tai" });
+        if (result == null) return NotFound(new { message = "Người dùng không tồn tại" });
         return Ok(result);
     }
 
@@ -58,7 +58,7 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserDto dto)
     {
         var result = await _userService.UpdateUserAsync(id, dto);
-        if (result == null) return NotFound(new { message = "Nguoi dung khong ton tai" });
+        if (result == null) return NotFound(new { message = "Người dùng không tồn tại" });
         return Ok(result);
     }
 
@@ -66,16 +66,16 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _userService.DeleteUserAsync(id);
-        if (!result) return NotFound(new { message = "Nguoi dung khong ton tai" });
-        return Ok(new { message = "Da khoa tai khoan thanh cong" });
+        if (!result) return NotFound(new { message = "Người dùng không tồn tại" });
+        return Ok(new { message = "Đã khóa tài khoản thành công" });
     }
 
     [HttpPut("{id}/change-role")]
     public async Task<IActionResult> ChangeRole(int id, [FromBody] ChangeRoleDto dto)
     {
         var result = await _userService.ChangeUserRoleAsync(id, dto.RoleId);
-        if (!result) return BadRequest(new { message = "Khong the thay doi quyen" });
-        return Ok(new { message = "Da thay doi quyen thanh cong" });
+        if (!result) return BadRequest(new { message = "Không thể thay đổi quyền" });
+        return Ok(new { message = "Đã thay đổi quyền thành công" });
     }
 }
 

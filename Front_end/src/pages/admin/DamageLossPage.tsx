@@ -128,12 +128,12 @@ const DamageLossPage: React.FC = () => {
           </Col>
           <Col xs={24} md={8}>
             <AntCard className="glass-card">
-              <Statistic title="Tong tien den bu" value={summary.totalCompensation} formatter={(value) => `${Number(value || 0).toLocaleString('vi-VN')} d`} />
+              <Statistic title="Tổng tiền đến bù" value={summary.totalCompensation} formatter={(value) => `${Number(value || 0).toLocaleString('vi-VN')} d`} />
             </AntCard>
           </Col>
           <Col xs={24} md={8}>
             <AntCard className="glass-card">
-              <Statistic title="Cap nhat lan cuoi" value={summary.latestUpdatedAt} />
+              <Statistic title="Cập nhật lần cuối" value={summary.latestUpdatedAt} />
             </AntCard>
           </Col>
         </Row>

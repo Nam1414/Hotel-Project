@@ -20,7 +20,7 @@ const UserManagement: React.FC = () => {
       const data: any = await axiosClient.get('/api/UserManagement');
       setUsers(data);
     } catch (err) {
-      message.error('Khong the lay danh sach nguoi dung');
+      message.error('Không thể lấy danh sách người dùng');
     } finally {
       setLoading(false);
     }
@@ -31,7 +31,7 @@ const UserManagement: React.FC = () => {
       const data: any = await axiosClient.get('/api/Roles');
       setRoles(data);
     } catch (err) {
-      console.error('Loi lay danh sach Roles', err);
+      console.error('Lỗi lấy danh sách Roles', err);
     }
   };
 
@@ -55,7 +55,7 @@ const UserManagement: React.FC = () => {
             });
         }
         
-        message.success('Cap nhat nguoi dung thanh cong');
+        message.success('Cập nhật người dùng thành công');
       } else {
         await axiosClient.post('/api/UserManagement', {
           fullName: values.fullName,
@@ -63,13 +63,13 @@ const UserManagement: React.FC = () => {
           password: values.password,
           roleId: values.roleId,
         });
-        message.success('Tao nguoi dung va gui email thanh cong');
+        message.success('Tạo người dùng và gửi email thành công');
       }
       setIsModalOpen(false);
       form.resetFields();
       fetchUsers();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Co loi xay ra');
+      message.error(err.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
@@ -80,20 +80,20 @@ const UserManagement: React.FC = () => {
         phone,
         status: !currentStatus
       });
-      message.success(`${!currentStatus ? 'Mo khoa' : 'Khoa'} tai khoan thanh cong`);
+      message.success(`${!currentStatus ? 'Mở khóa' : 'Khóa'} tài khoản thành công`);
       fetchUsers();
     } catch (err) {
-      message.error('Loi khi thay doi trang thai');
+      message.error('Lỗi khi thay đổi trạng thái');
     }
   };
 
   const handleDeleteUser = async (id: number) => {
     try {
       const response: any = await axiosClient.delete(`/api/UserManagement/${id}`);
-      message.success(response?.message || 'Da khoa tai khoan thanh cong');
+      message.success(response?.message || 'Đã khóa tài khoản thành công');
       fetchUsers();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the khoa tai khoan');
+      message.error(err.response?.data?.message || 'Không thể khóa tài khoản');
     }
   };
 

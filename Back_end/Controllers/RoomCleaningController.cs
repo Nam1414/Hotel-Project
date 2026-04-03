@@ -31,7 +31,7 @@ public class RoomCleaningController : ControllerBase
 
         if (room == null)
         {
-            return NotFound(new { message = "Phong khong ton tai" });
+            return NotFound(new { message = "Phòng không tồn tại" });
         }
 
         var previousStatus = room.Status;
@@ -45,8 +45,8 @@ public class RoomCleaningController : ControllerBase
         {
             await _notificationService.SendToRoleByNameAsync(
                 "Admin",
-                "Phong dang duoc don",
-                $"Phong {room.RoomNumber} dang duoc nhan vien buong phong xu ly. Tam thoi khong nhan dat phong nay.",
+                "Phòng đang được dọn",
+                $"Phòng {room.RoomNumber} đang được nhân viên phòng vệ sinh xử lý. Tạm thời không nhận đặt phòng này.",
                 NotificationType.Warning,
                 "/admin/cleaning"
             );

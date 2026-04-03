@@ -85,9 +85,9 @@ const Profile: React.FC = () => {
 
       setProfile(nextProfile);
       dispatch(updateUser({ fullName: nextProfile.fullName, name: nextProfile.fullName }));
-      message.success('Da cap nhat thong tin ca nhan');
+      message.success('Đã cập nhật thông tin cá nhân');
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Khong the cap nhat thong tin');
+      message.error(error.response?.data?.message || 'Không thể cập nhật thông tin');
     } finally {
       setSavingProfile(false);
     }
@@ -129,9 +129,9 @@ const Profile: React.FC = () => {
 
       setProfile(nextProfile);
       dispatch(updateUser({ avatar: response.url }));
-      message.success('Da cap nhat anh dai dien');
+      message.success('Đã cập nhật ảnh đại diện');
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Khong the tai anh dai dien');
+      message.error(error.response?.data?.message || 'Không thể tải ảnh đại diện');
     } finally {
       setUploadingAvatar(false);
     }
@@ -194,7 +194,7 @@ const Profile: React.FC = () => {
               </div>
               <div className="flex items-center space-x-4 text-body">
                 <Phone size={18} className="text-primary" />
-                <span className="text-sm font-medium">{profile?.phone || 'Chua cap nhat'}</span>
+                <span className="text-sm font-medium">{profile?.phone || 'Chưa cập nhật'}</span>
               </div>
               <div className="flex items-center space-x-4 text-body">
                 <Shield size={18} className="text-primary" />
@@ -234,7 +234,7 @@ const Profile: React.FC = () => {
                         <Form.Item
                           label="Full Name"
                           name="fullName"
-                          rules={[{ required: true, message: 'Vui long nhap ho ten' }]}
+                          rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
                         >
                           <Input className="h-14 rounded-xl font-medium" />
                         </Form.Item>
@@ -277,7 +277,7 @@ const Profile: React.FC = () => {
                       <Form.Item
                         label="Current Password"
                         name="currentPassword"
-                        rules={[{ required: true, message: 'Vui long nhap mat khau hien tai' }]}
+                        rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}
                       >
                         <Input.Password className="h-14 rounded-xl" />
                       </Form.Item>
@@ -285,7 +285,7 @@ const Profile: React.FC = () => {
                         label="New Password"
                         name="newPassword"
                         rules={[
-                          { required: true, message: 'Vui long nhap mat khau moi' },
+                          { required: true, message: 'Vui lòng nhập mật khẩu mới' },
                           { min: 6, message: 'Mat khau moi phai co it nhat 6 ky tu' },
                         ]}
                       >
@@ -296,14 +296,14 @@ const Profile: React.FC = () => {
                         name="confirmPassword"
                         dependencies={['newPassword']}
                         rules={[
-                          { required: true, message: 'Vui long xac nhan mat khau moi' },
+                          { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
                           ({ getFieldValue }) => ({
                             validator(_, value) {
                               if (!value || getFieldValue('newPassword') === value) {
                                 return Promise.resolve();
                               }
 
-                              return Promise.reject(new Error('Mat khau xac nhan khong khop'));
+                              return Promise.reject(new Error('Mật khẩu xác nhận không khớp'));
                             },
                           }),
                         ]}
@@ -353,11 +353,11 @@ const Profile: React.FC = () => {
                             </div>
                             <div>
                               <p className="font-bold text-title">Cloudinary Upload</p>
-                              <p className="text-xs text-muted">Cap nhat anh dai dien truc tiep tu trang ho so</p>
+                              <p className="text-xs text-muted">Cập nhật ảnh đại diện trực tiếp từ trang hồ sơ</p>
                             </div>
                           </div>
                           <Button onClick={() => fileInputRef.current?.click()} loading={uploadingAvatar} className="rounded-xl">
-                            Tai anh
+                            Tải ảnh
                           </Button>
                         </div>
                       </div>

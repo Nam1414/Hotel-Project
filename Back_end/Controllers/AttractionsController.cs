@@ -67,13 +67,13 @@ public class AttractionsController : ControllerBase
     {
         if (file == null || file.Length == 0)
         {
-            return BadRequest(new { message = "Vui long chon anh hop le" });
+            return BadRequest(new { message = "Vui lòng chọn ảnh hợp lệ" });
         }
 
         var attraction = await _context.Attractions.FirstOrDefaultAsync(a => a.Id == id);
         if (attraction == null)
         {
-            return NotFound(new { message = "Diem tham quan khong ton tai" });
+            return NotFound(new { message = "Điểm tham quan không tồn tại" });
         }
 
         var imageTransformation = new Transformation()
@@ -96,7 +96,7 @@ public class AttractionsController : ControllerBase
 
         return Ok(new
         {
-            message = "Cap nhat anh diem tham quan thanh cong",
+            message = "Cập nhật ảnh điểm tham quan thành công",
             imageUrl = attraction.ImageUrl,
         });
     }

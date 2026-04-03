@@ -29,7 +29,7 @@ const AttractionsPage: React.FC = () => {
       const data = await adminApi.getAttractions();
       setAttractions(data);
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Khong tai duoc danh sach diem tham quan');
+      message.error(error.response?.data?.message || 'Không tải được danh sách điểm tham quan');
     } finally {
       setLoading(false);
     }
@@ -84,17 +84,17 @@ const AttractionsPage: React.FC = () => {
           ...payload,
           isActive: values.isActive ?? true,
         });
-        message.success('Da cap nhat diem tham quan');
+        message.success('Đã cập nhật điểm tham quan');
       } else {
         await adminApi.createAttraction(payload);
-        message.success('Da tao diem tham quan moi');
+        message.success('Đã tạo điểm tham quan mới');
       }
 
       setOpen(false);
       form.resetFields();
       await loadAttractions();
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Khong the luu diem tham quan');
+      message.error(error.response?.data?.message || 'Không thể lưu điểm tham quan');
     } finally {
       setSubmitting(false);
     }
@@ -103,10 +103,10 @@ const AttractionsPage: React.FC = () => {
   const handleDelete = async (attraction: AttractionDto) => {
     try {
       await adminApi.deleteAttraction(attraction.id);
-      message.success('Da xoa diem tham quan');
+      message.success('Đã xoá điểm tham quan');
       await loadAttractions();
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Khong the xoa diem tham quan');
+      message.error(error.response?.data?.message || 'Không thể xoá điểm tham quan');
     }
   };
 
@@ -127,10 +127,10 @@ const AttractionsPage: React.FC = () => {
 
     try {
       await adminApi.uploadAttractionImage(selectedAttractionId, file);
-      message.success('Da tai anh diem tham quan');
+      message.success('Đã tải ảnh điểm tham quan');
       await loadAttractions();
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Khong the tai anh diem tham quan');
+      message.error(error.response?.data?.message || 'Không thể tải ảnh điểm tham quan');
     } finally {
       setUploadingId(null);
       setSelectedAttractionId(null);
@@ -142,10 +142,10 @@ const AttractionsPage: React.FC = () => {
       <div className="admin-card flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-white">Diem tham quan</h2>
-          <p className="mt-2 text-sm text-gray-400">Quan ly danh sach diem tham quan va upload anh len Cloudinary.</p>
+          <p className="mt-2 text-sm text-gray-400">Quản lý danh sách điểm tham quan và upload ảnh lên Cloudinary.</p>
         </div>
         <Button type="primary" icon={<Plus size={16} />} className="btn-gold" onClick={openCreateModal}>
-          Them diem tham quan
+          Thêm điểm tham quan
         </Button>
       </div>
 
@@ -159,7 +159,7 @@ const AttractionsPage: React.FC = () => {
 
       {sortedAttractions.length === 0 && !loading ? (
         <div className="admin-card">
-          <Empty description="Chua co diem tham quan nao" />
+          <Empty description="Chưa có điểm tham quan nào" />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -174,7 +174,7 @@ const AttractionsPage: React.FC = () => {
                   </div>
                 )}
                 <div className="absolute right-4 top-4 rounded-full bg-dark-base/80 px-3 py-1 text-xs font-semibold text-primary">
-                  {attraction.isActive ? 'Dang hien thi' : 'Da an'}
+                  {attraction.isActive ? 'Đang hiển thị' : 'Đã Ẩn'}
                 </div>
               </div>
 
@@ -194,13 +194,13 @@ const AttractionsPage: React.FC = () => {
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button icon={<Camera size={16} />} loading={uploadingId === attraction.id} onClick={() => handleChooseImage(attraction.id)}>
-                  Tai anh
+                  Tải ảnh
                 </Button>
                 <Button icon={<Pencil size={16} />} onClick={() => openEditModal(attraction)}>
-                  Chinh sua
+                  Chỉnh sửa
                 </Button>
                 <Button danger icon={<Trash2 size={16} />} onClick={() => void handleDelete(attraction)}>
-                  Xoa
+                  Xoá
                 </Button>
               </div>
             </div>
@@ -209,7 +209,7 @@ const AttractionsPage: React.FC = () => {
       )}
 
       <Modal
-        title={editingAttraction ? 'Cap nhat diem tham quan' : 'Them diem tham quan'}
+        title={editingAttraction ? 'Cập nhật điểm tham quan' : 'Thêm điểm tham quan'}
         open={open}
         onCancel={() => setOpen(false)}
         footer={null}
@@ -219,7 +219,7 @@ const AttractionsPage: React.FC = () => {
           <Form.Item
             label="Ten diem tham quan"
             name="name"
-            rules={[{ required: true, message: 'Vui long nhap ten diem tham quan' }]}
+            rules={[{ required: true, message: 'Vui lòng nhập tên điểm tham quan' }]}
           >
             <Input />
           </Form.Item>
@@ -252,9 +252,9 @@ const AttractionsPage: React.FC = () => {
           ) : null}
 
           <div className="flex justify-end gap-3">
-            <Button onClick={() => setOpen(false)}>Huy</Button>
+            <Button onClick={() => setOpen(false)}>Hủy</Button>
             <Button type="primary" htmlType="submit" loading={submitting}>
-              {editingAttraction ? 'Luu thay doi' : 'Tao moi'}
+              {editingAttraction ? 'Lưu thay đổi' : 'Tạo mới'}
             </Button>
           </div>
         </Form>

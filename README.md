@@ -1,163 +1,314 @@
-﻿# Hotel Management System
+﻿# 🏨 Hệ Thống Quản Lý Khách Sạn
 
-He thong quan ly khach san full-stack gom:
+Ứng dụng quản lý khách sạn **full-stack** được xây dựng với công nghệ hiện đại, tập trung vào hoạt động nội bộ của khách sạn.
 
-- `Back_end`: ASP.NET Core Web API
-- `Front_end`: React + TypeScript + Vite
+**Cấu Trúc:**
+- 🔧 **Backend**: ASP.NET Core 10 Web API
+- 🎨 **Frontend**: React 19 + TypeScript + Vite
 
-Project tap trung vao van hanh noi bo khach san: xac thuc, phan quyen, quan ly nguoi dung, phong, don phong, vat tu, den bu/that thoat, noi dung va thong bao realtime.
+---
 
-## 1. Tinh nang chinh
+## 📋 Mục Lục
 
-- Dang nhap bang JWT, refresh token qua cookie `HttpOnly`
-- Phan quyen theo `Role` va `Permission`
-- Quan ly nguoi dung, vai tro va ho so ca nhan
-- Quan ly phong, hang phong, anh phong va tien ich
-- Luong don phong cho `Housekeeping`
-- Quan ly vat tu, ton kho, hong/mat va tien den bu
-- Quan ly diem tham quan
-- Upload anh qua Cloudinary
-- Notification realtime bang SignalR
+1. [Tính Năng Chính](#✨-tính-năng-chính)
+2. [Stack Công Nghệ](#💻-stack-công-nghệ)
+3. [Cấu Trúc Dự Án](#-cấu-trúc-dự-án)
+4. [Các Tuyến Route](#-các-tuyến-route)
+5. [Yêu Cầu Hệ Thống](#-yêu-cầu-hệ-thống)
+6. [Cài Đặt Nhanh](#-cài-đặt-nhanh)
+7. [Cấu Hình](#-cấu-hình)
+8. [Tài Khoản Mặc Định](#-tài-khoản-mặc-định)
 
-## 2. Cong nghe su dung
+---
+
+## ✨ Tính Năng Chính
+
+### 🔐 Xác Thực & Bảo Mật
+- ✅ Đăng nhập với JWT token
+- ✅ Refresh token lưu trong cookie `HttpOnly`
+- ✅ Mã hóa mật khẩu với BCrypt
+- ✅ Quản lý phiên làm việc an toàn
+
+### 👥 Quản Lý Người Dùng & Phân Quyền
+- ✅ Quản lý danh sách người dùng
+- ✅ Phân quyền theo `Role` (Admin, Manager, Receptionist, Housekeeping)
+- ✅ Phân quyền chi tiết theo `Permission`
+- ✅ Hồ sơ cá nhân & đổi mật khẩu
+- ✅ Tải ảnh đại diện từ Cloudinary
+
+### 🏠 Quản Lý Phòng
+- ✅ Danh sách phòng chi tiết
+- ✅ Phân loại phòng theo hạng (Standard, Deluxe, Suite, etc)
+- ✅ Quản lý hình ảnh phòng (upload via Cloudinary)
+- ✅ Quản lý tiện nghi phòng (Amenities)
+- ✅ Theo dõi trạng thái phòng (Trống, Đã đặt, Đang dọn, Bảo trì)
+- ✅ Tracking vệ sinh phòng (Sạch, Bẩn, Đang dọn)
+
+### 🧹 Quản Lý Dọn Phòng
+- ✅ Gán công việc dọn cho housekeeping  
+- ✅ Cập nhật trạng thái realtime
+- ✅ Theo dõi tiến độ công việc
+
+### 📦 Quản Lý Vật Tư & Kho
+- ✅ Danh sách vật tư đầy đủ
+- ✅ Theo dõi tồn kho (Trong kho, Đang dùng, Hỏng)
+- ✅ Ghi nhận vật tư hỏng/mất mát
+- ✅ Tính toán chi phí bồi thường tự động
+
+### 🎯 Quản Lý Điểm Tham Quan
+- ✅ Danh sách điểm tham quan gần khách sạn
+- ✅ Khoảng cách & tọa độ GPS
+- ✅ Tải lên ảnh qua Cloudinary
+- ✅ Hiển thị/ẩn điểm tham quan
+
+### 📰 Quản Lý Nội Dung / CMS
+- ✅ Tạo & quản lý bài viết
+- ✅ Phân loại bài viết theo danh mục (Article Categories)
+- ✅ Tạo slug tự động
+
+### 📢 Thông Báo Realtime
+- ✅ Thông báo tức thời qua SignalR WebSocket
+- ✅ Lọc thông báo theo vai trò (Admin, Manager)
+- ✅ Lưu lịch sử thông báo trong database
+- ✅ Thông báo các sự kiện quan trọng
+
+### 📊 Dashboard
+- ✅ Tổng phòng hoạt động
+- ✅ Tỉ lệ lấp đầy phòng
+- ✅ Số phòng cần dọn
+- ✅ Tồn kho vật tư
+- ✅ Danh sách phòng cần chú ý
+- ✅ Thông báo gần đây
+
+---
+
+## 💻 Stack Công Nghệ
+
+### Backend
+| Công Nghệ | Phiên Bản | Mục Đích |
+|-----------|----------|---------|
+| .NET SDK | 10.0.201 | Runtime |
+| ASP.NET Core | 10.0 | Web API Framework |
+| Entity Framework | 9.0.3 | ORM |
+| SQL Server | 2019+ | Database |
+| JWT Bearer | 10.0 | Authentication |
+| SignalR | built-in | Realtime WebSocket |
+| Swagger | 6.9.0 | API Documentation |
+| BCrypt.Net | 4.0.3 | Password Hashing |
+| CloudinaryDotNet | 1.27.8 | Image Storage |
+| Slugify.Core | 5.1.1 | URL Slug |
+
+### Frontend
+| Công Nghệ | Phiên Bản | Mục Đích |
+|-----------|----------|---------|
+| React | 19.0.0 | UI Library |
+| TypeScript | 5.8.2 | Type Safety |
+| Vite | 6.2.0 | Build Tool |
+| Redux Toolkit | 2.11.2 | State Management |
+| React Router | 7.13.2 | Routing |
+| Axios | 1.13.6 | HTTP Client |
+| Ant Design | 6.3.4 | UI Components |
+| Lucide React | 0.546.0 | Icons |
+| SignalR Client | 10.0.0 | WebSocket Client |
+| TailwindCSS | 4.1.14 | Styling |
+
+---
+
+## 🗂️ Cấu Trúc Dự Án
 
 ### Backend
 
-- .NET 10
-- ASP.NET Core Web API
-- Entity Framework Core + SQL Server
-- JWT Bearer Authentication
-- SignalR
-- Swagger / OpenAPI
-- BCrypt.Net
-- CloudinaryDotNet
+```
+Back_end/
+├── Controllers/               # 19 API Controllers
+│   ├── AuthController.cs
+│   ├── UserManagementController.cs
+│   ├── RoomsController.cs
+│   ├── RoomCleaningController.cs
+│   ├── EquipmentController.cs
+│   ├── InventoryController.cs
+│   ├── LossAndDamagesController.cs
+│   ├── RolesController.cs
+│   ├── AttractionsController.cs
+│   └── ... (10 more)
+│
+├── Services/                  # Business Logic (10+ services)
+│   ├── TokenService.cs
+│   ├── UserManagementService.cs
+│   ├── EmailService.cs
+│   ├── NotificationService.cs
+│   ├── CloudinaryService.cs
+│   └── ...
+│
+├── Models/                    # 19 Database Models
+│   ├── User.cs
+│   ├── Room.cs
+│   ├── Equipment.cs
+│   ├── RoomInventory.cs
+│   ├── LossAndDamage.cs
+│   ├── Notification.cs
+│   └── ...
+│
+├── Data/
+│   ├── AppDbContext.cs
+│   └── DatabaseSchemaInitializer.cs
+│
+├── DTOs/                      # Data Transfer Objects
+│   ├── UserDtos.cs
+│   ├── RoomDtos.cs
+│   ├── AuthDtos.cs
+│   └── ...
+│
+├── Middleware/
+│   ├── PermissionMiddleware.cs
+│   ├── RequirePermissionAttribute.cs
+│   └── RefreshTokenMiddleware.cs
+│
+├── Hubs/
+│   └── NotificationHub.cs      # SignalR Hub
+│
+├── sql/                        # Database Scripts
+│   ├── 00_MASTER_INSTALL.sql
+│   ├── create_admin_account.sql
+│   └── README_RUN_ORDER.sql
+│
+└── Program.cs                 # Entry Point
+```
 
 ### Frontend
 
-- React 19
-- TypeScript
-- Vite
-- Redux Toolkit
-- React Router
-- Axios
-- Ant Design
-- Lucide React
-- SignalR client
-
-## 3. Cau truc thu muc
-
-```text
-Hotel-Project/
-|-- Back_end/
-|   |-- Controllers/
-|   |-- Data/
-|   |-- DTOs/
-|   |-- Enums/
-|   |-- Hubs/
-|   |-- Middleware/
-|   |-- Models/
-|   |-- Services/
-|   |-- sql/
-|   |-- HotelManagementAPI.csproj
-|   |-- Program.cs
-|   |-- appsettings.json
-|   `-- appsettings.Development.json
-|
-|-- Front_end/
-|   |-- src/
-|   |   |-- api/
-|   |   |-- components/
-|   |   |-- hooks/
-|   |   |-- layouts/
-|   |   |-- pages/
-|   |   |-- routes/
-|   |   |-- services/
-|   |   |-- store/
-|   |   `-- utils/
-|   |-- package.json
-|   `-- vite.config.ts
-|
-|-- package.json
-`-- README.md
+```
+Front_end/src/
+├── pages/
+│   ├── auth/
+│   │   ├── LoginPage.tsx
+│   │   └── RegisterPage.tsx
+│   ├── admin/                 # 17+ admin pages
+│   │   ├── Dashboard.tsx
+│   │   ├── UserManagement.tsx
+│   │   ├── RoomManagement.tsx
+│   │   ├── RoomTypeManagement.tsx
+│   │   ├── CleaningPage.tsx
+│   │   ├── Inventory.tsx
+│   │   ├── DamageLossPage.tsx
+│   │   ├── RoleManagement.tsx
+│   │   ├── AttractionsPage.tsx
+│   │   ├── Profile.tsx
+│   │   ├── CMS.tsx
+│   │   └── ... (7 more)
+│   ├── staff/
+│   │   └── StaffPage.tsx
+│   └── errors/
+│       └── UnauthorizedPage.tsx
+│
+├── components/                # 20+ React Components
+│   ├── layouts/
+│   ├── admin/
+│   └── ...
+│
+├── services/
+│   ├── signalRService.ts      # SignalR Setup
+│   ├── adminApi.ts             # API Client
+│   └── ...
+│
+├── store/                      # Redux Store
+│   ├── index.ts
+│   └── slices/
+│
+├── routes/
+│   └── AppRoutes.tsx          # Route Definitions
+│
+├── hooks/
+├── types/
+├── utils/
+├── App.tsx
+└── main.tsx
 ```
 
-## 4. Route chinh dang dung
+---
 
-### Auth
+## 🛣️ Các Tuyến Route
 
-- `/login`
-- `/register`
+### 🔐 Public Routes
+| Route | Mô Tả | Yêu cầu |
+|-------|-------|---------|
+| `/login` | Trang đăng nhập | - |
+| `/401` | Trang Unauthorized | - |
 
-### Admin
+### 👨‍💼 Admin Routes (Yêu cầu role: Admin)
+| Route | Mô Tả |
+|-------|-------|
+| `/admin/users` | Quản lý người dùng |
+| `/admin/rooms` | Quản lý phòng |
+| `/admin/room-types` | Phân loại phòng |
+| `/admin/cleaning` | Quản lý dọn phòng |
+| `/admin/equipment` | Quản lý vật tư |
+| `/admin/inventory` | Quản lý kho |
+| `/admin/roles` | Quản lý vai trò |
+| `/admin/attractions` | Quản lý điểm tham quan |
+| `/admin/profile` | Hồ sơ cá nhân |
 
-- `/admin`
-- `/admin/profile`
-- `/admin/users`
-- `/admin/rooms`
-- `/admin/room-types`
-- `/admin/cleaning`
-- `/admin/inventory`
-- `/admin/inventory/damages`
-- `/admin/roles`
-- `/admin/attractions`
+### 👷 Staff Portal (Yêu cầu: authenticated)
+| Route | Mô Tả |
+|-------|-------|
+| `/staff-portal/staff` | Danh sách nhân viên |
+| `/staff-portal/equipment` | Quản lý vật tư (quyền chế) |
 
-### Staff
+---
 
-- `/staff/cleaning`
-
-### Public
-
-- `/`
-- `/rooms`
-
-Luu y: trang `booking` hien da duoc an khoi frontend.
-
-## 5. Yeu cau moi truong
+## 💾 Yêu Cầu Hệ Thống
 
 ### Backend
-
-- .NET SDK 10
-- SQL Server
+- 🔹 **.NET SDK 10.0.201** → [Download](https://dotnet.microsoft.com)
+- 🔹 **SQL Server 2019+** hoặc **SQL Server Express**
+- 🔹 **Visual Studio 2022** hoặc **VS Code + C# Extension**
 
 ### Frontend
+- 🔹 **Node.js 20+** → [Download](https://nodejs.org)
+- 🔹 **npm 10+** (đi kèm Node.js)
+- 🔹 **Visual Studio Code** (tùy chọn)
 
-- Node.js 20+
-- npm
+---
 
-## 6. Cai dat database
+## 🚀 Cài Đặt Nhanh
 
-Project dung SQL script co san, khong di theo EF migrations.
+### Bước 1: Cài Database
 
-### Cai moi
-
-1. Mo SQL Server Management Studio.
-2. Chay file:
-
-```text
-Back_end/sql/00_MASTER_INSTALL.sql
+```bash
+# Mở SQL Server Management Studio (SSMS)
+# Chạy script:
+Back_end/sql/DBHotel.sql
 ```
 
-3. Script se tao database `HotelManagementDB` va seed du lieu nen.
+✅ Database `HotelManagementDB` sẽ được tạo với dữ liệu khởi tạo.
 
-### Ghi chu
+### Bước 2: Cài Backend
 
-- Neu ban dang nang cap tu database cu, xem them:
-
-```text
-Back_end/sql/README_RUN_ORDER.sql
+```bash
+cd Back_end
+dotnet restore
+dotnet build
+dotnet run
 ```
 
-- Backend hien co `DatabaseSchemaInitializer` de tu va them mot phan schema khi app khoi dong.
+✅ Backend: `https://localhost:5206`  
+📚 Swagger: `https://localhost:5206/swagger`
 
-## 7. Cau hinh backend
+### Bước 3: Cài Frontend
 
-File cau hinh chinh:
-
-```text
-Back_end/appsettings.json
+```bash
+cd Front_end
+npm install
+npm run dev
 ```
 
-Vi du cau hinh:
+✅ Frontend: `http://localhost:5173`
+
+---
+
+## ⚙️ Cấu Hình
+
+### Backend - `Back_end/appsettings.json`
 
 ```json
 {
@@ -165,191 +316,73 @@ Vi du cau hinh:
     "DefaultConnection": "Server=.;Database=HotelManagementDB;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "JwtSettings": {
-    "Secret": "your-secret",
+    "Secret": "HotelManagementSuperSecretKey2024!@#$%",
     "Issuer": "HotelManagementAPI",
     "Audience": "HotelManagementClient",
     "AccessTokenExpireMinutes": 480,
     "RefreshTokenExpireDays": 7
   },
   "Cloudinary": {
-    "CloudName": "your-cloud-name",
-    "ApiKey": "your-api-key",
-    "ApiSecret": "your-api-secret"
+    "CloudName": "dwkqcuanf",
+    "ApiKey": "283157785521954",
+    "ApiSecret": "csuQH3OXxhLTQmGo4wQNZLcGng0"
   },
   "EmailSettings": {
-    "Email": "your-email",
-    "Password": "your-app-password",
+    "Email": "khatong072@gmail.com",
+    "Password": "uurc xgbh msep faxe",
     "Host": "smtp.gmail.com",
     "Port": 587
   }
 }
 ```
 
-## 8. Cau hinh frontend
-
-Tao file:
-
-```text
-Front_end/.env
-```
-
-Noi dung:
+### Frontend - `Front_end/.env.local`
 
 ```env
 VITE_API_URL=http://localhost:5206
 ```
 
-Neu khong co `.env`, frontend se fallback ve `http://localhost:5206`.
+---
 
-## 9. Chay project local
+## 🔑 Tài Khoản Mặc Định
 
-### Chay backend
-
-```powershell
-cd Back_end
-dotnet restore
-dotnet run
+### Admin Account
+```
+📧 Email: admin@hotel.com
+🔐 Password: Admin@123
 ```
 
-Mac dinh backend:
+⚠️ **Thay đổi mật khẩu ngay sau lần đăng nhập đầu tiên!**
 
-- `http://localhost:5206`
-- `https://localhost:7259`
+---
 
-Swagger:
+## 🔧 Lệnh Hữu Ích
 
-- `http://localhost:5206/`
+```bash
+# Frontend
+npm run dev       # Chạy dev server
+npm run build     # Build production
+npm run lint      # Check TypeScript
 
-### Chay frontend
-
-```powershell
-cd Front_end
-npm install
-npm run dev
+# Backend
+dotnet run        # Chạy ứng dụng
+dotnet build      # Build
+dotnet clean      # Clean build
+dotnet restore    # Restore packages
 ```
 
-Mac dinh frontend:
+---
 
-- `http://localhost:5173`
+## 📝 Notes
 
-### Build
+- **SignalR**: Kết nối WebSocket tự động khi user đăng nhập
+- **Thông báo**: Lọc theo role (Admin + Manager chủ yếu)
+- **Permissions**: 2 cấp - Role + Permission chi tiết
+- **Database**: Không dùng EF Migrations, dùng SQL scripts
+- **Images**: Tất cả ảnh lưu trên Cloudinary
 
-Frontend:
+---
 
-```powershell
-cd Front_end
-npm run build
-```
+## 📄 License
 
-Backend:
-
-```powershell
-cd Back_end
-dotnet build
-```
-
-## 10. Luong xac thuc
-
-1. User dang nhap qua API auth.
-2. Backend tra ve `accessToken`.
-3. `refreshToken` duoc set qua cookie `HttpOnly`.
-4. Frontend luu access token va tu gan `Authorization: Bearer <token>`.
-5. Khi token het han, frontend tu goi endpoint refresh token.
-6. Route frontend va API backend deu duoc chan theo quyen.
-
-## 11. Notification realtime
-
-- SignalR hub: `/notificationHub`
-- Frontend nhan event `ReceiveNotification`
-- Notification duoc luu database va hien thi realtime tren giao dien admin/staff
-
-## 12. Cac module chinh
-
-### Nguoi dung va phan quyen
-
-- Quan ly user
-- Doi role
-- Khoa/mo khoa tai khoan
-- Quan ly role va permission
-
-### Phong va don phong
-
-- CRUD phong
-- CRUD hang phong
-- Tao hang loat phong
-- Don phong cho `Housekeeping`
-- Khi phong chuyen sang `Cleaning`, admin nhan thong bao realtime
-
-### Vat tu va that thoat
-
-- Quan ly vat tu
-- Dong bo vat tu theo phong
-- Bao hong/mat
-- Quan ly den bu
-- Upload anh minh chung
-
-### Noi dung
-
-- Diem tham quan
-- Tien ich
-- Bai viet va danh muc bai viet
-
-## 13. Tai khoan mau
-
-Database seed hien co tai khoan admin mau:
-
-- Email: `admin@hotel.com`
-- Password: `Admin@123`
-
-Neu seed cua ban da thay doi, kiem tra lai trong script SQL.
-
-## 14. Kiem tra nhanh sau khi cai
-
-1. Chay `00_MASTER_INSTALL.sql`
-2. Cap nhat `appsettings.json`
-3. Tao `Front_end/.env`
-4. Chay backend
-5. Chay frontend
-6. Dang nhap tai khoan admin
-7. Kiem tra cac man:
-- Dashboard
-- User Management
-- Rooms
-- Cleaning
-- Inventory
-- Damage / Loss
-- Role Management
-- Attractions
-
-## 15. Luu y bao mat
-
-Repo hien dang co dau hieu chua secret that trong `Back_end/appsettings.json`.
-
-Ban nen:
-
-- doi toan bo JWT secret
-- rotate Cloudinary credentials
-- rotate email app password
-- chuyen secret sang environment variables hoac user secrets
-
-Khong nen deploy truc tiep voi cau hinh hien tai neu chua thay secret.
-
-## 16. Ghi chu phat trien
-
-- Project hien dung SQL script thay vi EF migrations
-- Mot so file cu/thu nghiem van con trong repo
-- Trong qua trinh phat trien gan day, phan admin da duoc cap nhat them:
-- responsive layout
-- permission-based action visibility
-- cleaning flow cho `Housekeeping`
-- an trang booking khoi frontend
-- doi thao tac xoa user thanh khoa tai khoan
-
-## 17. De xuat cai thien tiep theo
-
-- them `appsettings.example.json`
-- them `Front_end/.env.example`
-- chuan hoa toan bo encoding tieng Viet trong repo
-- don cac file build tam khoi source tree
-- bo sung tai lieu seed role/permission
-- bo sung huong dan deploy
+**Private** - Phần mềm được phát triển cho mục đích nội bộ.

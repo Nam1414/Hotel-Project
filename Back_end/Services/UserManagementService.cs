@@ -121,14 +121,9 @@ public class UserManagementService : IUserManagementService
                 NotificationType.Security
             );
 
-            // Tìm các Roles có quyền MANAGE_USERS hoặc MANAGE_ROLES (bao gồm Admin)
-            var rolesWithAccess = await _context.Roles
-                .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
-                .Select(r => r.Name)
-                .ToListAsync();
-
+            // Gửi thông báo đến Admin và Manager
             await _notificationService.SendToRolesAndUserAsync(
-                rolesWithAccess,
+                new List<string> { "Admin", "Manager" },
                 user.Id,
                 NotificationAction.LockAccount,
                 NotificationType.Security,
@@ -138,13 +133,8 @@ public class UserManagementService : IUserManagementService
         // Gửi thông báo nếu tài khoản được mở khóa
         else if (!wasActive && dto.Status)
         {
-            var rolesWithAccess = await _context.Roles
-                .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
-                .Select(r => r.Name)
-                .ToListAsync();
-
             await _notificationService.SendToRolesAndUserAsync(
-                rolesWithAccess,
+                new List<string> { "Admin", "Manager" },
                 user.Id,
                 NotificationAction.UnlockAccount,
                 NotificationType.Account,
@@ -171,18 +161,13 @@ public class UserManagementService : IUserManagementService
 
         await _notificationService.SendNotificationAsync(
             user.Id,
-            "Tai khoan bi khoa",
-            "Tai khoan cua ban da bi khoa boi Admin. Vui long lien he quan tri vien de biet them chi tiet.",
+            "Tài khoản bị khóa",
+            "Tài khoản của bạn đã bị khóa bởi Admin. Vui lòng liên hệ quản trị viên để biết thêm chi tiết.",
             NotificationType.Security
         );
 
-        var rolesWithAccess = await _context.Roles
-            .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
-            .Select(r => r.Name)
-            .ToListAsync();
-
         await _notificationService.SendToRolesAndUserAsync(
-            rolesWithAccess,
+            new List<string> { "Admin", "Manager" },
             user.Id,
             NotificationAction.LockAccount,
             NotificationType.Security,
@@ -214,14 +199,9 @@ public class UserManagementService : IUserManagementService
             NotificationType.PermissionUpdate
         );
 
-        // Thông báo bằng Group Broadcast
-        var rolesWithAccess = await _context.Roles
-            .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
-            .Select(r => r.Name)
-            .ToListAsync();
-
+        // Thông báo bằng Group Broadcast đến Admin và Manager
         await _notificationService.SendToRolesAndUserAsync(
-            rolesWithAccess,
+            new List<string> { "Admin", "Manager" },
             userId,
             NotificationAction.ChangeRole,
             NotificationType.PermissionUpdate,

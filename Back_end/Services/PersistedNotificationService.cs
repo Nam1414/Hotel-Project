@@ -184,15 +184,15 @@ public class PersistedNotificationService : INotificationService
     {
         return action switch
         {
-            NotificationAction.CreateAccount => ("Tai khoan moi", $"Tai khoan {actorName} da duoc them vao he thong"),
-            NotificationAction.LockAccount => ("Tai khoan bi khoa", $"Tai khoan {actorName} da bi vo hieu hoa"),
-            NotificationAction.ChangeRole => ("Cap nhat quyen han", $"Quyen cua {actorName} da duoc thay doi"),
-            NotificationAction.UnlockAccount => ("Tai khoan da kich hoat", $"Tai khoan {actorName} da duoc kich hoat tro lai"),
-            NotificationAction.ResetPassword => ("Cap nhat mat khau", $"Mat khau cua {actorName} da duoc dat lai"),
-            NotificationAction.CheckIn => ("Check-in phong", $"Khach hang {actorName} da check-in thanh cong"),
-            NotificationAction.CheckOut => ("Check-out phong", $"Khach hang {actorName} da check-out thanh cong"),
-            NotificationAction.UpdateRolePermissions => ("Cap nhat quyen he thong", $"Quyen han cua nhom '{actorName}' vua duoc thay doi"),
-            _ => ("Thong bao", $"Co cap nhat moi lien quan den {actorName}")
+            NotificationAction.CreateAccount => ("Tài khoản mới", $"Tài khoản {actorName} đã được thêm vào hệ thống"),
+            NotificationAction.LockAccount => ("Tài khoản bị khóa", $"Tài khoản {actorName} đã bị vô hiệu hóa"),
+            NotificationAction.ChangeRole => ("Cập nhật quyền hạn", $"Quyền của {actorName} đã được thay đổi"),
+            NotificationAction.UnlockAccount => ("Tài khoản đã kích hoạt", $"Tài khoản {actorName} đã được kích hoạt trở lại"),
+            NotificationAction.ResetPassword => ("Cập nhật mật khẩu", $"Mật khẩu của {actorName} đã được đặt lại"),
+            NotificationAction.CheckIn => ("Check-in phòng", $"Khách hàng {actorName} đã check-in thành công"),
+            NotificationAction.CheckOut => ("Check-out phòng", $"Khách hàng {actorName} đã check-out thành công"),
+            NotificationAction.UpdateRolePermissions => ("Cập nhật quyền hệ thống", $"Quyền hạn của nhóm '{actorName}' vừa được thay đổi"),
+            _ => ("Thông báo", $"Có cập nhật mới liên quan đến {actorName}")
         };
     }
 }

@@ -169,14 +169,9 @@ public class RolesController : ControllerBase
             // 1. Notify affected users in the role
             await _notificationService.SendToRoleAsync(dto.RoleId, "Cập nhật quyền hạn nhóm", $"Quyền [{permissionName}] đã được thêm vào nhóm [{roleName}]", NotificationType.PermissionUpdate);
             
-            // 2. Notify users with MANAGE_USERS or MANAGE_ROLES (bao gồm cả Admin)
-            var rolesWithAccess = await _context.Roles
-                .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
-                .Select(r => r.Name)
-                .ToListAsync();
-
+            // 2. Notify Admin and Manager roles
             await _notificationService.SendToRolesAndUserAsync(
-                rolesWithAccess,
+                new List<string> { "Admin", "Manager" },
                 null,
                 HotelManagementAPI.Enums.NotificationAction.UpdateRolePermissions,
                 NotificationType.PermissionUpdate,
@@ -210,14 +205,9 @@ public class RolesController : ControllerBase
             // 1. Notify affected users
             await _notificationService.SendToRoleAsync(dto.RoleId, "Cập nhật quyền hạn nhóm", $"Quyền [{permissionName}] đã bị gỡ khỏi nhóm [{roleName}]", NotificationType.PermissionUpdate);
             
-            // 2. Notify users with MANAGE_USERS or MANAGE_ROLES (bao gồm cả Admin)
-            var rolesWithAccess = await _context.Roles
-                .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
-                .Select(r => r.Name)
-                .ToListAsync();
-                
+            // 2. Notify Admin and Manager roles
             await _notificationService.SendToRolesAndUserAsync(
-                rolesWithAccess,
+                new List<string> { "Admin", "Manager" },
                 null, 
                 HotelManagementAPI.Enums.NotificationAction.UpdateRolePermissions,
                 NotificationType.PermissionUpdate,
