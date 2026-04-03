@@ -22,13 +22,15 @@ const MainLayout: React.FC = () => {
     navigate('/login');
   };
 
+  const closeMobileMenu = () => setIsMenuOpen(false);
+
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDarkMode ? 'dark' : ''} bg-[var(--bg-main)] text-[var(--text-body)]`}>
       <header className="sticky top-0 z-50 bg-[var(--card-bg)]/80 backdrop-blur-lg border-b border-[var(--border-color)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center">
-              <Link to="/" className="text-2xl font-display font-black text-primary tracking-widest">
+          <div className="flex justify-between items-center gap-4 h-20">
+            <div className="flex items-center min-w-0">
+              <Link to="/" className="text-xl sm:text-2xl font-display font-black text-primary tracking-[0.25em] sm:tracking-widest">
                 KANT
               </Link>
             </div>
@@ -74,7 +76,14 @@ const MainLayout: React.FC = () => {
               )}
             </div>
 
-            <div className="md:hidden">
+            <div className="md:hidden flex items-center gap-2">
+              <button
+                onClick={toggleTheme}
+                className="p-2.5 rounded-xl border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-primary/5 transition-all shadow-sm"
+                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {isDarkMode ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} className="text-indigo-500" />}
+              </button>
               <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-500 p-2">
                 {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
@@ -91,13 +100,28 @@ const MainLayout: React.FC = () => {
               className="md:hidden bg-white dark:bg-dark-base border-b border-gray-100 dark:border-white/5 overflow-hidden"
             >
               <div className="px-4 pt-2 pb-6 space-y-1">
-                <Link to="/" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">HOME</Link>
-                <Link to="/rooms" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ROOMS</Link>
-                <Link to="/services" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">SERVICES</Link>
-                <Link to="/about" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ABOUT</Link>
-                <Link to="/contact" className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">CONTACT</Link>
+                <Link to="/" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">HOME</Link>
+                <Link to="/rooms" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ROOMS</Link>
+                <Link to="/services" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">SERVICES</Link>
+                <Link to="/about" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ABOUT</Link>
+                <Link to="/contact" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">CONTACT</Link>
+                {isAuthenticated && (
+                  <>
+                    {(user?.role === 'ADMIN' || user?.role === 'STAFF') && (
+                      <Link to="/admin" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">
+                        DASHBOARD
+                      </Link>
+                    )}
+                    <Link to="/profile" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">
+                      PROFILE
+                    </Link>
+                    <button onClick={handleLogout} className="block w-full text-left px-3 py-4 text-xs font-bold text-red-400 tracking-widest">
+                      LOGOUT
+                    </button>
+                  </>
+                )}
                 {!isAuthenticated && (
-                  <Link to="/login" className="block px-3 py-4 text-xs font-bold text-primary tracking-widest">LOGIN</Link>
+                  <Link to="/login" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-primary tracking-widest">LOGIN</Link>
                 )}
               </div>
             </motion.div>

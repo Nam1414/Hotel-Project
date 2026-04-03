@@ -5,6 +5,7 @@ import {
   LayoutDashboard, 
   CalendarDays, 
   Bed, 
+  ClipboardList,
   Search, 
   LogOut, 
   User,
@@ -23,11 +24,15 @@ const StaffLayout: React.FC = () => {
   const dispatch = useDispatch();
   const { user } = useSelector((state: RootState) => state.auth);
 
-  const menuItems = [
-    { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/staff' },
-    { icon: <CalendarDays size={20} />, label: 'Bookings', path: '/staff/bookings' },
-    { icon: <Bed size={20} />, label: 'Rooms', path: '/staff/rooms' },
-  ];
+  const isHousekeeping = user?.role === 'Housekeeping';
+
+  const menuItems = isHousekeeping
+    ? [{ icon: <ClipboardList size={20} />, label: 'Cleaning', path: '/staff/cleaning' }]
+    : [
+        { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/staff' },
+        { icon: <CalendarDays size={20} />, label: 'Bookings', path: '/staff/bookings' },
+        { icon: <Bed size={20} />, label: 'Rooms', path: '/staff/rooms' },
+      ];
 
   const handleLogout = () => {
     dispatch(logout());

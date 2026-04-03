@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bed,
-  CalendarCheck,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -34,13 +33,6 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/admin', permissions: ['VIEW_DASHBOARD'] },
   { icon: UserCircle, label: 'Profile', path: '/admin/profile', activePaths: ['/admin/profile'] },
-  {
-    icon: CalendarCheck,
-    label: 'Dat phong',
-    path: '/admin/bookings',
-    permissions: ['MANAGE_BOOKINGS'],
-    activePaths: ['/admin/bookings'],
-  },
   { icon: Users, label: 'Người dùng', path: '/admin/users', permissions: ['MANAGE_USERS'] },
   {
     icon: Bed,

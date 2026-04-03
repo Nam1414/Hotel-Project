@@ -29,12 +29,17 @@ const AdminLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { requestPermission } = useNotification();
 
   useEffect(() => {
     requestPermission();
   }, [requestPermission]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
@@ -79,13 +84,48 @@ const AdminLayout: React.FC = () => {
     </div>
   );
 
+  const renderNav = () => (
+    <>
+      <nav className="flex-grow py-6 px-4 space-y-2 overflow-y-auto">
+        {filteredMenu.map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group",
+                isActive
+                  ? "bg-primary text-dark-base shadow-lg shadow-primary/20"
+                  : "text-gray-400 hover:bg-white/5 hover:text-primary"
+              )}
+            >
+              <Icon size={20} className={cn(isActive ? "text-dark-base" : "group-hover:text-primary")} />
+              {!isCollapsed && <span className="font-medium">{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-4 border-t border-white/5">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-400/10 transition-all"
+        >
+          <LogOut size={20} />
+          {!isCollapsed && <span className="font-medium">Logout</span>}
+        </button>
+      </div>
+    </>
+  );
+
   return (
-    <div className="flex h-screen bg-dark-base overflow-hidden">
-      {/* Sidebar */}
+    <div className="flex min-h-screen bg-dark-base overflow-hidden">
       <motion.aside
         initial={false}
         animate={{ width: isCollapsed ? 80 : 280 }}
-        className="relative bg-dark-navy border-r border-white/5 flex flex-col z-30"
+        className="relative hidden lg:flex bg-dark-navy border-r border-white/5 flex-col z-30"
       >
         <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
           {!isCollapsed && (
@@ -99,47 +139,52 @@ const AdminLayout: React.FC = () => {
           </button>
         </div>
 
-        <nav className="flex-grow py-6 px-4 space-y-2 overflow-y-auto">
-          {filteredMenu.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-                  isActive 
-                    ? "bg-primary text-dark-base shadow-lg shadow-primary/20" 
-                    : "text-gray-400 hover:bg-white/5 hover:text-primary"
-                )}
-              >
-                <Icon size={20} className={cn(isActive ? "text-dark-base" : "group-hover:text-primary")} />
-                {!isCollapsed && <span className="font-medium">{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 border-t border-white/5">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-400/10 transition-all"
-          >
-            <LogOut size={20} />
-            {!isCollapsed && <span className="font-medium">Logout</span>}
-          </button>
-        </div>
+        {renderNav()}
       </motion.aside>
 
-      {/* Main Content */}
-      <div className="flex-grow flex flex-col overflow-hidden">
-        <header className="h-20 bg-dark-navy/50 backdrop-blur-lg border-b border-white/5 flex items-center justify-between px-8 z-20">
-          <h1 className="text-xl font-display font-semibold text-white">
-            {filteredMenu.find(item => item.path === location.pathname)?.label || 'Dashboard'}
-          </h1>
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
-          <div className="flex items-center space-x-6">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-[280px] bg-dark-navy border-r border-white/5 flex flex-col transition-transform duration-300 lg:hidden",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
+          <Link to="/" className="text-xl font-display font-bold text-primary tracking-widest">KANT</Link>
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="p-2 rounded-lg hover:bg-white/5 text-primary transition-colors"
+            aria-label="Close navigation"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        </div>
+        {renderNav()}
+      </aside>
+
+      <div className="flex-grow flex flex-col overflow-hidden">
+        <header className="min-h-20 bg-dark-navy/50 backdrop-blur-lg border-b border-white/5 flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 z-20">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-lg border border-white/10 text-primary hover:bg-white/5 transition-colors"
+              aria-label="Open navigation"
+            >
+              <LayoutDashboard size={18} />
+            </button>
+            <h1 className="text-lg sm:text-xl font-display font-semibold text-white truncate">
+            {filteredMenu.find(item => item.path === location.pathname)?.label || 'Dashboard'}
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3 sm:gap-6">
             <Popover 
               content={notificationContent} 
               title={
@@ -161,7 +206,7 @@ const AdminLayout: React.FC = () => {
                 </Badge>
               </button>
             </Popover>
-            <div className="flex items-center space-x-3 pl-6 border-l border-white/10">
+            <div className="flex items-center gap-3 pl-3 sm:pl-6 border-l border-white/10">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-white">{user?.name}</p>
                 <p className="text-xs text-primary font-medium">{user?.role}</p>
@@ -173,7 +218,7 @@ const AdminLayout: React.FC = () => {
           </div>
         </header>
 
-        <main className="flex-grow overflow-y-auto p-8 custom-scrollbar">
+        <main className="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
           <Outlet />
         </main>
       </div>

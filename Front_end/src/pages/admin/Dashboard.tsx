@@ -92,6 +92,7 @@ const Dashboard: React.FC = () => {
         <Col xs={24} xl={15}>
           <Card className="glass-card" title={<span style={{ color: '#fff' }}>Phòng cần chú ý</span>}>
             <Table
+              className="responsive-table"
               rowKey="id"
               loading={loading}
               dataSource={attentionRooms}
@@ -145,7 +146,7 @@ const Dashboard: React.FC = () => {
                     title={<span style={{ color: '#fff' }}>{item.title}</span>}
                     description={
                       <div>
-                        <div style={{ color: '#9ca3af', marginBottom: 4 }}>{item.content}</div>
+                        <div style={{ color: '#9ca3af', marginBottom: 4, wordBreak: 'break-word' }}>{item.content}</div>
                         <small style={{ color: '#6b7280' }}>
                           {new Date(item.createdAt).toLocaleString('vi-VN')}
                         </small>

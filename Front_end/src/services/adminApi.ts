@@ -170,6 +170,14 @@ export const adminApi = {
     }
   ) => axiosClient.put(`/api/Rooms/${id}`, dto),
 
+  updateRoomCleaningStatus: async (
+    id: number,
+    dto: {
+      status: string;
+      cleaningStatus?: string;
+    }
+  ) => axiosClient.patch(`/api/Rooms/${id}/cleaning-status`, dto),
+
   deleteRoom: async (id: number) => axiosClient.delete(`/api/Rooms/${id}`),
 
   bulkCreateRooms: async (dto: {

@@ -1,6 +1,6 @@
 // @ts-nocheck
-import React, { useEffect, useState } from 'react';
-import { App, Button, Card as AntCard, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import { App, Button, Card as AntCard, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
 import { Check, ImagePlus, Plus, X } from 'lucide-react';
 import { adminApi, DamageDto, EquipmentDto, RoomDto, RoomInventoryDto } from '../../services/adminApi';
 
@@ -36,6 +36,21 @@ const DamageLossPage: React.FC = () => {
   useEffect(() => {
     loadData(filters);
   }, []);
+
+  const summary = useMemo(() => {
+    const totalIncidents = damages.length;
+    const totalCompensation = damages.reduce((sum, item) => sum + (Number(item.penaltyAmount) || 0), 0);
+    const latestUpdatedAt = damages
+      .map((item) => item.createdAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b as string).getTime() - new Date(a as string).getTime())[0];
+
+    return {
+      totalIncidents,
+      totalCompensation,
+      latestUpdatedAt: latestUpdatedAt ? new Date(latestUpdatedAt).toLocaleString('vi-VN') : 'Chua co du lieu',
+    };
+  }, [damages]);
 
   const loadInventoryByRoom = async (roomId?: number) => {
     if (!roomId) {
@@ -103,6 +118,26 @@ const DamageLossPage: React.FC = () => {
           Ghi nhận mới
         </Button>
       </div>
+
+      <AntCard className="glass-card">
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={8}>
+            <AntCard className="glass-card">
+              <Statistic title="Tong su co" value={summary.totalIncidents} />
+            </AntCard>
+          </Col>
+          <Col xs={24} md={8}>
+            <AntCard className="glass-card">
+              <Statistic title="Tong tien den bu" value={summary.totalCompensation} formatter={(value) => `${Number(value || 0).toLocaleString('vi-VN')} d`} />
+            </AntCard>
+          </Col>
+          <Col xs={24} md={8}>
+            <AntCard className="glass-card">
+              <Statistic title="Cap nhat lan cuoi" value={summary.latestUpdatedAt} />
+            </AntCard>
+          </Col>
+        </Row>
+      </AntCard>
 
       <AntCard className="glass-card">
         <Row gutter={[16, 16]}>

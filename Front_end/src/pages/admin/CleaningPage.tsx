@@ -1,13 +1,16 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
 import { App, Button, Card as AntCard, Col, Row, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
 import { adminApi, RoomDto } from '../../services/adminApi';
+import { useAppSelector } from '../../hooks/useAppStore';
 
 const CleaningPage: React.FC = () => {
   const { message } = App.useApp();
+  const user = useAppSelector((state) => state.auth.user);
   const [rooms, setRooms] = useState<RoomDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const isHousekeeping = user?.role === 'Housekeeping';
 
   const loadData = async () => {
     setLoading(true);
@@ -15,7 +18,7 @@ const CleaningPage: React.FC = () => {
       const roomData = await adminApi.getRooms();
       setRooms(roomData);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể tải danh sách dọn phòng');
+      message.error(err.response?.data?.message || 'Khong the tai danh sach don phong');
     } finally {
       setLoading(false);
     }
@@ -40,15 +43,21 @@ const CleaningPage: React.FC = () => {
 
   const updateCleaning = async (record: RoomDto, nextCleaningStatus: string, nextStatus?: string) => {
     try {
-      await adminApi.updateRoom(record.id, {
-        ...record,
+      await adminApi.updateRoomCleaningStatus(record.id, {
         cleaningStatus: nextCleaningStatus,
         status: nextStatus || record.status,
       });
-      message.success('Đã cập nhật trạng thái dọn phòng');
+      message.success('Da cap nhat trang thai don phong');
       loadData();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể cập nhật trạng thái');
+      const statusCode = err.response?.status;
+      const fallbackMessage =
+        statusCode === 404
+          ? 'Backend chua nap endpoint cleaning-status. Hay restart API.'
+          : statusCode === 403
+            ? 'Tai khoan hien tai khong duoc phep cap nhat don phong.'
+            : 'Khong the cap nhat trang thai';
+      message.error(err.response?.data?.message || fallbackMessage);
     }
   };
 
@@ -56,27 +65,29 @@ const CleaningPage: React.FC = () => {
     <div className="space-y-6">
       <div>
         <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
-          Danh sách dọn phòng
+          {isHousekeeping ? 'Cong viec don phong' : 'Danh sach don phong'}
         </Typography.Title>
         <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
-          Theo dõi các phòng cần dọn và cập nhật trạng thái hoàn tất.
+          {isHousekeeping
+            ? 'Nhan vien buong phong cap nhat tien do xu ly phong theo thoi gian thuc.'
+            : 'Theo doi cac phong can don va cap nhat trang thai hoan tat.'}
         </Typography.Paragraph>
       </div>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={8}>
           <AntCard className="glass-card">
-            <Statistic title="Phòng bẩn" value={summary.dirty} />
+            <Statistic title="Phong ban" value={summary.dirty} />
           </AntCard>
         </Col>
         <Col xs={24} md={8}>
           <AntCard className="glass-card">
-            <Statistic title="Đang dọn" value={summary.cleaning} />
+            <Statistic title="Dang don" value={summary.cleaning} />
           </AntCard>
         </Col>
         <Col xs={24} md={8}>
           <AntCard className="glass-card">
-            <Statistic title="Sạch" value={summary.clean} />
+            <Statistic title="Sach" value={summary.clean} />
           </AntCard>
         </Col>
       </Row>
@@ -86,7 +97,7 @@ const CleaningPage: React.FC = () => {
           <Select
             allowClear
             style={{ width: 240 }}
-            placeholder="Lọc trạng thái vệ sinh"
+            placeholder="Loc trang thai ve sinh"
             value={statusFilter}
             options={['Clean', 'Dirty', 'Inspecting'].map((value) => ({ value, label: value }))}
             onChange={setStatusFilter}
@@ -97,7 +108,7 @@ const CleaningPage: React.FC = () => {
               loadData();
             }}
           >
-            Làm mới
+            Lam moi
           </Button>
         </Space>
       </AntCard>
@@ -109,27 +120,27 @@ const CleaningPage: React.FC = () => {
           dataSource={filteredRooms}
           scroll={{ x: 960 }}
           columns={[
-            { title: 'Phòng', dataIndex: 'roomNumber', render: (value: string) => <strong style={{ color: '#fff' }}>{value}</strong> },
-            { title: 'Hạng', dataIndex: 'roomTypeName', render: (value: string) => <Tag color="blue">{value}</Tag> },
-            { title: 'Tầng', dataIndex: 'floor', render: (value?: number | null) => value ?? '-' },
-            { title: 'Trạng thái phòng', dataIndex: 'status' },
+            { title: 'Phong', dataIndex: 'roomNumber', render: (value: string) => <strong style={{ color: '#fff' }}>{value}</strong> },
+            { title: 'Hang', dataIndex: 'roomTypeName', render: (value: string) => <Tag color="blue">{value}</Tag> },
+            { title: 'Tang', dataIndex: 'floor', render: (value?: number | null) => value ?? '-' },
+            { title: 'Trang thai phong', dataIndex: 'status' },
             {
-              title: 'Vệ sinh',
+              title: 'Ve sinh',
               dataIndex: 'cleaningStatus',
               render: (value?: string | null) => (
                 <Tag color={(value || '').toLowerCase() === 'dirty' ? 'red' : (value || '').toLowerCase() === 'clean' ? 'green' : 'gold'}>
-                  {value || 'Chưa cập nhật'}
+                  {value || 'Chua cap nhat'}
                 </Tag>
               ),
             },
             {
-              title: 'Cập nhật',
+              title: 'Cap nhat',
               render: (_, record: RoomDto) => (
                 <Space wrap>
-                  <Button onClick={() => updateCleaning(record, 'Dirty', 'Cleaning')}>Đánh dấu bẩn</Button>
-                  <Button onClick={() => updateCleaning(record, 'Inspecting', 'Cleaning')}>Đang dọn</Button>
+                  <Button onClick={() => updateCleaning(record, 'Dirty', 'Cleaning')}>Danh dau ban</Button>
+                  <Button onClick={() => updateCleaning(record, 'Inspecting', 'Cleaning')}>Dang don</Button>
                   <Button type="primary" onClick={() => updateCleaning(record, 'Clean', 'Available')}>
-                    Hoàn tất
+                    Hoan tat
                   </Button>
                 </Space>
               ),

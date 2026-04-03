@@ -19,8 +19,11 @@ import {
 } from 'antd';
 import { Bed, Boxes, Copy, Edit2, Plus, RefreshCcw, Trash2 } from 'lucide-react';
 import { adminApi, EquipmentDto, RoomDto, RoomInventoryDto, RoomTypeDto } from '../../services/adminApi';
+import { usePermission } from '../../hooks/useAppStore';
 
 const RoomsPage: React.FC = () => {
+  const canManageRooms = usePermission('MANAGE_ROOMS');
+  const canManageInventory = usePermission('MANAGE_INVENTORY');
   const { message } = App.useApp();
   const [rooms, setRooms] = useState<RoomDto[]>([]);
   const [roomTypes, setRoomTypes] = useState<RoomTypeDto[]>([]);
@@ -43,7 +46,7 @@ const RoomsPage: React.FC = () => {
       const [roomData, roomTypeData, equipmentData] = await Promise.all([
         adminApi.getRooms(nextFilters),
         adminApi.getRoomTypes(),
-        adminApi.getEquipments(),
+        canManageInventory ? adminApi.getEquipments() : Promise.resolve([]),
       ]);
       setRooms(roomData);
       setRoomTypes(roomTypeData);
@@ -221,12 +224,16 @@ const RoomsPage: React.FC = () => {
         </div>
 
         <Space wrap>
+          {canManageRooms && (
+            <>
           <Button icon={<Copy size={16} />} onClick={() => setOpenBulkForm(true)}>
             Tạo hàng loạt
           </Button>
           <Button type="primary" className="btn-gold" icon={<Plus size={16} />} onClick={openCreateRoom}>
             Thêm phòng
           </Button>
+            </>
+          )}
         </Space>
       </div>
 
@@ -313,17 +320,17 @@ const RoomsPage: React.FC = () => {
               title: 'Thao tác',
               render: (_, record: RoomDto) => (
                 <Space wrap>
-                  <Button icon={<Edit2 size={14} />} onClick={() => openEditRoom(record)}>
+                  {canManageRooms && <Button icon={<Edit2 size={14} />} onClick={() => openEditRoom(record)}>
                     Sửa
-                  </Button>
-                  <Button icon={<Boxes size={14} />} onClick={() => loadRoomInventory(record)}>
+                  </Button>}
+                  {canManageInventory && <Button icon={<Boxes size={14} />} onClick={() => loadRoomInventory(record)}>
                     Vật tư
-                  </Button>
-                  <Popconfirm title="Vô hiệu hóa phòng này?" onConfirm={() => deleteRoom(record.id)}>
+                  </Button>}
+                  {canManageRooms && <Popconfirm title="Vô hiệu hóa phòng này?" onConfirm={() => deleteRoom(record.id)}>
                     <Button danger icon={<Trash2 size={14} />}>
                       Xóa
                     </Button>
-                  </Popconfirm>
+                  </Popconfirm>}
                 </Space>
               ),
             },
@@ -377,7 +384,7 @@ const RoomsPage: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal open={openBulkForm} title="Tạo phòng hàng loạt" onCancel={() => setOpenBulkForm(false)} footer={null}>
+      <Modal open={openBulkForm && canManageRooms} title="Tạo phòng hàng loạt" onCancel={() => setOpenBulkForm(false)} footer={null}>
         <Form form={bulkForm} layout="vertical" onFinish={submitBulkCreate}>
           <Form.Item name="roomTypeId" label="Hạng phòng" rules={[{ required: true }]}>
             <Select options={roomTypeOptions} />
@@ -411,7 +418,7 @@ const RoomsPage: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal open={!!inventoryRoom} title={`Vật tư phòng ${inventoryRoom?.roomNumber || ''}`} onCancel={() => setInventoryRoom(null)} footer={null} width={1100}>
+      <Modal open={!!inventoryRoom && canManageInventory} title={`Vật tư phòng ${inventoryRoom?.roomNumber || ''}`} onCancel={() => setInventoryRoom(null)} footer={null} width={1100}>
         <div className="space-y-4">
           <Card>
             <Row gutter={[12, 12]}>

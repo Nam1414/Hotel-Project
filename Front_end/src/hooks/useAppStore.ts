@@ -16,6 +16,12 @@ export const usePermission = (permission: string): boolean => {
   return permissions.includes(permission);
 };
 
+/** Kiểm tra có ít nhất một permission trong danh sách */
+export const useAnyPermission = (requiredPermissions: string[]): boolean => {
+  const permissions = useAppSelector((s) => s.auth.user?.permissions ?? []);
+  return requiredPermissions.some((permission) => permissions.includes(permission));
+};
+
 /**
  * Hook kiểm tra role.
  * Ví dụ: const isAdmin = useRole('Admin');

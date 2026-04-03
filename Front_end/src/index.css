@@ -14,6 +14,10 @@
 }
 
 @layer base {
+  html {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-dark-base text-white font-sans antialiased;
   }
@@ -38,6 +42,12 @@
   
   .input-luxury {
     @apply bg-dark-soft border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all;
+  }
+
+  .responsive-table .ant-table-wrapper,
+  .responsive-table .ant-spin-nested-loading,
+  .responsive-table .ant-spin-container {
+    width: 100%;
   }
 }
 
@@ -67,10 +77,41 @@
 .ant-table-tbody > tr:hover > td {
   @apply !bg-white/5;
 }
+.ant-table-content {
+  overflow-x: auto;
+}
+.ant-card .ant-card-head {
+  @apply !px-4 sm:!px-6;
+}
+.ant-card .ant-card-body {
+  @apply !p-4 sm:!p-6;
+}
+.ant-modal .ant-modal-content {
+  @apply !mx-4 sm:!mx-0;
+}
+.ant-popover {
+  max-width: min(24rem, calc(100vw - 1rem));
+}
+.ant-statistic-content {
+  @apply !text-white;
+}
+.ant-statistic-title {
+  @apply !text-gray-400;
+}
 .ant-pagination-item-active {
   @apply !border-primary;
 }
 .ant-pagination-item-active a {
   @apply !text-primary;
+}
+
+@media (max-width: 640px) {
+  .ant-table-pagination {
+    justify-content: center !important;
+  }
+
+  .ant-list-item-meta {
+    align-items: flex-start;
+  }
 }
 

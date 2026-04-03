@@ -15,7 +15,6 @@ const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
 const UserManagement = lazy(() => import('../pages/admin/UserManagement'));
 const RoomsPage = lazy(() => import('../pages/admin/RoomsPage'));
 const RoomTypeManagement = lazy(() => import('../pages/admin/RoomTypeManagement'));
-const BookingManagement = lazy(() => import('../pages/admin/BookingManagement'));
 const RoleManagement = lazy(() => import('../pages/admin/RoleManagement'));
 const InventoryPage = lazy(() => import('../pages/admin/InventoryPage'));
 const DamageLossPage = lazy(() => import('../pages/admin/DamageLossPage'));
@@ -26,6 +25,7 @@ const UnauthorizedPage = lazy(() => import('../pages/errors/UnauthorizedPage'));
 
 const StaffLayout = lazy(() => import('../layouts/StaffLayout'));
 const StaffDashboard = lazy(() => import('../pages/staff/StaffDashboard'));
+const StaffCleaningPage = lazy(() => import('../pages/admin/CleaningPage'));
 
 const AppRoutes: React.FC = () => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
@@ -100,14 +100,6 @@ const AppRoutes: React.FC = () => {
             }
           />
           <Route
-            path="bookings"
-            element={
-              <RequirePermission allowedPermissions={['MANAGE_BOOKINGS']}>
-                <BookingManagement />
-              </RequirePermission>
-            }
-          />
-          <Route
             path="inventory"
             element={
               <RequirePermission allowedPermissions={['MANAGE_INVENTORY']}>
@@ -145,6 +137,18 @@ const AppRoutes: React.FC = () => {
               </RequirePermission>
             } 
           />
+        </Route>
+
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute requiredRole="Housekeeping">
+              <StaffLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/staff/cleaning" replace />} />
+          <Route path="cleaning" element={<StaffCleaningPage />} />
         </Route>
 
 

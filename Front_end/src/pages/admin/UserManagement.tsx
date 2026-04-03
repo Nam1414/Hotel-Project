@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { Table, Badge, Button, Input, Modal, Form, Select, Space, Tag, Popconfirm, App } from 'antd';
 import { Search, Plus, Edit2, Lock, Unlock, Trash2 } from 'lucide-react';
 import axiosClient from '../../api/axiosClient';
+import { usePermission } from '../../hooks/useAppStore';
 
 const UserManagement: React.FC = () => {
+  const canManageUsers = usePermission('MANAGE_USERS');
   const [users, setUsers] = useState<any[]>([]);
   const { message } = App.useApp();
   const [roles, setRoles] = useState<any[]>([]);
@@ -18,7 +20,7 @@ const UserManagement: React.FC = () => {
       const data: any = await axiosClient.get('/api/UserManagement');
       setUsers(data);
     } catch (err) {
-      message.error('Không thể lấy danh sách người dùng');
+      message.error('Khong the lay danh sach nguoi dung');
     } finally {
       setLoading(false);
     }
@@ -29,7 +31,7 @@ const UserManagement: React.FC = () => {
       const data: any = await axiosClient.get('/api/Roles');
       setRoles(data);
     } catch (err) {
-      console.error('Lỗi lấy danh sách Roles', err);
+      console.error('Loi lay danh sach Roles', err);
     }
   };
 
@@ -53,7 +55,7 @@ const UserManagement: React.FC = () => {
             });
         }
         
-        message.success('Cập nhật người dùng thành công!');
+        message.success('Cap nhat nguoi dung thanh cong');
       } else {
         await axiosClient.post('/api/UserManagement', {
           fullName: values.fullName,
@@ -61,13 +63,13 @@ const UserManagement: React.FC = () => {
           password: values.password,
           roleId: values.roleId,
         });
-        message.success('Tạo người dùng và gửi email thành công!');
+        message.success('Tao nguoi dung va gui email thanh cong');
       }
       setIsModalOpen(false);
       form.resetFields();
       fetchUsers();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Có lỗi xảy ra');
+      message.error(err.response?.data?.message || 'Co loi xay ra');
     }
   };
 
@@ -78,20 +80,20 @@ const UserManagement: React.FC = () => {
         phone,
         status: !currentStatus
       });
-      message.success(`${!currentStatus ? 'Mở khóa' : 'Khóa'} tài khoản thành công`);
+      message.success(`${!currentStatus ? 'Mo khoa' : 'Khoa'} tai khoan thanh cong`);
       fetchUsers();
     } catch (err) {
-      message.error('Lỗi khi thay đổi trạng thái');
+      message.error('Loi khi thay doi trang thai');
     }
   };
 
   const handleDeleteUser = async (id: number) => {
     try {
-      await axiosClient.delete(`/api/UserManagement/${id}`);
-      message.success('Xóa người dùng thành công');
+      const response: any = await axiosClient.delete(`/api/UserManagement/${id}`);
+      message.success(response?.message || 'Da khoa tai khoan thanh cong');
       fetchUsers();
-    } catch (err) {
-      message.error('Lỗi khi xóa người dùng');
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the khoa tai khoan');
     }
   };
 
@@ -148,7 +150,7 @@ const UserManagement: React.FC = () => {
             onClick={() => handleToggleStatus(record.id, record.status, record.fullName, record.phone)}
             icon={record.status ? <Lock size={16} className="text-red-400" /> : <Unlock size={16} className="text-green-400" />} 
           />
-          <Popconfirm title="Xóa người dùng này?" onConfirm={() => handleDeleteUser(record.id)}>
+          <Popconfirm title="Khoa tai khoan nay?" onConfirm={() => handleDeleteUser(record.id)}>
               <Button type="text" icon={<Trash2 size={16} className="text-gray-500 hover:text-red-500" />} />
           </Popconfirm>
         </Space>
@@ -157,8 +159,8 @@ const UserManagement: React.FC = () => {
   ];
 
   return (
-    <div className="glass-card p-8">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
+    <div className="glass-card p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 sm:gap-6 mb-8">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
           <Input placeholder="Search by name, email..." className="input-luxury pl-12" />
@@ -169,19 +171,21 @@ const UserManagement: React.FC = () => {
             form.resetFields();
             setIsModalOpen(true);
           }} 
-          className="btn-gold flex items-center space-x-2"
+          className="btn-gold flex items-center justify-center space-x-2 w-full md:w-auto"
         >
           <Plus size={20} />
           <span>ADD NEW USER</span>
         </button>
       </div>
 
-      <Table 
+      <Table
+        className="responsive-table"
         columns={columns} 
         dataSource={users} 
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 5 }}
+        scroll={{ x: 840 }}
       />
 
       <Modal
@@ -233,7 +237,7 @@ const UserManagement: React.FC = () => {
             </Form.Item>
           )}
 
-          <div className="flex gap-4 mt-8">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8">
             <Button onClick={() => setIsModalOpen(false)} className="flex-grow h-12 border-white/10 text-white hover:bg-white/5">CANCEL</Button>
             <Button type="primary" htmlType="submit" className="flex-grow h-12 bg-primary border-none text-dark-base font-bold">
               {editingUser ? 'SAVE CHANGES' : 'CREATE USER'}
@@ -246,3 +250,4 @@ const UserManagement: React.FC = () => {
 };
 
 export default UserManagement;
+

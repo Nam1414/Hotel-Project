@@ -2,7 +2,6 @@ import type { User } from '../store/slices/authSlice';
 
 const permissionLandingOrder: Array<{ permission: string; path: string }> = [
   { permission: 'MANAGE_USERS', path: '/admin/users' },
-  { permission: 'MANAGE_BOOKINGS', path: '/admin/bookings' },
   { permission: 'MANAGE_ROOMS', path: '/admin/rooms' },
   { permission: 'MANAGE_INVENTORY', path: '/admin/inventory' },
   { permission: 'MANAGE_ROLES', path: '/admin/roles' },
@@ -12,6 +11,10 @@ const permissionLandingOrder: Array<{ permission: string; path: string }> = [
 export const getAuthorizedHomePath = (user: User | null | undefined): string => {
   if (!user) {
     return '/login';
+  }
+
+  if ((user.role || '').toLowerCase() === 'housekeeping') {
+    return '/staff/cleaning';
   }
 
   const permissions = user.permissions ?? [];
@@ -35,10 +38,6 @@ export const canAccessPath = (user: User | null | undefined, path: string | null
     return permissions.includes('MANAGE_USERS');
   }
 
-  if (path.startsWith('/admin/bookings')) {
-    return permissions.includes('MANAGE_BOOKINGS');
-  }
-
   if (
     path.startsWith('/admin/rooms') ||
     path.startsWith('/admin/room-types') ||
@@ -53,6 +52,10 @@ export const canAccessPath = (user: User | null | undefined, path: string | null
 
   if (path.startsWith('/admin/roles')) {
     return permissions.includes('MANAGE_ROLES');
+  }
+
+  if (path.startsWith('/staff/cleaning')) {
+    return (user.role || '').toLowerCase() === 'housekeeping';
   }
 
   return true;

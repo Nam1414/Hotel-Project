@@ -161,8 +161,34 @@ public class UserManagementService : IUserManagementService
         var user = await _context.Users.FindAsync(id);
         if (user == null) return false;
 
-        _context.Users.Remove(user);
+        if (!user.Status)
+        {
+            return true;
+        }
+
+        user.Status = false;
         await _context.SaveChangesAsync();
+
+        await _notificationService.SendNotificationAsync(
+            user.Id,
+            "Tai khoan bi khoa",
+            "Tai khoan cua ban da bi khoa boi Admin. Vui long lien he quan tri vien de biet them chi tiet.",
+            NotificationType.Security
+        );
+
+        var rolesWithAccess = await _context.Roles
+            .Where(r => r.Name == "Admin" || r.RolePermissions.Any(rp => rp.Permission.Name == "MANAGE_USERS" || rp.Permission.Name == "MANAGE_ROLES"))
+            .Select(r => r.Name)
+            .ToListAsync();
+
+        await _notificationService.SendToRolesAndUserAsync(
+            rolesWithAccess,
+            user.Id,
+            NotificationAction.LockAccount,
+            NotificationType.Security,
+            user.FullName
+        );
+
         return true;
     }
 
