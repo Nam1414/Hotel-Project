@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { format, addHours } from 'date-fns';
+import { format } from 'date-fns';
 
 export interface NotificationItem {
   id: string | number;
@@ -18,12 +18,11 @@ interface NotificationState {
   connected: boolean;
 }
 
-// Chuyển đổi UTC thành giờ Việt Nam (UTC+7)
 const formatVietnamTime = (dateString: string): string => {
   try {
-    const utcDate = new Date(dateString);
-    const vietnamDate = addHours(utcDate, 7); // UTC+7 for Vietnam
-    return format(vietnamDate, 'HH:mm:ss dd/MM/yyyy');
+    const utcString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+    const localDate = new Date(utcString);
+    return format(localDate, 'HH:mm:ss dd/MM/yyyy');
   } catch (error) {
     return new Date(dateString).toLocaleString('vi-VN');
   }

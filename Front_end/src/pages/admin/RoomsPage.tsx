@@ -215,7 +215,7 @@ const RoomsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
+          <Typography.Title level={2} style={{ marginBottom: 0 }}>
             Quản lý phòng
           </Typography.Title>
           <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
@@ -297,7 +297,7 @@ const RoomsPage: React.FC = () => {
               render: (value: string) => (
                 <div className="flex items-center gap-2">
                   <Bed size={18} color="#C6A96B" />
-                  <strong style={{ color: '#fff' }}>{value}</strong>
+                  <strong>{value}</strong>
                 </div>
               ),
             },

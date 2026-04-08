@@ -1,4 +1,4 @@
-import { format, addHours } from 'date-fns';
+import { format } from 'date-fns';
 
 /**
  * Format UTC timestamp to Vietnam timezone (UTC+7)
@@ -7,9 +7,9 @@ import { format, addHours } from 'date-fns';
  */
 export const formatVietnamTime = (dateString: string): string => {
   try {
-    const utcDate = new Date(dateString);
-    const vietnamDate = addHours(utcDate, 7); // UTC+7 for Vietnam
-    return format(vietnamDate, 'HH:mm:ss dd/MM/yyyy');
+    const utcString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+    const localDate = new Date(utcString);
+    return format(localDate, 'HH:mm:ss dd/MM/yyyy');
   } catch (error) {
     return new Date(dateString).toLocaleString('vi-VN');
   }
@@ -22,9 +22,9 @@ export const formatVietnamTime = (dateString: string): string => {
  */
 export const formatVietnamTimeShort = (dateString: string): string => {
   try {
-    const utcDate = new Date(dateString);
-    const vietnamDate = addHours(utcDate, 7);
-    return format(vietnamDate, 'dd/MM/yyyy HH:mm');
+    const utcString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
+    const localDate = new Date(utcString);
+    return format(localDate, 'dd/MM/yyyy HH:mm');
   } catch (error) {
     return new Date(dateString).toLocaleString('vi-VN');
   }

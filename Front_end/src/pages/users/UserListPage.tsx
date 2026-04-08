@@ -415,7 +415,7 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontWeight: 600,
   },
-  tableWrap: { position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#fff' },
+  tableWrap: { position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8f0' },
   loadingOverlay: {
     position: 'absolute',
     inset: 0,

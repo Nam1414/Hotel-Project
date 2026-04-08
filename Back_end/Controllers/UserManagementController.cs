@@ -1,4 +1,4 @@
-﻿using HotelManagementAPI.DTOs;
+using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Middleware;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -57,6 +57,15 @@ public class UserManagementController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserDto dto)
     {
+        var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (currentUserIdClaim != null && int.TryParse(currentUserIdClaim.Value, out int currentUserId))
+        {
+            if (currentUserId == id && !dto.Status)
+            {
+                return BadRequest(new { message = "Bạn không thể tự khóa tài khoản của chính mình" });
+            }
+        }
+
         var result = await _userService.UpdateUserAsync(id, dto);
         if (result == null) return NotFound(new { message = "Người dùng không tồn tại" });
         return Ok(result);
@@ -65,6 +74,15 @@ public class UserManagementController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
+        var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (currentUserIdClaim != null && int.TryParse(currentUserIdClaim.Value, out int currentUserId))
+        {
+            if (currentUserId == id)
+            {
+                return BadRequest(new { message = "Bạn không thể tự khóa tài khoản của chính mình" });
+            }
+        }
+
         var result = await _userService.DeleteUserAsync(id);
         if (!result) return NotFound(new { message = "Người dùng không tồn tại" });
         return Ok(new { message = "Đã khóa tài khoản thành công" });

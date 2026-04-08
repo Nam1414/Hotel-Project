@@ -59,7 +59,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
+      <Typography.Title level={2} style={{ marginBottom: 0 }}>
         Dashboard vận hành
       </Typography.Title>
       <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
@@ -91,7 +91,7 @@ const Dashboard: React.FC = () => {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={15}>
-          <Card className="glass-card" title={<span style={{ color: '#fff' }}>Phòng cần chú ý</span>}>
+          <Card className="glass-card" title={<span>Phòng cần chú ý</span>}>
             <Table
               className="responsive-table"
               rowKey="id"
@@ -103,7 +103,7 @@ const Dashboard: React.FC = () => {
                 {
                   title: 'Số phòng',
                   dataIndex: 'roomNumber',
-                  render: (value: string) => <strong style={{ color: '#fff' }}>{value}</strong>,
+                  render: (value: string) => <strong>{value}</strong>,
                 },
                 {
                   title: 'Hạng',
@@ -135,7 +135,7 @@ const Dashboard: React.FC = () => {
         </Col>
 
         <Col xs={24} xl={9}>
-          <Card className="glass-card" title={<span style={{ color: '#fff' }}>Thông báo gần đây</span>}>
+          <Card className="glass-card" title={<span>Thông báo gần đây</span>}>
             <List
               loading={loading}
               dataSource={notifications.slice(0, 8)}
@@ -144,7 +144,7 @@ const Dashboard: React.FC = () => {
                 <List.Item>
                   <List.Item.Meta
                     avatar={<BellRing size={18} color="#C6A96B" />}
-                    title={<span style={{ color: '#fff' }}>{item.title}</span>}
+                    title={<span>{item.title}</span>}
                     description={
                       <div>
                         <div style={{ color: '#9ca3af', marginBottom: 4, wordBreak: 'break-word' }}>{item.content}</div>

@@ -109,6 +109,31 @@ public class UserManagementService : IUserManagementService
         user.Phone = dto.Phone;
         user.Status = dto.Status;
 
+        if (!string.IsNullOrEmpty(dto.Password))
+        {
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            
+            try
+            {
+                string subject = "Thông báo thay đổi mật khẩu";
+                string body = $@"
+                    <h3>Chào <b>{user.FullName}</b>!</h3>
+                    <p>Mật khẩu tài khoản của bạn trên hệ thống đã được thay đổi bởi Admin.</p>
+                    <p>Dưới đây là thông tin đăng nhập mới của bạn:</p>
+                    <ul>
+                        <li><b>Email:</b> {user.Email}</li>
+                        <li><b>Mật khẩu mới:</b> {dto.Password}</li>
+                    </ul>
+                    <p>Vui lòng đăng nhập bằng mật khẩu mới này.</p>";
+                
+                await _emailService.SendEmailAsync(user.Email, subject, body);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Lỗi gửi email: {ex.Message}");
+            }
+        }
+
         await _context.SaveChangesAsync();
 
         // Gửi thông báo nếu tài khoản bị khóa

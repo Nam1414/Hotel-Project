@@ -1,4 +1,4 @@
-﻿using HotelManagementAPI.Services;
+using HotelManagementAPI.Services;
 using HotelManagementAPI.Data;
 using HotelManagementAPI.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -317,6 +317,7 @@ public class EquipmentController : ControllerBase
                 d.Status,
                 d.BookingDetailId,
                 d.RoomInventoryId,
+                RoomNumber = d.RoomInventory != null && d.RoomInventory.Room != null ? d.RoomInventory.Room.RoomNumber : null,
                 d.CreatedAt,
             })
             .ToListAsync();

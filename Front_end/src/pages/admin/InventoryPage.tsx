@@ -149,7 +149,7 @@ const InventoryPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
+          <Typography.Title level={2} style={{ marginBottom: 0 }}>
             Quản lý vật tư
           </Typography.Title>
           <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
@@ -237,7 +237,7 @@ const InventoryPage: React.FC = () => {
           dataSource={items}
           scroll={{ x: 1200 }}
           columns={[
-            { title: 'Mã', dataIndex: 'itemCode', render: (value: string) => <strong style={{ color: '#fff' }}>{value}</strong> },
+            { title: 'Mã', dataIndex: 'itemCode', render: (value: string) => <strong>{value}</strong> },
             {
               title: 'Hình ảnh',
               dataIndex: 'imageUrl',

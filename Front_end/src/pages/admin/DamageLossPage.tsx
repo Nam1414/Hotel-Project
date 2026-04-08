@@ -1,8 +1,9 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card as AntCard, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
+import { App, Button, Card as AntCard, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, Image, Upload } from 'antd';
 import { Check, ImagePlus, Plus, X } from 'lucide-react';
 import { adminApi, DamageDto, EquipmentDto, RoomDto, RoomInventoryDto } from '../../services/adminApi';
+import { formatVietnamTime, formatVietnamTimeShort } from '../../utils/dateFormatter';
 
 const DamageLossPage: React.FC = () => {
   const { message } = App.useApp();
@@ -13,6 +14,7 @@ const DamageLossPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<{ status?: string; equipmentId?: number }>({});
   const [openForm, setOpenForm] = useState(false);
+  const [damageImage, setDamageImage] = useState<File | null>(null);
   const [form] = Form.useForm();
 
   const loadData = async (nextFilters = filters) => {
@@ -48,7 +50,7 @@ const DamageLossPage: React.FC = () => {
     return {
       totalIncidents,
       totalCompensation,
-      latestUpdatedAt: latestUpdatedAt ? new Date(latestUpdatedAt).toLocaleString('vi-VN') : 'Chua co du lieu',
+      latestUpdatedAt: latestUpdatedAt ? formatVietnamTime(latestUpdatedAt as string) : 'Chua co du lieu',
     };
   }, [damages]);
 
@@ -69,10 +71,23 @@ const DamageLossPage: React.FC = () => {
 
   const submitForm = async (values: any) => {
     try {
-      await adminApi.reportDamage(values);
-      message.success('Đã ghi nhận hỏng / mất');
+      const res = await adminApi.reportDamage(values) as any;
+      const damageId = res?.damageId || res?.data?.damageId;
+
+      if (damageId && damageImage) {
+        try {
+          await adminApi.uploadDamageImage(damageId, damageImage);
+          message.success('Đã ghi nhận hỏng / mất kèm ảnh');
+        } catch (uploadErr) {
+          message.warning('Đã ghi nhận hỏng / mất nhưng tải ảnh thất bại');
+        }
+      } else {
+        message.success('Đã ghi nhận hỏng / mất');
+      }
+
       setOpenForm(false);
       form.resetFields();
+      setDamageImage(null);
       setRoomInventory([]);
       loadData(filters);
     } catch (err: any) {
@@ -106,7 +121,7 @@ const DamageLossPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
+          <Typography.Title level={2} style={{ marginBottom: 0 }}>
             Hỏng / mất / đền bù
           </Typography.Title>
           <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
@@ -114,7 +129,11 @@ const DamageLossPage: React.FC = () => {
           </Typography.Paragraph>
         </div>
 
-        <Button type="primary" className="btn-gold" icon={<Plus size={16} />} onClick={() => setOpenForm(true)}>
+        <Button type="primary" className="btn-gold" icon={<Plus size={16} />} onClick={() => {
+          setOpenForm(true);
+          setDamageImage(null);
+          form.resetFields();
+        }}>
           Ghi nhận mới
         </Button>
       </div>
@@ -188,6 +207,7 @@ const DamageLossPage: React.FC = () => {
           scroll={{ x: 1100 }}
           columns={[
             { title: 'Vật tư', dataIndex: 'equipmentName' },
+            { title: 'Phòng', dataIndex: 'roomNumber', render: (val: string) => val ? <strong>{val}</strong> : '-' },
             { title: 'Mã', dataIndex: 'equipmentCode' },
             { title: 'Số lượng', dataIndex: 'quantity' },
             { title: 'Đền bù', dataIndex: 'penaltyAmount', render: (value: number) => value.toLocaleString('vi-VN') + ' đ' },
@@ -196,6 +216,11 @@ const DamageLossPage: React.FC = () => {
               title: 'Trạng thái',
               dataIndex: 'status',
               render: (value: string) => <Tag color={value === 'confirmed' ? 'green' : value === 'cancelled' ? 'red' : 'gold'}>{value}</Tag>,
+            },
+            {
+              title: 'Thời gian',
+              dataIndex: 'createdAt',
+              render: (value: string) => value ? formatVietnamTimeShort(value) : '-',
             },
             {
               title: 'Thao tác',
@@ -211,10 +236,17 @@ const DamageLossPage: React.FC = () => {
                       </Button>
                     </>
                   ) : null}
-                  <label style={{ cursor: 'pointer' }}>
-                    <input type="file" hidden accept="image/*" onChange={(event) => uploadDamageImage(record.id, event.target.files?.[0])} />
-                    <Button icon={<ImagePlus size={14} />}>Ảnh</Button>
-                  </label>
+                  {record.imageUrl ? (
+                    <Image src={record.imageUrl} width={32} height={32} style={{ objectFit: 'cover', borderRadius: 4 }} />
+                  ) : null}
+                  <Upload 
+                    showUploadList={false} 
+                    customRequest={({ file }) => uploadDamageImage(record.id, file as File)}
+                  >
+                    <Button icon={<ImagePlus size={14} />}>
+                      {record.imageUrl ? 'Đổi ảnh' : 'Tải lên'}
+                    </Button>
+                  </Upload>
                 </Space>
               ),
             },
@@ -247,6 +279,18 @@ const DamageLossPage: React.FC = () => {
           </Form.Item>
           <Form.Item name="description" label="Mô tả">
             <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item label="Ảnh minh chứng">
+            <Upload 
+              beforeUpload={(file) => {
+                setDamageImage(file);
+                return false;
+              }}
+              maxCount={1}
+              onRemove={() => setDamageImage(null)}
+            >
+              <Button icon={<ImagePlus size={16} />}>Chọn ảnh đính kèm</Button>
+            </Upload>
           </Form.Item>
           <div className="flex justify-end gap-3">
             <Button onClick={() => setOpenForm(false)}>Hủy</Button>

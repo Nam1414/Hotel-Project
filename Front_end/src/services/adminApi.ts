@@ -104,6 +104,7 @@ export interface DamageDto {
   status: 'pending' | 'confirmed' | 'cancelled' | string;
   bookingDetailId?: number | null;
   roomInventoryId?: number | null;
+  roomNumber?: string | null;
   createdAt?: string | null;
 }
 

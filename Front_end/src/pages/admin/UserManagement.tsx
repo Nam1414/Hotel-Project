@@ -1,8 +1,8 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Badge, Button, Input, Modal, Form, Select, Space, Tag, Popconfirm, App } from 'antd';
 import { Search, Plus, Edit2, Lock, Unlock, Trash2 } from 'lucide-react';
 import axiosClient from '../../api/axiosClient';
-import { usePermission } from '../../hooks/useAppStore';
+import { usePermission, useAppSelector } from '../../hooks/useAppStore';
 
 const UserManagement: React.FC = () => {
   const canManageUsers = usePermission('MANAGE_USERS');
@@ -13,6 +13,8 @@ const UserManagement: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [form] = Form.useForm();
+  
+  const currentUserId = useAppSelector((s) => s.auth.user?.id);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -46,7 +48,8 @@ const UserManagement: React.FC = () => {
         await axiosClient.put(`/api/UserManagement/${editingUser.id}`, {
           fullName: values.fullName,
           phone: values.phone,
-          status: values.status
+          status: values.status,
+          password: values.password || undefined
         });
         
         if (values.roleId && values.roleId !== editingUser.roleId) {
@@ -147,11 +150,12 @@ const UserManagement: React.FC = () => {
           />
           <Button 
             type="text" 
+            disabled={record.id.toString() === currentUserId?.toString()}
             onClick={() => handleToggleStatus(record.id, record.status, record.fullName, record.phone)}
-            icon={record.status ? <Lock size={16} className="text-red-400" /> : <Unlock size={16} className="text-green-400" />} 
+            icon={record.status ? <Lock size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-red-400'} /> : <Unlock size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-green-400'} />} 
           />
-          <Popconfirm title="Khoa tai khoan nay?" onConfirm={() => handleDeleteUser(record.id)}>
-              <Button type="text" icon={<Trash2 size={16} className="text-gray-500 hover:text-red-500" />} />
+          <Popconfirm title="Khoa tai khoan nay?" onConfirm={() => handleDeleteUser(record.id)} disabled={record.id.toString() === currentUserId?.toString()}>
+              <Button type="text" disabled={record.id.toString() === currentUserId?.toString()} icon={<Trash2 size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-gray-500 hover:text-red-500'} />} />
           </Popconfirm>
         </Space>
       ),
@@ -203,15 +207,14 @@ const UserManagement: React.FC = () => {
           </Form.Item>
           
           {!editingUser && (
-            <>
-              <Form.Item label={<span className="text-gray-400">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
-                <Input className="input-luxury" placeholder="Enter email" />
-              </Form.Item>
-              <Form.Item label={<span className="text-gray-400">Password</span>} name="password" rules={[{ required: true, min: 6 }]}>
-                <Input.Password className="input-luxury" placeholder="Enter password (min 6 chars)" />
-              </Form.Item>
-            </>
+            <Form.Item label={<span className="text-gray-400">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
+              <Input className="input-luxury" placeholder="Enter email" />
+            </Form.Item>
           )}
+
+          <Form.Item label={<span className="text-gray-400">Password</span>} name="password" rules={[{ required: !editingUser, min: 6 }]}>
+            <Input.Password className="input-luxury" placeholder={editingUser ? "Enter new password (leave blank to keep current)" : "Enter password (min 6 chars)"} />
+          </Form.Item>
 
           <Form.Item label={<span className="text-gray-400">Phone Number</span>} name="phone">
             <Input className="input-luxury" placeholder="Enter phone number" />
@@ -229,6 +232,7 @@ const UserManagement: React.FC = () => {
             <Form.Item label={<span className="text-gray-400">Status</span>} name="status">
               <Select 
                 className="luxury-select"
+                disabled={editingUser.id.toString() === currentUserId?.toString()}
                 options={[
                   { value: true, label: 'Active' },
                   { value: false, label: 'Locked' }

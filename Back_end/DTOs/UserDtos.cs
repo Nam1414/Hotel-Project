@@ -23,7 +23,8 @@ public record CreateUserDto(
 public record UpdateUserDto(
     string FullName,
     string? Phone,
-    bool Status
+    bool Status,
+    string? Password = null
 );
 
 public record ChangeRoleDto(

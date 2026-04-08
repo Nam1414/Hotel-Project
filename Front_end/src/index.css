@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #C6A96B;
   --color-primary-dark: #A6894B;
@@ -19,7 +21,7 @@
   }
 
   body {
-    @apply bg-dark-base text-white font-sans antialiased;
+    @apply bg-beige-luxury text-[#111827] dark:bg-dark-base dark:text-white font-sans antialiased transition-colors duration-300;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -37,11 +39,11 @@
   }
   
   .glass-card {
-    @apply bg-dark-navy/80 backdrop-blur-md border border-primary/20 rounded-2xl shadow-xl;
+    @apply bg-white/90 dark:bg-dark-navy/80 backdrop-blur-md border border-gray-200 dark:border-primary/20 rounded-2xl shadow-xl transition-colors duration-300;
   }
   
   .input-luxury {
-    @apply bg-dark-soft border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all;
+    @apply bg-white dark:bg-dark-soft border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all;
   }
 
   .responsive-table .ant-table-wrapper,
@@ -57,7 +59,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-dark-base;
+  @apply bg-gray-100 dark:bg-dark-base transition-colors duration-300;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -66,16 +68,16 @@
 
 /* Ant Design Overrides for Luxury Theme */
 .ant-table {
-  @apply !bg-transparent !text-white;
+  @apply !bg-transparent !text-gray-900 dark:!text-white;
 }
 .ant-table-thead > tr > th {
-  @apply !bg-dark-soft !text-primary !border-white/10 !font-display;
+  @apply !bg-gray-100 dark:!bg-dark-soft !text-primary-dark dark:!text-primary !border-gray-200 dark:!border-white/10 !font-display transition-colors duration-300;
 }
 .ant-table-tbody > tr > td {
-  @apply !border-white/10;
+  @apply !border-gray-200 dark:!border-white/10 transition-colors duration-300;
 }
 .ant-table-tbody > tr:hover > td {
-  @apply !bg-white/5;
+  @apply !bg-gray-50 dark:!bg-white/5;
 }
 .ant-table-content {
   overflow-x: auto;
@@ -93,10 +95,10 @@
   max-width: min(24rem, calc(100vw - 1rem));
 }
 .ant-statistic-content {
-  @apply !text-white;
+  @apply !text-gray-900 dark:!text-white;
 }
 .ant-statistic-title {
-  @apply !text-gray-400;
+  @apply !text-gray-500 dark:!text-gray-400;
 }
 .ant-pagination-item-active {
   @apply !border-primary;

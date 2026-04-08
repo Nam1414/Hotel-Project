@@ -106,7 +106,7 @@ const RoomTypeManagement: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
+          <Typography.Title level={2} style={{ marginBottom: 0 }}>
             Hạng phòng
           </Typography.Title>
           <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
@@ -129,7 +129,7 @@ const RoomTypeManagement: React.FC = () => {
             {
               title: 'Hạng phòng',
               dataIndex: 'name',
-              render: (value: string) => <strong style={{ color: '#fff' }}>{value}</strong>,
+              render: (value: string) => <strong>{value}</strong>,
             },
             {
               title: 'Giá cơ bản',
