@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Badge, Button, Input, Modal, Form, Select, Space, Tag, Popconfirm, App } from 'antd';
+﻿import React, { useEffect, useState } from 'react';
+import { Table, Button, Input, Modal, Form, Select, Space, Tag, Popconfirm, App, Tooltip } from 'antd';
 import { Search, Plus, Edit2, Lock, Unlock, Trash2 } from 'lucide-react';
 import axiosClient from '../../api/axiosClient';
 import { usePermission, useAppSelector } from '../../hooks/useAppStore';
@@ -7,13 +7,14 @@ import { usePermission, useAppSelector } from '../../hooks/useAppStore';
 const UserManagement: React.FC = () => {
   const canManageUsers = usePermission('MANAGE_USERS');
   const [users, setUsers] = useState<any[]>([]);
-  const { message } = App.useApp();
+  const { message, notification } = App.useApp();
   const [roles, setRoles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [togglingUserId, setTogglingUserId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [form] = Form.useForm();
-  
+
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
 
   const fetchUsers = async () => {
@@ -21,7 +22,7 @@ const UserManagement: React.FC = () => {
     try {
       const data: any = await axiosClient.get('/api/UserManagement');
       setUsers(data);
-    } catch (err) {
+    } catch {
       message.error('Không thể lấy danh sách người dùng');
     } finally {
       setLoading(false);
@@ -38,9 +39,13 @@ const UserManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchUsers();
-    fetchRoles();
+    void fetchUsers();
+    void fetchRoles();
   }, []);
+
+  const applyUserStatusLocally = (id: number, nextStatus: boolean) => {
+    setUsers((prev) => prev.map((user) => (user.id === id ? { ...user, status: nextStatus } : user)));
+  };
 
   const handleSaveUser = async (values: any) => {
     try {
@@ -49,15 +54,15 @@ const UserManagement: React.FC = () => {
           fullName: values.fullName,
           phone: values.phone,
           status: values.status,
-          password: values.password || undefined
+          password: values.password || undefined,
         });
-        
+
         if (values.roleId && values.roleId !== editingUser.roleId) {
-            await axiosClient.put(`/api/UserManagement/${editingUser.id}/change-role`, {
-                roleId: values.roleId
-            });
+          await axiosClient.put(`/api/UserManagement/${editingUser.id}/change-role`, {
+            roleId: values.roleId,
+          });
         }
-        
+
         message.success('Cập nhật người dùng thành công');
       } else {
         await axiosClient.post('/api/UserManagement', {
@@ -70,33 +75,57 @@ const UserManagement: React.FC = () => {
       }
       setIsModalOpen(false);
       form.resetFields();
-      fetchUsers();
+      void fetchUsers();
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Có lỗi xảy ra');
     }
   };
 
   const handleToggleStatus = async (id: number, currentStatus: boolean, fullName: string, phone: string) => {
+    const nextStatus = !currentStatus;
+    const previousUsers = users;
+
+    setTogglingUserId(id);
+    applyUserStatusLocally(id, nextStatus);
+
     try {
       await axiosClient.put(`/api/UserManagement/${id}`, {
         fullName,
         phone,
-        status: !currentStatus
+        status: nextStatus,
       });
-      message.success(`${!currentStatus ? 'Mở khóa' : 'Khóa'} tài khoản thành công`);
-      fetchUsers();
-    } catch (err) {
+
+      notification.success({
+        message: nextStatus ? 'Mở khóa thành công' : 'Khóa tài khoản thành công',
+        description: `${fullName} hiện ${nextStatus ? 'đã hoạt động trở lại' : 'đang ở trạng thái khóa'}.`,
+        placement: 'topRight',
+      });
+    } catch {
+      setUsers(previousUsers);
       message.error('Lỗi khi thay đổi trạng thái');
+    } finally {
+      setTogglingUserId(null);
     }
   };
 
-  const handleDeleteUser = async (id: number) => {
+  const handleDeleteUser = async (id: number, fullName: string) => {
+    const previousUsers = users;
+
+    setTogglingUserId(id);
+    applyUserStatusLocally(id, false);
+
     try {
-      const response: any = await axiosClient.delete(`/api/UserManagement/${id}`);
-      message.success(response?.message || 'Đã khóa tài khoản thành công');
-      fetchUsers();
+      await axiosClient.delete(`/api/UserManagement/${id}`);
+      notification.success({
+        message: 'Khóa tài khoản thành công',
+        description: `${fullName} đang ở trạng thái khóa.`,
+        placement: 'topRight',
+      });
     } catch (err: any) {
+      setUsers(previousUsers);
       message.error(err.response?.data?.message || 'Không thể khóa tài khoản');
+    } finally {
+      setTogglingUserId(null);
     }
   };
 
@@ -131,7 +160,9 @@ const UserManagement: React.FC = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status: boolean) => (
-        <Badge status={status ? 'success' : 'error'} text={<span className="text-gray-400 capitalize">{status ? 'Active' : 'Locked'}</span>} />
+        <Tag color={status ? 'green' : 'red'} className="min-w-[88px] text-center font-semibold">
+          {status ? 'Active' : 'Locked'}
+        </Tag>
       ),
     },
     {
@@ -139,23 +170,50 @@ const UserManagement: React.FC = () => {
       key: 'actions',
       render: (record: any) => (
         <Space>
-          <Button 
-            type="text" 
-            icon={<Edit2 size={16} className="text-primary" />} 
-            onClick={() => {
-              setEditingUser(record);
-              form.setFieldsValue(record);
-              setIsModalOpen(true);
-            }}
-          />
-          <Button 
-            type="text" 
+          <Tooltip title="Chỉnh sửa người dùng">
+            <Button
+              type="text"
+              icon={<Edit2 size={16} className="text-primary" />}
+              onClick={() => {
+                setEditingUser(record);
+                form.setFieldsValue(record);
+                setIsModalOpen(true);
+              }}
+            />
+          </Tooltip>
+          <Popconfirm
+            title={record.status ? 'Khóa tài khoản này?' : 'Mở khóa tài khoản này?'}
+            description={record.status ? 'Người dùng sẽ không thể đăng nhập cho tới khi được mở khóa.' : 'Người dùng sẽ có thể đăng nhập lại ngay.'}
+            okText={record.status ? 'Khóa' : 'Mở khóa'}
+            cancelText="Hủy"
+            onConfirm={() => handleToggleStatus(record.id, record.status, record.fullName, record.phone)}
             disabled={record.id.toString() === currentUserId?.toString()}
-            onClick={() => handleToggleStatus(record.id, record.status, record.fullName, record.phone)}
-            icon={record.status ? <Lock size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-red-400'} /> : <Unlock size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-green-400'} />} 
-          />
-          <Popconfirm title="Khoa tai khoan nay?" onConfirm={() => handleDeleteUser(record.id)} disabled={record.id.toString() === currentUserId?.toString()}>
-              <Button type="text" disabled={record.id.toString() === currentUserId?.toString()} icon={<Trash2 size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-gray-500 hover:text-red-500'} />} />
+          >
+            <Button
+              type="text"
+              disabled={record.id.toString() === currentUserId?.toString()}
+              loading={togglingUserId === record.id}
+              icon={
+                record.status ? (
+                  <Lock size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-red-400'} />
+                ) : (
+                  <Unlock size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-green-400'} />
+                )
+              }
+            />
+          </Popconfirm>
+          <Popconfirm
+            title="Khóa mềm tài khoản này?"
+            description="Trạng thái sẽ chuyển sang Locked ngay trên bảng."
+            onConfirm={() => handleDeleteUser(record.id, record.fullName)}
+            disabled={record.id.toString() === currentUserId?.toString()}
+          >
+            <Button
+              type="text"
+              disabled={record.id.toString() === currentUserId?.toString()}
+              loading={togglingUserId === record.id}
+              icon={<Trash2 size={16} className={record.id.toString() === currentUserId?.toString() ? 'text-gray-600' : 'text-gray-500 hover:text-red-500'} />}
+            />
           </Popconfirm>
         </Space>
       ),
@@ -169,23 +227,25 @@ const UserManagement: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
           <Input placeholder="Search by name, email..." className="input-luxury pl-12" />
         </div>
-        <button 
-          onClick={() => {
-            setEditingUser(null);
-            form.resetFields();
-            setIsModalOpen(true);
-          }} 
-          className="btn-gold flex items-center justify-center space-x-2 w-full md:w-auto"
-        >
-          <Plus size={20} />
-          <span>ADD NEW USER</span>
-        </button>
+        {canManageUsers ? (
+          <button
+            onClick={() => {
+              setEditingUser(null);
+              form.resetFields();
+              setIsModalOpen(true);
+            }}
+            className="btn-gold flex items-center justify-center space-x-2 w-full md:w-auto"
+          >
+            <Plus size={20} />
+            <span>ADD NEW USER</span>
+          </button>
+        ) : null}
       </div>
 
       <Table
         className="responsive-table"
-        columns={columns} 
-        dataSource={users} 
+        columns={columns}
+        dataSource={users}
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 5 }}
@@ -205,7 +265,7 @@ const UserManagement: React.FC = () => {
           <Form.Item label={<span className="text-gray-400">Full Name</span>} name="fullName" rules={[{ required: true }]}>
             <Input className="input-luxury" placeholder="Enter full name" />
           </Form.Item>
-          
+
           {!editingUser && (
             <Form.Item label={<span className="text-gray-400">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
               <Input className="input-luxury" placeholder="Enter email" />
@@ -213,7 +273,7 @@ const UserManagement: React.FC = () => {
           )}
 
           <Form.Item label={<span className="text-gray-400">Password</span>} name="password" rules={[{ required: !editingUser, min: 6 }]}>
-            <Input.Password className="input-luxury" placeholder={editingUser ? "Enter new password (leave blank to keep current)" : "Enter password (min 6 chars)"} />
+            <Input.Password className="input-luxury" placeholder={editingUser ? 'Enter new password (leave blank to keep current)' : 'Enter password (min 6 chars)'} />
           </Form.Item>
 
           <Form.Item label={<span className="text-gray-400">Phone Number</span>} name="phone">
@@ -221,28 +281,26 @@ const UserManagement: React.FC = () => {
           </Form.Item>
 
           <Form.Item label={<span className="text-gray-400">Role</span>} name="roleId" rules={[{ required: true }]}>
-            <Select 
-              className="luxury-select"
-              placeholder="Select a role"
-              options={roles.map(r => ({ value: r.id, label: r.name }))}
-            />
+            <Select className="luxury-select" placeholder="Select a role" options={roles.map((r) => ({ value: r.id, label: r.name }))} />
           </Form.Item>
 
           {editingUser && (
             <Form.Item label={<span className="text-gray-400">Status</span>} name="status">
-              <Select 
+              <Select
                 className="luxury-select"
                 disabled={editingUser.id.toString() === currentUserId?.toString()}
                 options={[
                   { value: true, label: 'Active' },
-                  { value: false, label: 'Locked' }
+                  { value: false, label: 'Locked' },
                 ]}
               />
             </Form.Item>
           )}
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8">
-            <Button onClick={() => setIsModalOpen(false)} className="flex-grow h-12 border-white/10 text-white hover:bg-white/5">CANCEL</Button>
+            <Button onClick={() => setIsModalOpen(false)} className="flex-grow h-12 border-white/10 text-white hover:bg-white/5">
+              CANCEL
+            </Button>
             <Button type="primary" htmlType="submit" className="flex-grow h-12 bg-primary border-none text-dark-base font-bold">
               {editingUser ? 'SAVE CHANGES' : 'CREATE USER'}
             </Button>
@@ -254,4 +312,3 @@ const UserManagement: React.FC = () => {
 };
 
 export default UserManagement;
-

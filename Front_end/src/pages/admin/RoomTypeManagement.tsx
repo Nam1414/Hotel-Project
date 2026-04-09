@@ -1,8 +1,9 @@
 // @ts-nocheck
 import React, { useEffect, useRef, useState } from 'react';
-import { App, Button, Card, Col, Form, Image, Input, InputNumber, Modal, Row, Space, Table, Tag, Typography } from 'antd';
-import { Edit2, ImagePlus, Plus, Star, Trash2 } from 'lucide-react';
+import { App, Button, Card, Checkbox, Col, Form, Image, Input, InputNumber, Modal, Row, Space, Table, Tag, Typography } from 'antd';
+import { Edit2, ImagePlus, Plus, Sparkles, Star, Trash2 } from 'lucide-react';
 import { adminApi, RoomTypeDto } from '../../services/adminApi';
+import { amenityApi, AmenityDto } from '../../services/amenityApi';
 
 const RoomTypeManagement: React.FC = () => {
   const { message } = App.useApp();
@@ -11,6 +12,10 @@ const RoomTypeManagement: React.FC = () => {
   const [editing, setEditing] = useState<RoomTypeDto | null>(null);
   const [openForm, setOpenForm] = useState(false);
   const [galleryTarget, setGalleryTarget] = useState<RoomTypeDto | null>(null);
+  const [amenityTarget, setAmenityTarget] = useState<RoomTypeDto | null>(null);
+  const [amenities, setAmenities] = useState<AmenityDto[]>([]);
+  const [selectedAmenityIds, setSelectedAmenityIds] = useState<number[]>([]);
+  const [newAmenityName, setNewAmenityName] = useState('');
   const [form] = Form.useForm();
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -26,8 +31,18 @@ const RoomTypeManagement: React.FC = () => {
     }
   };
 
+  const loadAmenities = async () => {
+    try {
+      const data = await amenityApi.getAll();
+      setAmenities(data);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the tai danh sach tien nghi');
+    }
+  };
+
   useEffect(() => {
     loadRoomTypes();
+    loadAmenities();
   }, []);
 
   const openCreate = () => {
@@ -99,6 +114,43 @@ const RoomTypeManagement: React.FC = () => {
       loadRoomTypes();
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Không thể xóa ảnh');
+    }
+  };
+
+  const openAmenities = (record: RoomTypeDto) => {
+    setAmenityTarget(record);
+    setSelectedAmenityIds((record.amenities || []).map((item) => item.id));
+    setNewAmenityName('');
+  };
+
+  const toggleAmenity = async (amenityId: number, checked: boolean) => {
+    if (!amenityTarget) return;
+
+    try {
+      if (checked) {
+        await amenityApi.linkToRoomType(amenityTarget.id, amenityId);
+        setSelectedAmenityIds((current) => [...current, amenityId]);
+      } else {
+        await amenityApi.unlinkFromRoomType(amenityTarget.id, amenityId);
+        setSelectedAmenityIds((current) => current.filter((id) => id !== amenityId));
+      }
+
+      await loadRoomTypes();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the cap nhat tien nghi');
+    }
+  };
+
+  const createAmenity = async () => {
+    if (!newAmenityName.trim()) return;
+
+    try {
+      await amenityApi.create({ name: newAmenityName.trim() });
+      setNewAmenityName('');
+      message.success('Da tao tien nghi moi');
+      await loadAmenities();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the tao tien nghi');
     }
   };
 

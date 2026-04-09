@@ -19,13 +19,21 @@ const StaffDashboard: React.FC = () => {
     const nextStatus = statuses[nextIndex];
     
     dispatch(updateRoomStatus({ roomId, status: nextStatus }));
-    notify('Room Updated', `Room status changed to ${nextStatus}`, 'update');
+    notify({
+      title: 'Room Updated',
+      content: `Room status changed to ${nextStatus}`,
+      type: 'update',
+    });
   };
 
   const handleConfirmCheckIn = (arrival: any) => {
     dispatch(confirmCheckIn(arrival.id));
     dispatch(updateRoomStatus({ roomId: rooms.find(r => r.number === arrival.roomNumber)?.id || '', status: 'OCCUPIED' }));
-    notify('Check-in Confirmed', `${arrival.guestName} has checked into Room ${arrival.roomNumber}`, 'booking');
+    notify({
+      title: 'Check-in Confirmed',
+      content: `${arrival.guestName} has checked into Room ${arrival.roomNumber}`,
+      type: 'booking',
+    });
   };
 
   return (

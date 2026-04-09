@@ -2,14 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bed,
+  CalendarClock,
+  CalendarDays,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ClipboardList,
+  DoorClosed,
+  FileText,
+  House,
   LayoutDashboard,
   Layers3,
   LogOut,
   MapPinned,
   Package,
+  ShoppingCart,
   ShieldCheck,
   TriangleAlert,
   UserCircle,
@@ -76,6 +84,27 @@ const menuItems: MenuItem[] = [
     permissions: ['MANAGE_INVENTORY'],
     activePaths: ['/admin/inventory/damages'],
   },
+  {
+    icon: CalendarClock,
+    label: 'Đặt phòng',
+    path: '/admin/bookings',
+    permissions: ['MANAGE_ROOMS'],
+    activePaths: ['/admin/bookings'],
+  },
+  {
+    icon: FileText,
+    label: 'Hóa đơn',
+    path: '/admin/invoices',
+    permissions: ['MANAGE_ROOMS'],
+    activePaths: ['/admin/invoices'],
+  },
+  {
+    icon: ShoppingCart,
+    label: 'Đặt dịch vụ',
+    path: '/admin/orders',
+    permissions: ['MANAGE_ROOMS'],
+    activePaths: ['/admin/orders'],
+  },
   { icon: ShieldCheck, label: 'Vai trò', path: '/admin/roles', permissions: ['MANAGE_ROLES'] },
 ];
 
@@ -86,6 +115,38 @@ const AdminShell: React.FC = () => {
   const { requestPermission } = useNotification();
   const { user } = useAppSelector((state) => state.auth);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(true);
+
+  const bookingMenuItems: MenuItem[] = [
+    {
+      icon: CalendarClock,
+      label: 'Tất cả booking',
+      path: '/admin/bookings/manage',
+      permissions: ['MANAGE_ROOMS'],
+      activePaths: ['/admin/bookings', '/admin/bookings/manage'],
+    },
+    {
+      icon: CalendarDays,
+      label: 'Khách đến hôm nay',
+      path: '/admin/bookings/arrivals',
+      permissions: ['MANAGE_ROOMS'],
+      activePaths: ['/admin/bookings/arrivals'],
+    },
+    {
+      icon: House,
+      label: 'Khách đang lưu trú',
+      path: '/admin/bookings/in-house',
+      permissions: ['MANAGE_ROOMS'],
+      activePaths: ['/admin/bookings/in-house'],
+    },
+    {
+      icon: DoorClosed,
+      label: 'Thủ tục trả phòng',
+      path: '/admin/bookings/check-out',
+      permissions: ['MANAGE_ROOMS'],
+      activePaths: ['/admin/bookings/check-out'],
+    },
+  ];
 
   useEffect(() => {
     requestPermission();
@@ -94,13 +155,33 @@ const AdminShell: React.FC = () => {
   const filteredMenu = useMemo(
     () =>
       menuItems.filter((item) =>
+        item.path !== '/admin/bookings' &&
+        (item.permissions ? item.permissions.some((permission) => user?.permissions?.includes(permission)) : true)
+      ),
+    [user?.permissions]
+  );
+
+  const filteredBookingMenu = useMemo(
+    () =>
+      bookingMenuItems.filter((item) =>
         item.permissions ? item.permissions.some((permission) => user?.permissions?.includes(permission)) : true
       ),
     [user?.permissions]
   );
 
+  const isBookingSectionActive = filteredBookingMenu.some((item) => {
+    const activePaths = item.activePaths ?? [item.path];
+    return activePaths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
+  });
+
+  useEffect(() => {
+    if (isBookingSectionActive) {
+      setIsBookingOpen(true);
+    }
+  }, [isBookingSectionActive]);
+
   const currentLabel =
-    filteredMenu.find((item) => {
+    [...filteredMenu, ...filteredBookingMenu].find((item) => {
       const activePaths = item.activePaths ?? [item.path];
       return activePaths.some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`));
     })?.label ?? 'Dashboard';
@@ -141,6 +222,55 @@ const AdminShell: React.FC = () => {
         </div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-6">
+          {filteredBookingMenu.length > 0 ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setIsBookingOpen((prev) => !prev)}
+                className={cn(
+                  'flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-all duration-200',
+                  isBookingSectionActive
+                    ? 'bg-primary/10 text-primary-dark dark:text-primary'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-primary-dark dark:hover:text-primary'
+                )}
+              >
+                <span className="flex items-center gap-3">
+                  <CalendarClock size={20} />
+                  {!isCollapsed ? <span className="font-medium">Quản lý Đặt phòng</span> : null}
+                </span>
+                {!isCollapsed ? (isBookingOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />) : null}
+              </button>
+
+              {!isCollapsed && isBookingOpen ? (
+                <div className="ml-3 space-y-1 border-l border-gray-200 pl-3 dark:border-white/10">
+                  {filteredBookingMenu.map((item) => {
+                    const Icon = item.icon;
+                    const activePaths = item.activePaths ?? [item.path];
+                    const isActive = activePaths.some(
+                      (path) => location.pathname === path || location.pathname.startsWith(`${path}/`)
+                    );
+
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={cn(
+                          'group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200',
+                          isActive
+                            ? 'bg-primary text-white dark:text-dark-base shadow-lg shadow-primary/20'
+                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-primary-dark dark:hover:text-primary'
+                        )}
+                      >
+                        <Icon size={18} className={cn(isActive ? 'text-white dark:text-dark-base' : 'group-hover:text-primary-dark dark:group-hover:text-primary')} />
+                        <span className="font-medium">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {filteredMenu.map((item) => {
             const Icon = item.icon;
             const activePaths = item.activePaths ?? [item.path];

@@ -2,9 +2,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../store';
-import { markAllAsRead, clearAll } from '../../store/slices/notificationSlice';
+import { markAllAsRead, clearAll, setNotifications } from '../../store/slices/notificationSlice';
 import NotificationItem from './NotificationItem';
-import { Trash2, CheckCheck } from 'lucide-react';
+import { Trash2, CheckCheck, Radio } from 'lucide-react';
+import { notificationApi } from '../../services/notificationApi';
 
 interface NotificationDropdownProps {
   isOpen: boolean;
@@ -12,8 +13,19 @@ interface NotificationDropdownProps {
 }
 
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
-  const { notifications, unreadCount } = useSelector((state: RootState) => state.notifications);
+  const { notifications, unreadCount, connected } = useSelector((state: RootState) => state.notifications);
   const dispatch = useDispatch();
+
+  const handleMarkAllAsRead = async () => {
+    dispatch(markAllAsRead());
+    try {
+      await notificationApi.markAllAsRead();
+      const refreshed = await notificationApi.getMine();
+      dispatch(setNotifications(refreshed));
+    } catch {
+      // Keep optimistic UI.
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -29,11 +41,17 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div>
                 <h3 className="font-bold text-gray-800">Notifications</h3>
-                <p className="text-xs text-gray-500">{unreadCount} unread messages</p>
+                <p className="text-xs text-gray-500 flex items-center gap-2">
+                  <span>{unreadCount} unread messages</span>
+                  <span className={`inline-flex items-center gap-1 ${connected ? 'text-emerald-600' : 'text-amber-500'}`}>
+                    <Radio size={12} />
+                    {connected ? 'Realtime on' : 'Polling fallback'}
+                  </span>
+                </p>
               </div>
               <div className="flex space-x-2">
                 <button 
-                  onClick={() => dispatch(markAllAsRead())}
+                  onClick={handleMarkAllAsRead}
                   className="p-2 text-gray-400 hover:text-primary transition-colors" 
                   title="Mark all as read"
                 >

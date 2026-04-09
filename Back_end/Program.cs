@@ -114,7 +114,9 @@ builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<INotificationService, PersistedNotificationService>();
 builder.Services.AddScoped<INotificationService, NotificationService>(); // Đăng ký NotificationService
 builder.Services.AddScoped<IEmailService, EmailService>(); // Đăng ký EmailService
-
+builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IVoucherService, VoucherService>();
 
 // =============================================
 // 5. CONTROLLERS
@@ -177,6 +179,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<INotificationService, PersistedNotificationService>();
 var app = builder.Build();
 
+await DatabaseSchemaInitializer.EnsureVoucherSchemaAsync(app.Services);
 await DatabaseSchemaInitializer.EnsureEquipmentDamageSchemaAsync(app.Services);
 
 // =============================================

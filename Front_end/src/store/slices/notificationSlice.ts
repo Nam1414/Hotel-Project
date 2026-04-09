@@ -40,7 +40,7 @@ const normalizeNotification = (raw: any): NotificationItem => {
     message: raw.message || `${title}${description ? `: ${description}` : ''}`,
     time: formatVietnamTime(createdAt),
     isRead: Boolean(raw.isRead ?? raw.IsRead),
-    type: raw.type || raw.Type || 'update',
+    type: String(raw.type || raw.Type || 'update').toLowerCase(),
     createdAt,
   };
 };
@@ -65,6 +65,7 @@ const notificationSlice = createSlice({
         isRead: false,
       });
 
+      state.notifications = state.notifications.filter((item) => String(item.id) !== String(newNotification.id));
       state.notifications.unshift(newNotification);
       state.unreadCount = countUnread(state.notifications);
     },
@@ -84,11 +85,14 @@ const notificationSlice = createSlice({
         description: action.payload.message,
       });
 
+      state.notifications = state.notifications.filter((item) => String(item.id) !== String(newNotification.id));
       state.notifications.unshift(newNotification);
       state.unreadCount = countUnread(state.notifications);
     },
     setNotifications: (state, action: PayloadAction<any[]>) => {
-      state.notifications = action.payload.map(normalizeNotification);
+      state.notifications = action.payload
+        .map(normalizeNotification)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       state.unreadCount = countUnread(state.notifications);
     },
     markAsRead: (state, action: PayloadAction<string | number>) => {

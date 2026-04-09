@@ -1,23 +1,35 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../store';
+import { useDispatch } from 'react-redux';
 import { markAsRead } from '../../store/slices/notificationSlice';
-import { Bell, CheckCircle2, Info, AlertCircle, MessageSquare, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock3, CreditCard, Info, MessageSquare, ShoppingBag, CalendarClock } from 'lucide-react';
+import { notificationApi } from '../../services/notificationApi';
 
 const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => {
   const dispatch = useDispatch();
+
+  const handleRead = async () => {
+    dispatch(markAsRead(notification.id));
+    try {
+      await notificationApi.markAsRead(notification.id);
+    } catch {
+      // Ignore network failure and keep local state responsive.
+    }
+  };
   
   const icons = {
-    booking: <CheckCircle2 className="text-green-500" size={18} />,
-    reminder: <Clock size={18} className="text-blue-500" />,
-    update: <Info className="text-yellow-500" size={18} />,
+    booking: <CalendarClock className="text-sky-600" size={18} />,
+    reminder: <Clock3 size={18} className="text-violet-500" />,
+    update: <Info className="text-amber-500" size={18} />,
     message: <MessageSquare className="text-primary" size={18} />,
+    payment: <CreditCard className="text-emerald-600" size={18} />,
+    service: <ShoppingBag className="text-rose-500" size={18} />,
+    warning: <AlertCircle size={18} className="text-red-500" />,
+    success: <CheckCircle2 className="text-green-500" size={18} />,
   };
 
   return (
     <div 
-      onClick={() => dispatch(markAsRead(notification.id))}
+      onClick={handleRead}
       className={`p-4 border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50 ${!notification.isRead ? 'bg-primary/5' : ''}`}
     >
       <div className="flex space-x-3">
@@ -34,6 +46,7 @@ const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => 
           <p className="text-xs text-gray-500 mt-1 line-clamp-2">
             {notification.description}
           </p>
+          {!notification.isRead ? <span className="mt-2 inline-flex h-2 w-2 rounded-full bg-primary" /> : null}
         </div>
       </div>
     </div>

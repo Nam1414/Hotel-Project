@@ -150,3 +150,24 @@ export const mockPosts: Post[] = [
     seoDescription: 'A guide to the best places to visit near GrandView Hotel.',
   },
 ];
+
+export const mockLossAndDamages = [
+  {
+    id: '1',
+    description: 'Broken lamp',
+    room: '101',
+    status: 'Pending',
+  },
+  {
+    id: '2',
+    description: 'Stained carpet',
+    room: '102',
+    status: 'Resolved',
+  },
+  {
+    id: '3',
+    description: 'Cracked window',
+    room: '201',
+    status: 'Unresolved',
+  },
+];

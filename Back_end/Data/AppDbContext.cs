@@ -27,6 +27,15 @@ public class AppDbContext : DbContext
     public DbSet<Equipment> Equipments { get; set; }
     public DbSet<Membership> Memberships { get; set; }
     public DbSet<LossAndDamage> LossAndDamages { get; set; }
+    public DbSet<Booking> Bookings { get; set; }
+    public DbSet<BookingDetail> BookingDetails { get; set; }
+    public DbSet<Invoice> Invoices { get; set; }
+    public DbSet<Payment> Payments { get; set; }
+    public DbSet<Voucher> Vouchers { get; set; }
+    public DbSet<ServiceCategory> ServiceCategories { get; set; }
+    public DbSet<Service> Services { get; set; }
+    public DbSet<OrderService> OrderServices { get; set; }
+    public DbSet<OrderServiceDetail> OrderServiceDetails { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -137,6 +146,68 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // ─── Booking → User ──────────────────────────────────────────────────────
+        modelBuilder.Entity<Booking>()
+            .HasOne(b => b.User)
+            .WithMany()
+            .HasForeignKey(b => b.UserId);
+
+        modelBuilder.Entity<Booking>()
+            .HasOne(b => b.Voucher)
+            .WithMany(v => v.Bookings)
+            .HasForeignKey(b => b.VoucherId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // ─── BookingDetail → Booking, Room, RoomType ─────────────────────────────
+        modelBuilder.Entity<BookingDetail>()
+            .HasOne(bd => bd.Booking)
+            .WithMany(b => b.BookingDetails)
+            .HasForeignKey(bd => bd.BookingId);
+
+        modelBuilder.Entity<BookingDetail>()
+            .HasOne(bd => bd.Room)
+            .WithMany()
+            .HasForeignKey(bd => bd.RoomId);
+
+        modelBuilder.Entity<BookingDetail>()
+            .HasOne(bd => bd.RoomType)
+            .WithMany()
+            .HasForeignKey(bd => bd.RoomTypeId);
+
+        // ─── Invoice → Booking ───────────────────────────────────────────────────
+        modelBuilder.Entity<Invoice>()
+            .HasOne(i => i.Booking)
+            .WithOne(b => b.Invoice)
+            .HasForeignKey<Invoice>(i => i.BookingId);
+
+        // ─── Payment → Invoice ───────────────────────────────────────────────────
+        modelBuilder.Entity<Payment>()
+            .HasOne(p => p.Invoice)
+            .WithMany(i => i.Payments)
+            .HasForeignKey(p => p.InvoiceId);
+
+        // ─── Services ──────────────────────────────────────────────────────
+        modelBuilder.Entity<Service>()
+            .HasOne(s => s.Category)
+            .WithMany(c => c.Services)
+            .HasForeignKey(s => s.CategoryId);
+
+        // ─── Order Services ────────────────────────────────────────────────
+        modelBuilder.Entity<OrderService>()
+            .HasOne(os => os.BookingDetail)
+            .WithMany()
+            .HasForeignKey(os => os.BookingDetailId);
+
+        modelBuilder.Entity<OrderServiceDetail>()
+            .HasOne(d => d.OrderService)
+            .WithMany(os => os.Details)
+            .HasForeignKey(d => d.OrderServiceId);
+
+        modelBuilder.Entity<OrderServiceDetail>()
+            .HasOne(d => d.Service)
+            .WithMany()
+            .HasForeignKey(d => d.ServiceId);
+
         // ─── Decimal precision ───────────────────────────────────────────────────
         modelBuilder.Entity<RoomType>()
             .Property(rt => rt.BasePrice)
@@ -176,6 +247,58 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<LossAndDamage>()
             .Property(ld => ld.PenaltyAmount)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<BookingDetail>()
+            .Property(bd => bd.PricePerNight)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.TotalRoomAmount)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.TotalServiceAmount)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.DiscountAmount)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.TaxAmount)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.FinalTotal)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Voucher>()
+            .Property(v => v.DiscountValue)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Voucher>()
+            .Property(v => v.MinBookingAmount)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Voucher>()
+            .Property(v => v.MaxDiscountAmount)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Payment>()
+            .Property(p => p.AmountPaid)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<Service>()
+            .Property(s => s.Price)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<OrderService>()
+            .Property(os => os.TotalAmount)
+            .HasColumnType("decimal(18, 2)");
+
+        modelBuilder.Entity<OrderServiceDetail>()
+            .Property(d => d.UnitPrice)
             .HasColumnType("decimal(18, 2)");
     }
 }

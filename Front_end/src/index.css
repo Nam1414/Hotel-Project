@@ -1,49 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Bricolage+Grotesque:opsz,wght@12..96,200;12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&display=swap');
 @import "tailwindcss";
-
-@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-primary: #C6A96B;
   --color-primary-dark: #A6894B;
   --color-gold-light: #E6C200;
-  --color-dark-base: #0B0B0C;
-  --color-dark-navy: #111827;
-  --color-dark-soft: #1F2937;
+  --color-dark-base: #0F172A;
+  --color-dark-navy: #1E293B;
+  --color-dark-soft: #334155;
   --color-beige-luxury: #F9F6F1;
   
-  --font-display: "Playfair Display", serif;
-  --font-sans: "Inter", sans-serif;
+  --font-display: "Bricolage Grotesque", sans-serif;
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Outfit", sans-serif;
 }
 
 @layer base {
+  :root {
+    --bg-main: #F9F6F1;
+    --text-title: #111827;
+    --text-body: #374151;
+    --text-muted: #6B7280;
+    --card-bg: #FFFFFF;
+    --border-color: #E5E7EB;
+  }
+
+  .dark {
+    --bg-main: #0F172A;
+    --text-title: #F9FAFB;
+    --text-body: #D1D5DB;
+    --text-muted: #9CA3AF;
+    --card-bg: #1E293B;
+    --border-color: #334155;
+  }
+
   html {
     overflow-x: hidden;
   }
 
   body {
-    @apply bg-beige-luxury text-[#111827] dark:bg-dark-base dark:text-white font-sans antialiased transition-colors duration-300;
+    @apply bg-[var(--bg-main)] text-[var(--text-body)] font-sans antialiased transition-colors duration-300 leading-[1.6];
   }
   
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-display;
+  h1, .h1 {
+    @apply font-display text-[var(--text-title)] font-extrabold tracking-tight leading-tight;
+  }
+  
+  h2, .h2 {
+    @apply font-display text-[var(--text-title)] font-bold tracking-tight leading-snug;
+  }
+
+  h3, .h3 {
+    @apply font-display text-[var(--text-title)] font-bold leading-normal;
+  }
+
+  .text-muted {
+    @apply text-[var(--text-muted)];
+  }
+
+  .text-title {
+    @apply text-[var(--text-title)];
   }
 }
 
 @layer components {
   .btn-gold {
-    @apply bg-gradient-to-br from-primary to-gold-light text-dark-base font-semibold px-6 py-2.5 rounded-lg transition-all duration-300 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] shadow-lg shadow-primary/20;
+    @apply bg-gradient-to-br from-primary to-gold-light text-white font-bold px-6 py-3 rounded-xl transition-all duration-300 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] shadow-lg shadow-primary/20 tracking-wider text-xs uppercase;
   }
   
   .btn-outline-gold {
-    @apply border border-primary text-primary px-6 py-2.5 rounded-lg transition-all duration-300 hover:bg-primary/10 active:scale-[0.98];
+    @apply border border-primary text-primary font-bold px-6 py-3 rounded-xl transition-all duration-300 hover:bg-primary/10 active:scale-[0.98] tracking-wider text-xs uppercase;
   }
   
   .glass-card {
-    @apply bg-white/90 dark:bg-dark-navy/80 backdrop-blur-md border border-gray-200 dark:border-primary/20 rounded-2xl shadow-xl transition-colors duration-300;
+    @apply bg-[var(--card-bg)] backdrop-blur-md border border-[var(--border-color)] rounded-2xl shadow-xl transition-all duration-300 p-6 md:p-8;
   }
   
   .input-luxury {
-    @apply bg-white dark:bg-dark-soft border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all;
+    @apply bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-[var(--text-body)] font-sans focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-[var(--text-muted)];
+  }
+
+  .admin-card {
+    @apply bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-6;
   }
 
   .responsive-table .ant-table-wrapper,
@@ -53,67 +91,46 @@
   }
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-dark-base transition-colors duration-300;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   @apply bg-primary/30 rounded-full hover:bg-primary/50 transition-colors;
 }
 
-/* Ant Design Overrides for Luxury Theme */
 .ant-table {
-  @apply !bg-transparent !text-gray-900 dark:!text-white;
+  @apply !bg-transparent !text-[var(--text-body)] !font-sans;
 }
 .ant-table-thead > tr > th {
-  @apply !bg-gray-100 dark:!bg-dark-soft !text-primary-dark dark:!text-primary !border-gray-200 dark:!border-white/10 !font-display transition-colors duration-300;
+  @apply !bg-slate-50 dark:!bg-slate-800/50 !text-primary !border-[var(--border-color)] !font-sans !font-semibold !py-4;
 }
 .ant-table-tbody > tr > td {
-  @apply !border-gray-200 dark:!border-white/10 transition-colors duration-300;
+  @apply !border-[var(--border-color)] !py-4;
 }
 .ant-table-tbody > tr:hover > td {
-  @apply !bg-gray-50 dark:!bg-white/5;
+  @apply !bg-primary/5;
 }
-.ant-table-content {
-  overflow-x: auto;
+.ant-form-item-label > label {
+  @apply !text-[var(--text-body)] !font-medium !text-sm;
 }
-.ant-card .ant-card-head {
-  @apply !px-4 sm:!px-6;
+.ant-input, .ant-input-password, .ant-input-number, .ant-select-selector {
+  @apply !rounded-xl !border-[var(--border-color)] !bg-[var(--card-bg)] !text-[var(--text-body)] !h-12 !flex !items-center;
 }
-.ant-card .ant-card-body {
-  @apply !p-4 sm:!p-6;
+.ant-select-selection-item {
+  @apply !leading-[46px];
 }
-.ant-modal .ant-modal-content {
-  @apply !mx-4 sm:!mx-0;
-}
-.ant-popover {
-  max-width: min(24rem, calc(100vw - 1rem));
-}
-.ant-statistic-content {
-  @apply !text-gray-900 dark:!text-white;
-}
-.ant-statistic-title {
-  @apply !text-gray-500 dark:!text-gray-400;
+.ant-tabs-tab-btn {
+  @apply !font-sans !font-medium;
 }
 .ant-pagination-item-active {
   @apply !border-primary;
 }
 .ant-pagination-item-active a {
   @apply !text-primary;
-}
-
-@media (max-width: 640px) {
-  .ant-table-pagination {
-    justify-content: center !important;
-  }
-
-  .ant-list-item-meta {
-    align-items: flex-start;
-  }
 }
 

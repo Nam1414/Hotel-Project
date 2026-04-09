@@ -4,8 +4,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
 import { useThemeStore } from '../store/themeStore';
-import { LogOut, User, Bell, Menu, X, Sun, Moon } from 'lucide-react';
+import { Menu, X, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getAuthorizedHomePath } from '../utils/authNavigation';
 
 import NotificationBell from '../components/notification/NotificationBell';
 import Footer from '../components/common/Footer';
@@ -16,6 +17,9 @@ const MainLayout: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const dashboardPath = getAuthorizedHomePath(user);
+  const canOpenDashboard =
+    isAuthenticated && (dashboardPath.startsWith('/admin') || dashboardPath.startsWith('/staff'));
 
   const handleLogout = () => {
     dispatch(logout());
@@ -64,8 +68,8 @@ const MainLayout: React.FC = () => {
                     </button>
                     <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2">
                       <Link to="/profile" className="block px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-primary">Profile</Link>
-                      {(user?.role === 'ADMIN' || user?.role === 'STAFF') && (
-                        <Link to="/admin" className="block px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-primary">Dashboard</Link>
+                      {canOpenDashboard && (
+                        <Link to={dashboardPath} className="block px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-primary">Dashboard</Link>
                       )}
                       <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-50">Logout</button>
                     </div>
@@ -107,8 +111,8 @@ const MainLayout: React.FC = () => {
                 <Link to="/contact" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">CONTACT</Link>
                 {isAuthenticated && (
                   <>
-                    {(user?.role === 'ADMIN' || user?.role === 'STAFF') && (
-                      <Link to="/admin" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">
+                    {canOpenDashboard && (
+                      <Link to={dashboardPath} onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">
                         DASHBOARD
                       </Link>
                     )}

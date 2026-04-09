@@ -1,262 +1,254 @@
-import React, { useState } from 'react';
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Eye, 
-  Edit3, 
-  Trash2, 
-  Globe, 
-  Search as SearchIcon,
-  LayoutGrid,
-  List as ListIcon,
-  Image as ImageIcon,
-  CheckCircle2,
-  Clock
-} from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Table, Tag, Button, Input, Select, Modal, Form, Upload, message, Tabs } from 'antd';
+import { App, Button, Form, Input, Modal, Select, Table, Tabs, Tag, Upload } from 'antd';
+import { Edit3, FileText, FolderTree, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 import type { ColumnsType } from 'antd/es/table';
-
-interface PostRecord {
-  id: string;
-  title: string;
-  category: string;
-  author: string;
-  date: string;
-  status: 'PUBLISHED' | 'DRAFT' | 'SCHEDULED';
-  views: number;
-  seoScore: number;
-}
+import { contentApi, type ArticleCategoryDto, type ArticleListItemDto } from '../../services/contentApi';
+import { usePermission } from '../../hooks/useAppStore';
 
 const CMS: React.FC = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const canManageContent = usePermission('MANAGE_CONTENT');
+  const [articles, setArticles] = useState<ArticleListItemDto[]>([]);
+  const [categories, setCategories] = useState<ArticleCategoryDto[]>([]);
+  const [loadingArticles, setLoadingArticles] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [articleModalOpen, setArticleModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<ArticleListItemDto | null>(null);
+  const [editingCategory, setEditingCategory] = useState<ArticleCategoryDto | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [articleForm] = Form.useForm();
+  const [categoryForm] = Form.useForm();
 
-  const dummyData: PostRecord[] = [
+  const loadCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      setCategories(await contentApi.getCategories());
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the tai danh muc bai viet');
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const loadArticles = async () => {
+    setLoadingArticles(true);
+    try {
+      setArticles(await contentApi.getArticles());
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the tai danh sach bai viet');
+    } finally {
+      setLoadingArticles(false);
+    }
+  };
+
+  useEffect(() => {
+    void Promise.all([loadArticles(), loadCategories()]);
+  }, []);
+
+  const articleStats = useMemo(
+    () => ({
+      total: articles.length,
+      categories: categories.length,
+      withThumbnail: articles.filter((item) => item.thumbnailUrl).length,
+    }),
+    [articles, categories],
+  );
+
+  const openCreateArticle = () => {
+    setEditingArticle(null);
+    setThumbnailFile(null);
+    articleForm.resetFields();
+    setArticleModalOpen(true);
+  };
+
+  const openEditArticle = async (record: ArticleListItemDto) => {
+    try {
+      const detail = await contentApi.getArticleBySlug(record.slug);
+      setEditingArticle(record);
+      setThumbnailFile(null);
+      articleForm.setFieldsValue({
+        title: detail.title,
+        content: detail.content,
+        categoryId: detail.category.id,
+      });
+      setArticleModalOpen(true);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the tai chi tiet bai viet');
+    }
+  };
+
+  const submitArticle = async (values: { title: string; content: string; categoryId: number }) => {
+    try {
+      if (editingArticle) {
+        await contentApi.updateArticle(editingArticle.id, values);
+        if (thumbnailFile) await contentApi.uploadThumbnail(editingArticle.id, thumbnailFile);
+        message.success('Da cap nhat bai viet');
+      } else {
+        const created = await contentApi.createArticle(values);
+        if (thumbnailFile) await contentApi.uploadThumbnail(created.id, thumbnailFile);
+        message.success('Da tao bai viet moi');
+      }
+
+      setArticleModalOpen(false);
+      setThumbnailFile(null);
+      articleForm.resetFields();
+      await loadArticles();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the luu bai viet');
+    }
+  };
+
+  const removeArticle = async (record: ArticleListItemDto) => {
+    try {
+      await contentApi.deleteArticle(record.id);
+      message.success('Da xoa bai viet');
+      await loadArticles();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the xoa bai viet');
+    }
+  };
+
+  const openCreateCategory = () => {
+    setEditingCategory(null);
+    categoryForm.resetFields();
+    setCategoryModalOpen(true);
+  };
+
+  const openEditCategory = (record: ArticleCategoryDto) => {
+    setEditingCategory(record);
+    categoryForm.setFieldsValue({ name: record.name });
+    setCategoryModalOpen(true);
+  };
+
+  const submitCategory = async (values: { name: string }) => {
+    try {
+      if (editingCategory) {
+        await contentApi.updateCategory(editingCategory.id, values);
+        message.success('Da cap nhat danh muc');
+      } else {
+        await contentApi.createCategory(values);
+        message.success('Da tao danh muc');
+      }
+
+      setCategoryModalOpen(false);
+      categoryForm.resetFields();
+      await loadCategories();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the luu danh muc');
+    }
+  };
+
+  const removeCategory = async (record: ArticleCategoryDto) => {
+    try {
+      await contentApi.deleteCategory(record.id);
+      message.success('Da vo hieu hoa danh muc');
+      await loadCategories();
+      await loadArticles();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Khong the xoa danh muc');
+    }
+  };
+
+  const articleColumns: ColumnsType<ArticleListItemDto> = [
+    { title: 'Title', dataIndex: 'title', render: (value: string) => <span className="font-bold text-primary">{value}</span> },
+    { title: 'Category', dataIndex: 'category' },
+    { title: 'Author', dataIndex: 'author' },
+    { title: 'Published', dataIndex: 'publishedAt', render: (value: string) => new Date(value).toLocaleDateString('vi-VN') },
+    { title: 'Status', render: (_, record) => <Tag color="green">{record.thumbnailUrl ? 'Published + image' : 'Published'}</Tag> },
     {
-      id: '1',
-      title: 'Top 10 Luxury Hotels in Vietnam',
-      category: 'Travel Guide',
-      author: 'Admin',
-      date: '2024-03-20',
-      status: 'PUBLISHED',
-      views: 1250,
-      seoScore: 85,
-    },
-    {
-      id: '2',
-      title: 'Our New Presidential Suite is Now Open',
-      category: 'News',
-      author: 'Marketing',
-      date: '2024-03-18',
-      status: 'PUBLISHED',
-      views: 850,
-      seoScore: 92,
-    },
-    {
-      id: '3',
-      title: 'Summer Promotion 2024',
-      category: 'Promotion',
-      author: 'Admin',
-      date: '2024-04-01',
-      status: 'SCHEDULED',
-      views: 0,
-      seoScore: 78,
+      title: 'Actions',
+      render: (_, record) => (
+        <div className="flex items-center gap-2">
+          {canManageContent ? <Button type="text" icon={<Edit3 size={16} className="text-blue-500" />} onClick={() => openEditArticle(record)} /> : null}
+          {canManageContent ? <Button type="text" icon={<Trash2 size={16} className="text-red-500" />} onClick={() => removeArticle(record)} /> : null}
+        </div>
+      ),
     },
   ];
 
-  const columns: ColumnsType<PostRecord> = [
-    {
-      title: 'Title',
-      dataIndex: 'title',
-      key: 'title',
-      render: (text) => <span className="font-bold text-primary">{text}</span>,
-    },
-    {
-      title: 'Category',
-      dataIndex: 'category',
-      key: 'category',
-    },
-    {
-      title: 'Author',
-      dataIndex: 'author',
-      key: 'author',
-    },
-    {
-      title: 'Date',
-      dataIndex: 'date',
-      key: 'date',
-    },
-    {
-      title: 'SEO Score',
-      dataIndex: 'seoScore',
-      key: 'seoScore',
-      render: (score) => (
-        <Tag color={score >= 80 ? 'green' : score >= 60 ? 'orange' : 'red'}>
-          {score}%
-        </Tag>
-      ),
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => {
-        let color = 'gold';
-        if (status === 'PUBLISHED') color = 'green';
-        if (status === 'SCHEDULED') color = 'blue';
-        return <Tag color={color}>{status}</Tag>;
-      },
-    },
+  const categoryColumns: ColumnsType<ArticleCategoryDto> = [
+    { title: 'Category', dataIndex: 'name', render: (value: string) => <span className="font-bold text-title">{value}</span> },
+    { title: 'Articles', dataIndex: 'articleCount', render: (value?: number) => <Tag color="blue">{value || 0}</Tag> },
     {
       title: 'Actions',
-      key: 'actions',
-      render: () => (
-        <div className="flex items-center space-x-2">
-          <Button type="text" icon={<Eye size={18} className="text-slate-400" />} />
-          <Button type="text" icon={<Edit3 size={18} className="text-blue-500" />} />
-          <Button type="text" icon={<Trash2 size={18} className="text-red-500" />} />
+      render: (_, record) => (
+        <div className="flex items-center gap-2">
+          {canManageContent ? <Button type="text" icon={<Edit3 size={16} className="text-blue-500" />} onClick={() => openEditCategory(record)} /> : null}
+          {canManageContent ? <Button type="text" icon={<Trash2 size={16} className="text-red-500" />} onClick={() => removeCategory(record)} /> : null}
         </div>
       ),
     },
   ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-10 pb-10"
-    >
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <h1 className="text-4xl">Content Management</h1>
-          <p className="text-muted mt-1">Manage blog posts, news, and promotions</p>
+          <p className="text-muted mt-1">Quan ly bai viet va danh muc bai viet tu backend hien co</p>
         </div>
-        <Button 
-          type="primary" 
-          icon={<Plus size={18} />} 
-          onClick={() => setIsModalOpen(true)}
-          className="btn-gold h-12"
-        >
-          Create New Post
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          {canManageContent ? (
+          <Button icon={<FolderTree size={16} />} onClick={openCreateCategory} className="h-12 rounded-xl">New Category</Button>
+          ) : null}
+          {canManageContent ? (
+          <Button type="primary" icon={<Plus size={16} />} onClick={openCreateArticle} className="btn-gold h-12">New Article</Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="admin-card flex items-center space-x-5">
-          <div className="w-14 h-14 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600">
-            <CheckCircle2 size={28} />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted">Published Posts</p>
-            <p className="text-3xl font-bold text-title mt-1">42</p>
-          </div>
-        </div>
-        <div className="admin-card flex items-center space-x-5">
-          <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-            <Clock size={28} />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted">Scheduled Posts</p>
-            <p className="text-3xl font-bold text-title mt-1">8</p>
-          </div>
-        </div>
-        <div className="admin-card flex items-center space-x-5">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800/50 flex items-center justify-center text-slate-600">
-            <Eye size={28} />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-muted">Total Views</p>
-            <p className="text-3xl font-bold text-title mt-1">12.5k</p>
-          </div>
-        </div>
+        <div className="admin-card"><p className="text-xs font-bold uppercase tracking-widest text-muted">Articles</p><p className="text-3xl font-bold text-title mt-2">{articleStats.total}</p></div>
+        <div className="admin-card"><p className="text-xs font-bold uppercase tracking-widest text-muted">Categories</p><p className="text-3xl font-bold text-title mt-2">{articleStats.categories}</p></div>
+        <div className="admin-card"><p className="text-xs font-bold uppercase tracking-widest text-muted">With Thumbnail</p><p className="text-3xl font-bold text-title mt-2">{articleStats.withThumbnail}</p></div>
       </div>
 
       <div className="admin-card !p-0 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4">
-          <Input 
-            prefix={<Search size={18} className="text-slate-400" />} 
-            placeholder="Search posts..." 
-            className="max-w-md h-12 rounded-xl"
-          />
-          <Select 
-            placeholder="Filter by Category" 
-            className="w-48 h-12"
-            options={[
-              { value: 'Travel Guide', label: 'Travel Guide' },
-              { value: 'News', label: 'News' },
-              { value: 'Promotion', label: 'Promotion' },
-            ]}
-          />
-        </div>
-        <Table 
-          columns={columns} 
-          dataSource={dummyData} 
-          rowKey="id"
-          className="custom-table"
+        <Tabs
+          defaultActiveKey="articles"
+          items={[
+            {
+              key: 'articles',
+              label: <span className="flex items-center gap-2"><FileText size={16} />Articles</span>,
+              children: <Table rowKey="id" columns={articleColumns} dataSource={articles} loading={loadingArticles} className="custom-table" />,
+            },
+            {
+              key: 'categories',
+              label: <span className="flex items-center gap-2"><FolderTree size={16} />Categories</span>,
+              children: <Table rowKey="id" columns={categoryColumns} dataSource={categories} loading={loadingCategories} className="custom-table" />,
+            },
+          ]}
         />
       </div>
 
-      <Modal
-        title={<span className="text-2xl">Create New Article</span>}
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setIsModalOpen(false)}>Cancel</Button>,
-          <Button key="draft" className="btn-outline-gold">Save Draft</Button>,
-          <Button key="submit" type="primary" className="btn-gold">Publish Now</Button>
-        ]}
-        width={800}
-      >
-        <Form form={form} layout="vertical" className="mt-8">
-          <Tabs defaultActiveKey="content" className="custom-tabs">
-            <Tabs.TabPane tab={<span><FileText size={16} className="inline mr-2" />Content</span>} key="content">
-              <div className="space-y-6 pt-6">
-                <Form.Item label="Article Title" name="title" required>
-                  <Input placeholder="Enter a catchy title..." className="h-14 text-xl font-bold rounded-xl" />
-                </Form.Item>
-                <div className="grid grid-cols-2 gap-6">
-                  <Form.Item label="Category" name="category" required>
-                    <Select placeholder="Select Category" options={[{ value: 'News', label: 'News' }, { value: 'Travel Guide', label: 'Travel Guide' }]} />
-                  </Form.Item>
-                  <Form.Item label="Author" name="author" initialValue="Admin">
-                    <Input />
-                  </Form.Item>
-                </div>
-                <Form.Item label="Content" name="content">
-                  <Input.TextArea rows={10} placeholder="Write your article content here..." className="rounded-xl" />
-                </Form.Item>
-                <Form.Item label="Featured Image">
-                  <Upload.Dragger className="rounded-2xl">
-                    <p className="ant-upload-drag-icon">
-                      <ImageIcon size={40} className="mx-auto text-primary" />
-                    </p>
-                    <p className="ant-upload-text font-bold text-title">Click or drag file to this area to upload</p>
-                    <p className="ant-upload-hint text-muted">Recommended size: 1200x630px</p>
-                  </Upload.Dragger>
-                </Form.Item>
-              </div>
-            </Tabs.TabPane>
-            <Tabs.TabPane tab={<span><Globe size={16} className="inline mr-2" />SEO Settings</span>} key="seo">
-              <div className="space-y-6 pt-6">
-                <Form.Item label="SEO Title" name="seoTitle">
-                  <Input placeholder="Title for search engines..." />
-                </Form.Item>
-                <Form.Item label="Meta Description" name="metaDescription">
-                  <Input.TextArea rows={3} placeholder="Brief summary for search results..." className="rounded-xl" />
-                </Form.Item>
-                <Form.Item label="Keywords" name="keywords">
-                  <Input placeholder="luxury, hotel, travel, etc. (comma separated)" />
-                </Form.Item>
-                <Form.Item label="Canonical URL" name="canonicalUrl">
-                  <Input prefix="https://" placeholder="your-hotel.com/blog/article-title" />
-                </Form.Item>
-              </div>
-            </Tabs.TabPane>
-          </Tabs>
+      <Modal title={editingArticle ? 'Cap nhat bai viet' : 'Tao bai viet moi'} open={articleModalOpen} onCancel={() => setArticleModalOpen(false)} footer={null} width={840}>
+        <Form form={articleForm} layout="vertical" onFinish={submitArticle} className="mt-6">
+          <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Nhap tieu de bai viet' }]}><Input className="h-12 rounded-xl" /></Form.Item>
+          <Form.Item name="categoryId" label="Category" rules={[{ required: true, message: 'Chon danh muc' }]}><Select className="h-12" options={categories.map((category) => ({ value: category.id, label: category.name }))} /></Form.Item>
+          <Form.Item name="content" label="Content" rules={[{ required: true, message: 'Nhap noi dung bai viet' }]}><Input.TextArea rows={10} className="rounded-xl" /></Form.Item>
+          <Form.Item label="Thumbnail">
+            <Upload.Dragger beforeUpload={(file) => { setThumbnailFile(file); return false; }} maxCount={1} accept="image/*">
+              <p className="ant-upload-drag-icon"><ImageIcon size={36} className="mx-auto text-primary" /></p>
+              <p className="font-bold text-title">Click or drag image here</p>
+              <p className="text-muted text-sm">Optional cover image for article thumbnail</p>
+            </Upload.Dragger>
+          </Form.Item>
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setArticleModalOpen(false)}>Cancel</Button>
+            <Button type="primary" htmlType="submit" className="btn-gold">{editingArticle ? 'Save Changes' : 'Publish Article'}</Button>
+          </div>
+        </Form>
+      </Modal>
+
+      <Modal title={editingCategory ? 'Cap nhat danh muc' : 'Tao danh muc moi'} open={categoryModalOpen} onCancel={() => setCategoryModalOpen(false)} footer={null}>
+        <Form form={categoryForm} layout="vertical" onFinish={submitCategory} className="mt-6">
+          <Form.Item name="name" label="Category Name" rules={[{ required: true, message: 'Nhap ten danh muc' }]}><Input className="h-12 rounded-xl" /></Form.Item>
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
+            <Button type="primary" htmlType="submit" className="btn-gold">{editingCategory ? 'Save' : 'Create'}</Button>
+          </div>
         </Form>
       </Modal>
     </motion.div>
