@@ -1,6 +1,7 @@
 using HotelManagementAPI.Models;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace HotelManagementAPI.Data;
 
 public class AppDbContext : DbContext
@@ -25,6 +26,11 @@ public class AppDbContext : DbContext
     public DbSet<RoomMinibarStock> RoomMinibarStocks { get; set; }
     public DbSet<Equipment> Equipments { get; set; }
     public DbSet<Membership> Memberships { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Booking> Bookings { get; set; }
+    public DbSet<BookingDetail> BookingDetails { get; set; }
+    public DbSet<Invoice> Invoices { get; set; }
+    public DbSet<Voucher> Vouchers { get; set; }
     
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -53,13 +59,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Article>()
             .HasOne(a => a.Category)
             .WithMany(c => c.Articles)
-            .HasForeignKey(a => a.CategoryId);
+            .HasForeignKey(a => a.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);// Nếu category bị xóa thì article vẫn giữ lại nhưng category_id sẽ thành null
 
         // Article → Author (User)
         modelBuilder.Entity<Article>()
             .HasOne(a => a.Author)
             .WithMany()
-            .HasForeignKey(a => a.AuthorId);
+            .HasForeignKey(a => a.AuthorId)
+            .OnDelete(DeleteBehavior.Restrict); // Nếu user bị xóa thì article vẫn giữ lại nhưng author_id sẽ thành null
 
         // Room -> RoomType (n-1)
         modelBuilder.Entity<Room>()
@@ -165,6 +173,119 @@ public class AppDbContext : DbContext
             entity.Property(n => n.ReferenceLink).HasColumnName("reference_link");
             entity.Property(n => n.IsRead).HasColumnName("is_read");
             entity.Property(n => n.CreatedAt).HasColumnName("created_at");
+        });
+
+        // Thêm vào OnModelCreating
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("Audit_Logs");
+            entity.HasKey(a => a.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Action).HasColumnName("action");
+            entity.Property(e => e.TableName).HasColumnName("table_name");
+            entity.Property(e => e.RecordId).HasColumnName("record_id");
+            entity.Property(e => e.OldValues).HasColumnName("old_value");
+            entity.Property(e => e.NewValues).HasColumnName("new_value");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<Booking>(entity =>
+        {
+            entity.ToTable("Bookings");
+            entity.HasKey(b => b.Id);
+            entity.Property(b => b.Id).HasColumnName("id");
+            entity.Property(b => b.UserId).HasColumnName("userid");
+            entity.Property(b => b.GuestName).HasColumnName("guestname");
+            entity.Property(b => b.GuestPhone).HasColumnName("guestphone");
+            entity.Property(b => b.GuestEmail).HasColumnName("guestemail");
+            entity.Property(b => b.BookingCode).HasColumnName("bookingcode");
+            entity.Property(b => b.VoucherId).HasColumnName("voucherid");
+            entity.Property(b => b.Status).HasColumnName("status");
+        });
+
+        modelBuilder.Entity<Invoice>(entity =>
+        {
+            entity.ToTable("Invoices");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.BookingId).HasColumnName("bookingid");
+            entity.Property(e => e.TotalRoomAmount)
+                .HasColumnName("totalroomamount")
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.TotalServiceAmount)
+                .HasColumnName("totalserviceamount")
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.DiscountAmount)
+                .HasColumnName("discountamount")
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.TaxAmount)
+                .HasColumnName("taxamount")
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.FinalTotal)
+                .HasColumnName("finaltotal")
+                .HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Status).HasColumnName("status");
+
+            entity.HasOne(e => e.Booking)
+                .WithOne(b => b.Invoice)
+                .HasForeignKey<Invoice>(e => e.BookingId);
+        });
+
+        //fix decimal warings
+        modelBuilder.Entity<BookingDetail>()
+            .Property(b => b.PricePerNight)
+            .HasColumnType("decimal(18,2)");
+
+        modelBuilder.Entity<Voucher>()
+            .Property(v => v.DiscountValue)
+            .HasColumnType("decimal(18,2)");
+
+        modelBuilder.Entity<Voucher>()
+            .Property(v => v.MinBookingValue)
+            .HasColumnType("decimal(18,2)");
+
+        modelBuilder.Entity<Membership>()
+            .Property(m => m.DiscountPercent)
+            .HasColumnType("decimal(5,2)"); // % nên dùng 5,2
+
+        // Booking — map snake_case columns
+        modelBuilder.Entity<Booking>(b =>
+        {
+            b.ToTable("Bookings");
+            b.Property(x => x.UserId).HasColumnName("user_id");
+            b.Property(x => x.GuestName).HasColumnName("guest_name");
+            b.Property(x => x.GuestPhone).HasColumnName("guest_phone");
+            b.Property(x => x.GuestEmail).HasColumnName("guest_email");
+            b.Property(x => x.BookingCode).HasColumnName("booking_code");
+            b.Property(x => x.VoucherId).HasColumnName("voucher_id");
+            b.Property(x => x.Status).HasColumnName("status");
+            b.Property(x => x.CreatedAt).HasColumnName("created_at");
+        });
+
+        // Invoice — map snake_case columns
+        modelBuilder.Entity<Invoice>(b =>
+        {
+            b.ToTable("Invoices");
+            b.Property(x => x.BookingId).HasColumnName("booking_id");
+            b.Property(x => x.TotalRoomAmount).HasColumnName("total_room_amount");
+            b.Property(x => x.TotalServiceAmount).HasColumnName("total_service_amount");
+            b.Property(x => x.DiscountAmount).HasColumnName("discount_amount");
+            b.Property(x => x.TaxAmount).HasColumnName("tax_amount");
+            b.Property(x => x.FinalTotal).HasColumnName("final_total");
+            b.Property(x => x.Status).HasColumnName("status");
+        });
+
+        // BookingDetail — map snake_case columns
+        modelBuilder.Entity<BookingDetail>(b =>
+        {
+            b.ToTable("Booking_Details");
+            b.Property(x => x.BookingId).HasColumnName("booking_id");
+            b.Property(x => x.RoomId).HasColumnName("room_id");
+            b.Property(x => x.RoomTypeId).HasColumnName("room_type_id");
+            b.Property(x => x.CheckInDate).HasColumnName("check_in_date");
+            b.Property(x => x.CheckOutDate).HasColumnName("check_out_date");
+            b.Property(x => x.PricePerNight).HasColumnName("price_per_night");
         });
     }
 }
