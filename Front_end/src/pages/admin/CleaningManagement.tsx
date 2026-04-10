@@ -75,70 +75,71 @@ const CleaningManagement: React.FC = () => {
     },
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'CLEAN': return 'green';
-      case 'DIRTY': return 'red';
-      case 'CLEANING': return 'blue';
-      case 'INSPECTED': return 'purple';
-      default: return 'default';
+  const getStatusColor = (status?: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'clean') return 'green';
+    if (s === 'dirty') return 'red';
+    if (s === 'inspecting') return 'blue';
+    return 'default';
+  };
+
+  const getProgress = (status?: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'clean') return 100;
+    if (s === 'inspecting') return 50;
+    if (s === 'dirty') return 0;
+    return 0;
+  };
+
+  const updateCleaning = async (record: RoomDto, nextCleaningStatus: string, nextStatus?: string) => {
+    try {
+      await adminApi.updateRoomCleaningStatus(record.id, {
+        cleaningStatus: nextCleaningStatus,
+        status: nextStatus || record.status,
+      });
+      message.success('Đã cập nhật trạng thái phòng');
+      loadData();
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Lỗi cập nhật trạng thái');
     }
   };
 
-  const columns: ColumnsType<CleaningTask> = [
+  const columns: ColumnsType<RoomDto> = [
     {
-      title: 'Room',
+      title: 'Phòng',
       dataIndex: 'roomNumber',
       key: 'roomNumber',
       render: (text) => <span className="font-bold text-primary">{text}</span>,
     },
     {
-      title: 'Type',
-      dataIndex: 'roomType',
-      key: 'roomType',
+      title: 'Hạng phòng',
+      dataIndex: 'roomTypeName',
+      key: 'roomTypeName',
     },
     {
-      title: 'Assigned Staff',
-      dataIndex: 'assignedStaff',
-      key: 'assignedStaff',
-      render: (staff) => (
-        <div className="flex items-center space-x-2">
-          <Avatar icon={<User size={14} />} size="small" />
-          <span>{staff}</span>
-        </div>
-      ),
-    },
-    {
-      title: 'Progress',
-      dataIndex: 'progress',
+      title: 'Tiến độ',
       key: 'progress',
-      render: (progress) => (
+      render: (_, record) => (
         <div className="w-32">
-          <Progress percent={progress} size="small" strokeColor="#C6A96B" />
+          <Progress percent={getProgress(record.cleaningStatus)} size="small" strokeColor="#C6A96B" />
         </div>
       ),
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
+      title: 'Trạng thái',
+      dataIndex: 'cleaningStatus',
       key: 'status',
-      render: (status: string) => <Tag color={getStatusColor(status)}>{status}</Tag>,
+      render: (status: string) => <Tag color={getStatusColor(status)} className="uppercase font-bold">{status || 'CHƯA RÕ'}</Tag>,
     },
     {
-      title: 'Priority',
-      dataIndex: 'priority',
-      key: 'priority',
-      render: (priority: string) => (
-        <Tag color={priority === 'HIGH' ? 'red' : priority === 'MEDIUM' ? 'orange' : 'blue'}>
-          {priority}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Actions',
+      title: 'Thao tác',
       key: 'actions',
-      render: () => (
-        <Button type="text" icon={<MoreVertical size={18} />} />
+      render: (_, record) => (
+        <Space wrap>
+          <Button size="small" onClick={() => updateCleaning(record, 'Dirty', 'Cleaning')}>Báo bận</Button>
+          <Button size="small" onClick={() => updateCleaning(record, 'Inspecting', 'Cleaning')}>Đang dọn</Button>
+          <Button size="small" type="primary" className="btn-gold" onClick={() => updateCleaning(record, 'Clean', 'Available')}>Hoàn tất</Button>
+        </Space>
       ),
     },
   ];

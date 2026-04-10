@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
@@ -132,11 +132,11 @@ const AdminLayout: React.FC = () => {
                       to={item.path}
                       className={cn(
                         'flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group',
-                        isActive ? 'bg-primary text-dark-base shadow-lg shadow-primary/20' : 'text-gray-400 hover:bg-white/5 hover:text-primary'
+                        isActive ? 'bg-primary text-dark-base shadow-lg shadow-primary/20' : 'text-white/60 hover:bg-white/5 hover:text-primary'
                       )}
                     >
                       <Icon size={18} className={cn(isActive ? 'text-dark-base' : 'group-hover:text-primary')} />
-                      <span className="font-medium">{item.label}</span>
+                      <span className={cn('font-medium', isActive ? 'font-bold' : '')}>{item.label}</span>
                     </Link>
                   );
                 })}
@@ -154,11 +154,11 @@ const AdminLayout: React.FC = () => {
               to={item.path}
               className={cn(
                 'flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group',
-                isActive ? 'bg-primary text-dark-base shadow-lg shadow-primary/20' : 'text-gray-400 hover:bg-white/5 hover:text-primary'
+                isActive ? 'bg-primary text-dark-base shadow-lg shadow-primary/20' : 'text-white/60 hover:bg-white/5 hover:text-primary'
               )}
             >
               <Icon size={20} className={cn(isActive ? 'text-dark-base' : 'group-hover:text-primary')} />
-              {!isCollapsed && <span className="font-medium">{item.label}</span>}
+              {!isCollapsed && <span className={cn('font-medium', isActive ? 'font-bold' : '')}>{item.label}</span>}
             </Link>
           );
         })}
@@ -185,7 +185,7 @@ const AdminLayout: React.FC = () => {
       >
         <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
           {!isCollapsed && (
-            <Link to="/" className="text-xl font-display font-bold text-primary tracking-widest">KANT</Link>
+            <Link to="/" className="text-2xl font-display font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent tracking-[0.2em]">KANT</Link>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}

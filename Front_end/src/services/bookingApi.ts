@@ -25,6 +25,7 @@ export interface BookingResponseDto {
   status: BookingStatus;
   details: BookingDetailDto[];
   invoiceId?: number | null;
+  depositAmount: number;
 }
 
 export interface CreateBookingDetailDto {
@@ -42,6 +43,7 @@ export interface CreateBookingRequestDto {
   guestEmail?: string | null;
   voucherId?: number | null;
   details: CreateBookingDetailDto[];
+  depositAmount?: number;
 }
 
 export interface UpdateBookingStatusDto {
@@ -66,6 +68,9 @@ export interface InvoiceResponseDto {
   finalTotal: number;
   status: InvoiceStatus;
   payments: PaymentResponseDto[];
+  serviceOrders?: any[];
+  lossDamages?: any[];
+  depositAmount: number;
 }
 
 export interface AddPaymentDto {

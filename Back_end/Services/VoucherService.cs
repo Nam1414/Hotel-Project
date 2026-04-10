@@ -89,6 +89,13 @@ namespace HotelManagementAPI.Services
             var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Id == id);
             if (voucher == null) return false;
 
+            // Kiểm tra xem voucher có đang được sử dụng trong booking nào không
+            var isUsed = await _context.Bookings.AnyAsync(b => b.VoucherId == id);
+            if (isUsed)
+            {
+                throw new InvalidOperationException("Voucher đã được sử dụng trong đặt phòng, không thể xóa. Bạn nên chuyển trạng thái sang ngưng hoạt động.");
+            }
+
             _context.Vouchers.Remove(voucher);
             await _context.SaveChangesAsync();
             return true;

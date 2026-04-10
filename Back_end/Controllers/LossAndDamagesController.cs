@@ -9,18 +9,20 @@ namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Manager,HR,Nhân sự")]
+[Authorize(Roles = "Admin,Manager,HR,Nhân sự,Staff,Housekeeping,Receptionist,Lễ tân,Dọn phòng,Nhân viên")]
 public class LossAndDamagesController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly HotelManagementAPI.Services.IInvoiceService _invoiceService;
 
-    public LossAndDamagesController(AppDbContext context)
+    public LossAndDamagesController(AppDbContext context, HotelManagementAPI.Services.IInvoiceService invoiceService)
     {
         _context = context;
+        _invoiceService = invoiceService;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? roomId, [FromQuery] int? equipmentId)
+    public async Task<IActionResult> GetAll([FromQuery] int? roomId, [FromQuery] int? equipmentId, [FromQuery] int? bookingDetailId)
     {
         var query = _context.LossAndDamages
             .Include(ld => ld.RoomInventory)
@@ -34,6 +36,9 @@ public class LossAndDamagesController : ControllerBase
 
         if (equipmentId.HasValue)
             query = query.Where(ld => ld.RoomInventory != null && ld.RoomInventory.EquipmentId == equipmentId.Value);
+
+        if (bookingDetailId.HasValue)
+            query = query.Where(ld => ld.BookingDetailId == bookingDetailId.Value);
 
         var result = await query
             .OrderByDescending(ld => ld.CreatedAt)
@@ -50,7 +55,7 @@ public class LossAndDamagesController : ControllerBase
             .Include(ld => ld.RoomInventory)
                 .ThenInclude(ri => ri!.Room)
             .Include(ld => ld.RoomInventory)
-                .ThenInclude(ri => ri!.Equipment)
+            .Include(ld => ld.Equipment)
             .FirstOrDefaultAsync(ld => ld.Id == id);
 
         if (item == null)
@@ -67,17 +72,42 @@ public class LossAndDamagesController : ControllerBase
 
         var roomInventory = await LoadRoomInventoryAsync(dto.RoomInventoryId);
         if (dto.RoomInventoryId.HasValue && roomInventory == null)
-            return BadRequest(new { message = "Room inventory không tồn tại" });
+            return BadRequest(new { message = "Vật tư trong phòng không tồn tại" });
+
+        int finalEquipmentId = 0;
+        if (roomInventory != null)
+        {
+            finalEquipmentId = roomInventory.EquipmentId;
+        }
+        else if (dto.EquipmentId.HasValue && dto.EquipmentId.Value > 0)
+        {
+            finalEquipmentId = dto.EquipmentId.Value;
+        }
+        else
+        {
+            // Fallback for check-out ad-hoc penalties where no equipment is selected
+            var firstEq = await _context.Equipments.FirstOrDefaultAsync();
+            if (firstEq != null)
+            {
+                finalEquipmentId = firstEq.Id;
+            }
+            else
+            {
+                return BadRequest(new { message = "Cần thẻ vật tư hoặc thiết bị để báo hỏng" });
+            }
+        }
 
         var entity = new LossAndDamage
         {
+            EquipmentId     = finalEquipmentId,
             BookingDetailId = dto.BookingDetailId,
             RoomInventoryId = dto.RoomInventoryId,
-            Quantity = dto.Quantity,
-            PenaltyAmount = dto.PenaltyAmount,
-            Description = dto.Description,
-            ImageUrl = dto.ImageUrl,
-            CreatedAt = DateTime.UtcNow
+            Quantity        = dto.Quantity,
+            PenaltyAmount   = dto.PenaltyAmount,
+            Description     = dto.Description,
+            ImageUrl        = dto.ImageUrl,
+            CreatedAt       = DateTime.UtcNow,
+            Status          = "pending"
         };
 
         _context.LossAndDamages.Add(entity);
@@ -86,6 +116,15 @@ public class LossAndDamagesController : ControllerBase
             ApplyInventoryImpact(roomInventory, dto.Quantity);
 
         await _context.SaveChangesAsync();
+
+        if (entity.BookingDetailId.HasValue)
+        {
+            var bookingDetail = await _context.BookingDetails.FindAsync(entity.BookingDetailId.Value);
+            if (bookingDetail?.BookingId != null)
+            {
+                await _invoiceService.RecalculateInvoiceAsync(bookingDetail.BookingId.Value);
+            }
+        }
 
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, await BuildResponseAsync(entity.Id));
     }
@@ -100,30 +139,26 @@ public class LossAndDamagesController : ControllerBase
         if (dto.Quantity <= 0)
             return BadRequest(new { message = "Số lượng phải lớn hơn 0" });
 
-        var oldRoomInventory = await LoadRoomInventoryAsync(entity.RoomInventoryId);
-        if (oldRoomInventory != null)
-            RevertInventoryImpact(oldRoomInventory, entity.Quantity);
-
-        var newRoomInventory = await LoadRoomInventoryAsync(dto.RoomInventoryId);
-        if (dto.RoomInventoryId.HasValue && newRoomInventory == null)
-            return BadRequest(new { message = "Room inventory không tồn tại" });
-
-        entity.BookingDetailId = dto.BookingDetailId;
-        entity.RoomInventoryId = dto.RoomInventoryId;
         entity.Quantity = dto.Quantity;
         entity.PenaltyAmount = dto.PenaltyAmount;
         entity.Description = dto.Description;
         entity.ImageUrl = dto.ImageUrl;
 
-        if (newRoomInventory != null)
-            ApplyInventoryImpact(newRoomInventory, dto.Quantity);
-
         await _context.SaveChangesAsync();
+
+        if (entity.BookingDetailId.HasValue)
+        {
+            var bookingDetail = await _context.BookingDetails.FindAsync(entity.BookingDetailId.Value);
+            if (bookingDetail?.BookingId != null)
+            {
+                await _invoiceService.RecalculateInvoiceAsync(bookingDetail.BookingId.Value);
+            }
+        }
+
         return Ok(await BuildResponseAsync(entity.Id));
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,HR,Nhân sự")]
     public async Task<IActionResult> Delete(int id)
     {
         var entity = await _context.LossAndDamages.FindAsync(id);
@@ -134,18 +169,27 @@ public class LossAndDamagesController : ControllerBase
         if (roomInventory != null)
             RevertInventoryImpact(roomInventory, entity.Quantity);
 
+        var bookingDetailId = entity.BookingDetailId;
         _context.LossAndDamages.Remove(entity);
         await _context.SaveChangesAsync();
+
+        if (bookingDetailId.HasValue)
+        {
+            var bookingDetail = await _context.BookingDetails.FindAsync(bookingDetailId.Value);
+            if (bookingDetail?.BookingId != null)
+            {
+                await _invoiceService.RecalculateInvoiceAsync(bookingDetail.BookingId.Value);
+            }
+        }
         return Ok(new { message = "Đã xóa bản ghi hỏng/mất" });
     }
 
     private async Task<LossDamageResponseDto> BuildResponseAsync(int id)
     {
         var entity = await _context.LossAndDamages
+            .Include(ld => ld.Equipment)
             .Include(ld => ld.RoomInventory)
                 .ThenInclude(ri => ri!.Room)
-            .Include(ld => ld.RoomInventory)
-                .ThenInclude(ri => ri!.Equipment)
             .FirstAsync(ld => ld.Id == id);
 
         return MapToDto(entity);
@@ -161,7 +205,7 @@ public class LossAndDamagesController : ControllerBase
         item.ImageUrl,
         item.CreatedAt,
         item.RoomInventory?.Room?.RoomNumber,
-        item.RoomInventory?.Equipment?.Name
+        item.Equipment?.Name ?? item.RoomInventory?.Equipment?.Name ?? "Vật tư"
     );
 
     private async Task<RoomInventory?> LoadRoomInventoryAsync(int? roomInventoryId)

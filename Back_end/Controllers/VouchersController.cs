@@ -75,8 +75,15 @@ namespace HotelManagementAPI.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var deleted = await _voucherService.DeleteAsync(id);
-            return deleted ? Ok(new { message = "Đã xóa voucher" }) : NotFound(new { message = "Voucher không tồn tại" });
+            try
+            {
+                var deleted = await _voucherService.DeleteAsync(id);
+                return deleted ? Ok(new { message = "Đã xóa voucher" }) : NotFound(new { message = "Voucher không tồn tại" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

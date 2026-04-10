@@ -31,7 +31,11 @@ public record OrderServiceResponseDto(
     List<OrderServiceDetailDto> Details
 );
 
-public record CreateOrderServiceItemDto(int ServiceId, int Quantity);
+public class CreateOrderServiceItemDto
+{
+    public int ServiceId { get; set; }
+    public int Quantity { get; set; }
+}
 
 public record CreateOrderServiceRequestDto(
     int BookingDetailId,

@@ -62,6 +62,10 @@ namespace HotelManagementAPI.Controllers
             }
             catch (Exception ex)
             {
+                if (ex.Message.Contains("Voucher"))
+                {
+                    return BadRequest(new { message = ex.Message });
+                }
                 return StatusCode(500, new { message = "An error occurred while creating the booking", error = ex.Message });
             }
         }
@@ -78,7 +82,7 @@ namespace HotelManagementAPI.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while updating the booking status", error = ex.Message });
+                return BadRequest(new { message = ex.Message });
             }
         }
     }

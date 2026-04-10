@@ -17,6 +17,9 @@ namespace HotelManagementAPI.DTOs
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public InvoiceStatus Status { get; set; }
         public List<PaymentResponseDto> Payments { get; set; } = new List<PaymentResponseDto>();
+        public List<OrderServiceResponseDto> ServiceOrders { get; set; } = new List<OrderServiceResponseDto>();
+        public List<LossDamageResponseDto> LossDamages { get; set; } = new List<LossDamageResponseDto>();
+        public decimal DepositAmount { get; set; }
     }
 
     public class PaymentResponseDto
@@ -30,8 +33,8 @@ namespace HotelManagementAPI.DTOs
 
     public class AddPaymentDto
     {
-        public string PaymentMethod { get; set; }
+        public string PaymentMethod { get; set; } = string.Empty;
         public decimal AmountPaid { get; set; }
-        public string TransactionCode { get; set; }
+        public string TransactionCode { get; set; } = string.Empty;
     }
 }

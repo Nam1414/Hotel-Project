@@ -26,12 +26,12 @@
   }
 
   .dark {
-    --bg-main: #0F172A;
-    --text-title: #F9FAFB;
-    --text-body: #D1D5DB;
-    --text-muted: #9CA3AF;
-    --card-bg: #1E293B;
-    --border-color: #334155;
+    --bg-main: #0B0F19;
+    --text-title: #F8FAFC;
+    --text-body: #E2E8F0;
+    --text-muted: #94A3B8;
+    --card-bg: #111827;
+    --border-color: #1F2937;
   }
 
   html {
@@ -107,13 +107,13 @@
   @apply !bg-transparent !text-[var(--text-body)] !font-sans;
 }
 .ant-table-thead > tr > th {
-  @apply !bg-slate-50 dark:!bg-slate-800/50 !text-primary !border-[var(--border-color)] !font-sans !font-semibold !py-4;
+  @apply !bg-slate-50 dark:!bg-slate-900 !text-primary !border-[var(--border-color)] !font-sans !font-bold !py-4;
 }
 .ant-table-tbody > tr > td {
-  @apply !border-[var(--border-color)] !py-4;
+  @apply !border-[var(--border-color)] !py-4 !bg-[var(--card-bg)];
 }
 .ant-table-tbody > tr:hover > td {
-  @apply !bg-primary/5;
+  @apply !bg-primary/10 !transition-colors;
 }
 .ant-form-item-label > label {
   @apply !text-[var(--text-body)] !font-medium !text-sm;

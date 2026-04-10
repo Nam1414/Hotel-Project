@@ -47,6 +47,9 @@ namespace HotelManagementAPI.Models
             set => StatusString = value.ToString();
         }
 
+        [Column("deposit_amount", TypeName = "decimal(18,2)")]
+        public decimal DepositAmount { get; set; } = 0;
+
         // Navigation properties
         public User? User { get; set; }
         public Voucher? Voucher { get; set; }

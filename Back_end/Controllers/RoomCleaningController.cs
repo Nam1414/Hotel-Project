@@ -35,7 +35,23 @@ public class RoomCleaningController : ControllerBase
         }
 
         var previousStatus = room.Status;
-        room.Status = dto.Status;
+        var nextStatus = dto.Status;
+
+        // Nếu nhân viên chọn Hoàn tất (Available) nhưng thực tế có khách đang ở (Stay)
+        // thì phải trả lại trạng thái là Occupied.
+        if (string.Equals(nextStatus, "Available", StringComparison.OrdinalIgnoreCase))
+        {
+            var hasActiveGuest = await _context.BookingDetails
+                .Include(bd => bd.Booking)
+                .AnyAsync(bd => bd.RoomId == room.Id && bd.Booking != null && bd.Booking.StatusString == "Stay");
+            
+            if (hasActiveGuest)
+            {
+                nextStatus = "Occupied";
+            }
+        }
+
+        room.Status = nextStatus;
         room.CleaningStatus = dto.CleaningStatus;
 
         await _context.SaveChangesAsync();

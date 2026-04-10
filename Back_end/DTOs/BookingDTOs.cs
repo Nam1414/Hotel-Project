@@ -20,6 +20,7 @@ namespace HotelManagementAPI.DTOs
         public BookingStatus Status { get; set; }
         public List<BookingDetailResponseDto> Details { get; set; } = new List<BookingDetailResponseDto>();
         public int? InvoiceId { get; set; }
+        public decimal DepositAmount { get; set; }
     }
 
     public class BookingDetailResponseDto
@@ -40,6 +41,7 @@ namespace HotelManagementAPI.DTOs
         public string? GuestEmail { get; set; }
         public int? VoucherId { get; set; }
         public List<CreateBookingDetailDto> Details { get; set; } = new List<CreateBookingDetailDto>();
+        public decimal DepositAmount { get; set; } = 0;
     }
 
     public class CreateBookingDetailDto

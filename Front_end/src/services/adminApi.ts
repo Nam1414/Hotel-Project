@@ -323,8 +323,23 @@ export const adminApi = {
   getDamages: async (params?: { status?: string; equipmentId?: number }) =>
     (await axiosClient.get('/api/Equipment/damages', { params })) as DamageDto[],
 
+  createLossDamage: async (dto: {
+    bookingDetailId?: number;
+    roomInventoryId?: number;
+    quantity: number;
+    penaltyAmount: number;
+    description?: string;
+    imageUrl?: string;
+  }) => axiosClient.post('/api/LossAndDamages', dto),
+
+  getLossDamagesByBookingDetail: async (bookingDetailId: number) =>
+    (await axiosClient.get('/api/LossAndDamages', { params: { bookingDetailId } })) as any[],
+
   updateDamageStatus: async (id: number, status: 'confirmed' | 'cancelled') =>
     axiosClient.put(`/api/Equipment/damage/${id}/status`, { status }),
+
+  getOrderServicesByBookingId: async (bookingId: number) =>
+    (await axiosClient.get(`/api/OrderServices/booking/${bookingId}`)) as any[],
 
   uploadEquipmentImage: async (equipmentId: number, file: File) => {
     const formData = new FormData();
@@ -377,4 +392,9 @@ export const adminApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }) as Promise<{ message: string; imageUrl: string }>;
   },
+
+  getServices: async () => (await axiosClient.get('/api/Services')) as any[],
+
+  reportMinibar: async (roomId: number, items: { serviceId: number; quantity: number }[]) =>
+    axiosClient.post(`/api/OrderServices/room/${roomId}/minibar`, items),
 };

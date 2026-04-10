@@ -71,10 +71,19 @@ interface PrintInvoiceProps {
   invoice: InvoiceResponseDto;
   rooms: RoomDto[];
   cashierName?: string | null;
+  damages?: any[];
+  services?: any[];
 }
 
-const PrintInvoice: React.FC<PrintInvoiceProps> = ({ booking, invoice, rooms, cashierName }) => (
-  <HotelInvoicePrint booking={booking} invoice={invoice} rooms={rooms} cashierName={cashierName} />
+const PrintInvoice: React.FC<PrintInvoiceProps> = ({ booking, invoice, rooms, cashierName, damages, services }) => (
+  <HotelInvoicePrint
+    booking={booking}
+    invoice={invoice}
+    rooms={rooms}
+    cashierName={cashierName}
+    damages={damages}
+    services={services}
+  />
 );
 
 const InvoiceManagementPage: React.FC = () => {
@@ -93,6 +102,8 @@ const InvoiceManagementPage: React.FC = () => {
   const [selectedBooking, setSelectedBooking] = useState<BookingResponseDto | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponseDto | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceDamages, setInvoiceDamages] = useState<any[]>([]);
+  const [invoiceServices, setInvoiceServices] = useState<any[]>([]);
 
   const [paymentForm] = Form.useForm();
 
@@ -146,9 +157,19 @@ const InvoiceManagementPage: React.FC = () => {
     setInvoiceOpen(true);
     setInvoiceLoading(true);
     setSelectedInvoice(null);
+    setInvoiceDamages([]);
+    setInvoiceServices([]);
     try {
       const inv = await bookingApi.getInvoiceByBookingId(booking.id);
       setSelectedInvoice(inv);
+      
+      // Sử dụng dữ liệu gộp từ backend nếu có
+      if (inv.serviceOrders) {
+        setInvoiceServices(inv.serviceOrders);
+      }
+      if (inv.lossDamages) {
+        setInvoiceDamages(inv.lossDamages);
+      }
     } catch {
       setSelectedInvoice(null);
     } finally {
@@ -161,6 +182,12 @@ const InvoiceManagementPage: React.FC = () => {
     try {
       const inv = await bookingApi.createInvoice(selectedBooking.id);
       setSelectedInvoice(inv);
+      if (inv.serviceOrders) {
+        setInvoiceServices(inv.serviceOrders);
+      }
+      if (inv.lossDamages) {
+        setInvoiceDamages(inv.lossDamages);
+      }
       message.success('Tạo hóa đơn thành công');
       loadData();
     } catch (err: any) {
@@ -182,6 +209,12 @@ const InvoiceManagementPage: React.FC = () => {
       if (selectedBooking) {
         const inv = await bookingApi.getInvoiceByBookingId(selectedBooking.id);
         setSelectedInvoice(inv);
+        if (inv.serviceOrders) {
+          setInvoiceServices(inv.serviceOrders);
+        }
+        if (inv.lossDamages) {
+          setInvoiceDamages(inv.lossDamages);
+        }
       }
       loadData();
     } catch (err: any) {
@@ -194,7 +227,7 @@ const InvoiceManagementPage: React.FC = () => {
   };
 
   const remainingAmount = selectedInvoice
-    ? selectedInvoice.finalTotal - selectedInvoice.payments.reduce((sum, p) => sum + p.amountPaid, 0)
+    ? selectedInvoice.finalTotal - (selectedInvoice.depositAmount || 0) - selectedInvoice.payments.reduce((sum, p) => sum + p.amountPaid, 0)
     : 0;
 
   const columns = [
@@ -223,6 +256,16 @@ const InvoiceManagementPage: React.FC = () => {
         r.invoiceId ? <Tag color="green">Có hóa đơn</Tag> : <Tag>Chưa có</Tag>,
     },
     {
+      title: 'Tiền cọc',
+      key: 'deposit',
+      width: 120,
+      render: (_: any, r: BookingResponseDto) => (
+        <Text strong style={{ color: r.depositAmount > 0 ? '#16a34a' : 'inherit' }}>
+          {formatMoney(r.depositAmount)}
+        </Text>
+      ),
+    },
+    {
       title: 'Thao tác',
       key: 'actions',
       width: 200,
@@ -239,7 +282,14 @@ const InvoiceManagementPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {selectedInvoice && selectedBooking && (
-        <PrintInvoice booking={selectedBooking} invoice={selectedInvoice} rooms={rooms} cashierName={cashierName} />
+        <PrintInvoice
+          booking={selectedBooking}
+          invoice={selectedInvoice}
+          rooms={rooms}
+          cashierName={cashierName}
+          damages={invoiceDamages}
+          services={invoiceServices}
+        />
       )}
 
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -313,108 +363,215 @@ const InvoiceManagementPage: React.FC = () => {
         title={
           <Space>
             <FileText size={16} />
-            <span>Hóa đơn · {selectedBooking?.bookingCode}</span>
+            <span>Xác nhận thanh toán & In hóa đơn</span>
           </Space>
         }
         onCancel={() => setInvoiceOpen(false)}
-        width={760}
-        footer={
-          <Space>
-            <Button onClick={() => setInvoiceOpen(false)}>Đóng</Button>
-            {!selectedInvoice && selectedBooking?.status !== 'Cancelled' && (
-              <Button type="primary" icon={<Plus size={14} />} onClick={createInvoice}>
-                Tạo hóa đơn
-              </Button>
-            )}
-            {selectedInvoice && (
-              <Tooltip title="In hóa đơn">
-                <Button icon={<Printer size={14} />} onClick={handlePrint}>
-                  In hóa đơn
-                </Button>
-              </Tooltip>
-            )}
-            {selectedInvoice && selectedInvoice.status !== 'Paid' && (
-              <Button
-                type="primary"
-                className="btn-gold"
-                icon={<CreditCard size={14} />}
-                onClick={() => setPaymentOpen(true)}
-              >
-                Ghi nhận thanh toán
-              </Button>
-            )}
-          </Space>
-        }
+        width={1000}
+        footer={null}
       >
         {invoiceLoading ? (
           <div style={{ padding: '48px 0', textAlign: 'center', color: '#9ca3af' }}>Đang tải hóa đơn...</div>
         ) : !selectedInvoice ? (
           <div style={{ padding: '48px 0', textAlign: 'center', color: '#9ca3af' }}>
-            Chưa có hóa đơn. Nhấn <b>Tạo hóa đơn</b> để khởi tạo.
+            <div style={{ marginBottom: 12 }}>Chưa có hóa đơn.</div>
+            {selectedBooking?.status !== 'Cancelled' && (
+              <Button type="primary" icon={<Plus size={14} />} onClick={createInvoice}>
+                Tạo hóa đơn
+              </Button>
+            )}
           </div>
         ) : (
-          <>
-            <AntCard size="small" style={{ background: '#faf7f2', border: '1px solid #e8d9bb', marginBottom: 16 }}>
-              <Row gutter={16}>
-                <Col span={8} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Tiền phòng</div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{formatMoney(selectedInvoice.totalRoomAmount)}</div>
-                </Col>
-                <Col span={8} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Thuế VAT</div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{formatMoney(selectedInvoice.taxAmount)}</div>
-                </Col>
-                <Col span={8} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Tổng cộng</div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: '#A6894B' }}>{formatMoney(selectedInvoice.finalTotal)}</div>
-                </Col>
-              </Row>
-            </AntCard>
+          <Row gutter={24}>
+            {/* ── Left Column: Cost Breakdown ── */}
+            <Col span={16}>
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 2 }}>HÓA ĐƠN THANH TOÁN</div>
+                <div style={{ fontSize: 13, color: '#9ca3af' }}>Mã đơn #{selectedInvoice.id}</div>
+              </div>
 
-            <Descriptions bordered column={2} size="small">
-              <Descriptions.Item label="Trạng thái" span={2}>
-                <Tag color={INVOICE_STATUS_COLOR[selectedInvoice.status] ?? 'default'}>
-                  {INVOICE_STATUS_LABEL[selectedInvoice.status] ?? selectedInvoice.status}
-                </Tag>
-              </Descriptions.Item>
-              {selectedInvoice.discountAmount > 0 && (
-                <Descriptions.Item label="Giảm giá" span={2} style={{ color: '#16a34a' }}>
-                  - {formatMoney(selectedInvoice.discountAmount)}
-                </Descriptions.Item>
+              {/* Costs Breakdown */}
+              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#fafafa', borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: '#111827' }}>Chi tiết chi phí</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
+                  <span>Tiền phòng:</span>
+                  <span style={{ fontWeight: 500 }}>{formatMoney(selectedInvoice.totalRoomAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
+                  <span>Dịch vụ & Vật tư (Minibar...):</span>
+                  <span>{formatMoney(invoiceServices.reduce((sum, s) => sum + (s.totalAmount || 0), 0))}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#dc2626' }}>
+                  <span>Hỏng hóc & Thất thoát:</span>
+                  <span style={{ fontWeight: 500 }}>+{formatMoney(invoiceDamages.reduce((sum, d) => sum + (d.penaltyAmount || 0), 0))}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: 14, fontWeight: 700, borderTop: '1px dashed #e5e7eb', marginTop: 4 }}>
+                  <span>TỔNG CỘNG (Chưa Thuế):</span>
+                  <span>{formatMoney(selectedInvoice.totalRoomAmount + selectedInvoice.totalServiceAmount)}</span>
+                </div>
+              </div>
+
+              {/* Deductions */}
+              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#f0fdf4', borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: '#111827' }}>Các khoản giảm trừ</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#16a34a' }}>
+                  <span>Ưu đãi / Voucher:</span>
+                  <span>-{formatMoney(selectedInvoice.discountAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#d97706' }}>
+                  <span>Tiền đã cọc:</span>
+                  <span>-{formatMoney(selectedInvoice.depositAmount)}</span>
+                </div>
+              </div>
+
+              {/* Amount Due Table */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>Thông tin lưu trú:</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f3f4f6' }}>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Phòng</th>
+                      <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Số đêm</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedBooking?.details?.map((d, i) => {
+                      const nights = nightsBetween(d.checkInDate, d.checkOutDate);
+                      return (
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
+                          <td style={{ padding: '8px 12px', border: '1px solid #e5e7eb', color: '#111' }}>
+                            Phòng {rooms.find(r => r.id === d.roomId)?.roomNumber ?? d.roomId}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#111' }}>{nights}</td>
+                          <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#111', fontWeight: 600 }}>{formatMoney(d.pricePerNight * nights)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Services Table */}
+              {invoiceServices && invoiceServices.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#0369a1' }}>Dịch vụ & Vật tư đã sử dụng:</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f0f9ff' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Sản phẩm/Dịch vụ</th>
+                        <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Số lượng</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoiceServices.map((order, i) => (
+                        <React.Fragment key={i}>
+                          {order.details?.map((item: any, j: number) => (
+                            <tr key={`${i}-${j}`} style={{ backgroundColor: '#ffffff' }}>
+                              <td style={{ padding: '8px 12px', border: '1px solid #bae6fd' }}>{item.serviceName}</td>
+                              <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #bae6fd' }}>{item.quantity}</td>
+                              <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd' }}>{formatMoney(item.lineTotal)}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-              <Descriptions.Item label="Còn phải thu" span={2}>
-                <Text strong style={{ color: remainingAmount > 0 ? '#dc2626' : '#16a34a', fontSize: 16 }}>
-                  {formatMoney(Math.max(0, remainingAmount))}
-                </Text>
-              </Descriptions.Item>
-            </Descriptions>
 
-            {selectedInvoice.payments?.length > 0 && (
-              <>
-                <Divider orientation="left">Lịch sử thanh toán</Divider>
-                <Timeline
-                  items={selectedInvoice.payments.map((p, i) => ({
-                    color: 'green',
-                    dot: <BanknoteIcon size={14} />,
-                    children: (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 4 }}>
-                        <div>
-                          <Text strong>{formatMoney(p.amountPaid)}</Text>
-                          <Tag style={{ marginLeft: 8 }}>{p.paymentMethod}</Tag>
-                          <Tag color="default" style={{ fontFamily: 'monospace', fontSize: 11 }}>
-                            #{p.transactionCode || '—'}
-                          </Tag>
+              {/* Damages Table */}
+              {invoiceDamages && invoiceDamages.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#dc2626' }}>Hỏng hóc & Thất thoát:</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#fff7ed' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #fed7aa', color: '#9a3412' }}>Vật tư hư hỏng</th>
+                        <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #fed7aa', color: '#9a3412' }}>Số lượng</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #fed7aa', color: '#9a3412' }}>Phí bồi thường</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoiceDamages.map((d, i) => (
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#fff7ed' }}>
+                          <td style={{ padding: '8px 12px', border: '1px solid #fed7aa' }}>{d.equipmentName || 'Vật dụng'} ({d.roomNumber || 'N/A'})</td>
+                          <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #fed7aa' }}>{d.quantity}</td>
+                          <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #fed7aa', color: '#dc2626', fontWeight: 600 }}>{formatMoney(d.penaltyAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Col>
+
+            {/* ── Right Column: Summary & Actions ── */}
+            <Col span={8}>
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontWeight: 600, marginBottom: 12 }}>Trạng thái thanh toán</div>
+                <div style={{ marginBottom: 20 }}>
+                   <Tag color={INVOICE_STATUS_COLOR[selectedInvoice.status] ?? 'default'} style={{ fontSize: 13, padding: '4px 12px' }}>
+                    {INVOICE_STATUS_LABEL[selectedInvoice.status] ?? selectedInvoice.status}
+                  </Tag>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Tổng cần thu</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a' }}>{formatMoney(remainingAmount)}</div>
+                  
+                  <Divider style={{ margin: '12px 0' }} />
+                  
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Còn lại</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: remainingAmount > 0 ? '#dc2626' : '#16a34a' }}>
+                    {formatMoney(Math.max(0, remainingAmount))}
+                  </div>
+                </div>
+
+                <Space direction="vertical" style={{ width: '100%' }} size={10}>
+                  <Button block size="large" icon={<Printer size={16} />} onClick={handlePrint}>
+                    In hóa đơn
+                  </Button>
+                  
+                  {selectedInvoice.status !== 'Paid' ? (
+                    <Button 
+                      block 
+                      size="large" 
+                      type="primary" 
+                      className="btn-gold" 
+                      icon={<CreditCard size={16} />} 
+                      onClick={() => setPaymentOpen(true)}
+                      style={{ height: 50, fontSize: 15, fontWeight: 600 }}
+                    >
+                      GHI NHẬN THANH TOÁN
+                    </Button>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#f0fdf4', borderRadius: 8, color: '#16a34a', fontWeight: 600 }}>
+                      ✓ ĐÃ THANH TOÁN ĐỦ
+                    </div>
+                  )}
+                </Space>
+
+                {selectedInvoice.payments?.length > 0 && (
+                  <div style={{ marginTop: 'auto', paddingTop: 20 }}>
+                    <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8, color: '#64748b' }}>LỊCH SỬ GIAO DỊCH</div>
+                    <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                      {selectedInvoice.payments.map((p, i) => (
+                        <div key={i} style={{ padding: '8px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                            <span style={{ fontWeight: 600 }}>{formatMoney(p.amountPaid)}</span>
+                            <span style={{ color: '#94a3b8', fontSize: 11 }}>{p.paymentMethod}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{p.paymentDate ? dayjs(p.paymentDate).format('DD/MM HH:mm') : ''}</div>
                         </div>
-                        <Text style={{ fontSize: 12, color: '#9ca3af' }}>
-                          {p.paymentDate ? dayjs(p.paymentDate).format('DD/MM/YYYY HH:mm') : ''}
-                        </Text>
-                      </div>
-                    ),
-                  }))}
-                />
-              </>
-            )}
-          </>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Col>
+          </Row>
         )}
       </Modal>
 

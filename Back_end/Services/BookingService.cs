@@ -30,7 +30,7 @@ namespace HotelManagementAPI.Services
             return bookings.Select(MapToResponseDto);
         }
 
-        public async Task<BookingResponseDto> GetBookingByIdAsync(int id)
+        public async Task<BookingResponseDto?> GetBookingByIdAsync(int id)
         {
             var booking = await _context.Bookings
                 .Include(b => b.BookingDetails)
@@ -76,6 +76,7 @@ namespace HotelManagementAPI.Services
                 GuestEmail = requestDto.GuestEmail,
                 VoucherId = requestDto.VoucherId,
                 BookingCode = bookingCode,
+                DepositAmount = requestDto.DepositAmount,
                 Status = BookingStatus.Pending,
                 BookingDetails = requestDto.Details.Select(d => new BookingDetail
                 {
@@ -93,7 +94,7 @@ namespace HotelManagementAPI.Services
             return MapToResponseDto(booking);
         }
 
-        public async Task<BookingResponseDto> UpdateBookingStatusAsync(int id, BookingStatus newStatus)
+        public async Task<BookingResponseDto?> UpdateBookingStatusAsync(int id, BookingStatus newStatus)
         {
             var booking = await _context.Bookings
                 .Include(b => b.BookingDetails)
@@ -106,6 +107,37 @@ namespace HotelManagementAPI.Services
             booking.Status = newStatus;
             
             // If checked in or out, logic for handling related entities could go here
+            if (newStatus == BookingStatus.CheckedIn && booking.BookingDetails != null)
+            {
+                var roomIds = booking.BookingDetails.Where(bd => bd.RoomId.HasValue).Select(bd => bd.RoomId!.Value).ToList();
+                if (roomIds.Any())
+                {
+                    var rooms = await _context.Rooms.Where(r => roomIds.Contains(r.Id)).ToListAsync();
+                    foreach (var room in rooms)
+                    {
+                        if (room.Status != "Available" || (room.CleaningStatus != "Clean" && !string.IsNullOrEmpty(room.CleaningStatus))) 
+                        {
+                            var cleaningDisplay = room.CleaningStatus == "Dirty" ? "chưa dọn dẹp" : (room.CleaningStatus == "Inspecting" ? "đang kiểm tra" : room.CleaningStatus);
+                            var statusDisplay = room.Status == "Maintenance" ? "đang bảo trì" : room.Status;
+                            throw new Exception($"Phòng {room.RoomNumber} chưa sẵn sàng đón khách. Tình trạng: {(room.Status != "Available" ? statusDisplay : cleaningDisplay)}.");
+                        }
+                        room.Status = "Occupied";
+                    }
+                }
+            }
+            else if (newStatus == BookingStatus.CheckedOut && booking.BookingDetails != null)
+            {
+                var roomIds = booking.BookingDetails.Where(bd => bd.RoomId.HasValue).Select(bd => bd.RoomId!.Value).ToList();
+                if (roomIds.Any())
+                {
+                    var rooms = await _context.Rooms.Where(r => roomIds.Contains(r.Id)).ToListAsync();
+                    foreach (var room in rooms)
+                    {
+                        room.Status = "Available";
+                        room.CleaningStatus = "Dirty";
+                    }
+                }
+            }
             
             _context.Bookings.Update(booking);
             await _context.SaveChangesAsync();
@@ -127,6 +159,7 @@ namespace HotelManagementAPI.Services
                 VoucherCode = booking.Voucher?.Code,
                 Status = booking.Status,
                 InvoiceId = booking.Invoice?.Id,
+                DepositAmount = booking.DepositAmount,
                 Details = booking.BookingDetails?.Select(d => new BookingDetailResponseDto
                 {
                     Id = d.Id,

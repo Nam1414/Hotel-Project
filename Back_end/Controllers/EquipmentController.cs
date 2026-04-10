@@ -53,11 +53,13 @@ public class EquipmentController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IInvoiceService _invoiceService;
 
-    public EquipmentController(AppDbContext context, ICloudinaryService cloudinaryService)
+    public EquipmentController(AppDbContext context, ICloudinaryService cloudinaryService, IInvoiceService invoiceService)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
+        _invoiceService = invoiceService;
     }
 
     [HttpGet]
@@ -210,10 +212,50 @@ public class EquipmentController : ControllerBase
             ? dto.PenaltyAmount
             : equipment.DefaultPriceIfLost * dto.Quantity;
 
+        var bookingDetailId = dto.BookingDetailId;
+        string? bookingCode = null;
+
+        // Tự động tìm khách đang ở trong phòng nếu chưa có BookingDetailId
+        if (!bookingDetailId.HasValue && dto.RoomInventoryId.HasValue)
+        {
+            var inv = await _context.RoomInventories.FindAsync(dto.RoomInventoryId.Value);
+            if (inv != null && inv.RoomId.HasValue)
+            {
+                var activeBookingDetail = await _context.BookingDetails
+                    .Include(bd => bd.Booking)
+                        .ThenInclude(b => b.Invoice)
+                    .Where(bd => bd.RoomId == inv.RoomId.Value && bd.Booking != null)
+                    .OrderByDescending(bd => bd.CheckInDate)
+                    .FirstOrDefaultAsync();
+
+                if (activeBookingDetail != null)
+                {
+                    var b = activeBookingDetail.Booking;
+                    bool shouldCharge = false;
+                    
+                    // Logic: Đang ở (Stay) HOẶC đã về nhưng chưa thanh toán xong (Invoice status != Paid)
+                    if (b.StatusString == "CheckedIn") 
+                    {
+                        shouldCharge = true;
+                    }
+                    else if (b.StatusString == "CheckedOut" && (b.Invoice == null || b.Invoice.StatusString != "Paid"))
+                    {
+                        shouldCharge = true;
+                    }
+
+                    if (shouldCharge)
+                    {
+                        bookingDetailId = activeBookingDetail.Id;
+                        bookingCode = b.BookingCode;
+                    }
+                }
+            }
+        }
+
         var record = new LossAndDamage
         {
             EquipmentId     = dto.EquipmentId,
-            BookingDetailId = dto.BookingDetailId,
+            BookingDetailId = bookingDetailId,
             RoomInventoryId = dto.RoomInventoryId,
             Quantity        = dto.Quantity,
             PenaltyAmount   = penalty,
@@ -230,6 +272,16 @@ public class EquipmentController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        // Tự động tính lại tiền hóa đơn nếu hỏng hóc này gắn với một booking
+        if (bookingDetailId.HasValue)
+        {
+            var bookingDetail = await _context.BookingDetails.FindAsync(bookingDetailId.Value);
+            if (bookingDetail != null && bookingDetail.BookingId.HasValue)
+            {
+                await _invoiceService.RecalculateInvoiceAsync(bookingDetail.BookingId.Value);
+            }
+        }
+
         if (dto.RoomInventoryId.HasValue)
         {
             await SyncRoomInventoryAsync(dto.RoomInventoryId.Value, dto.Quantity);
@@ -237,9 +289,11 @@ public class EquipmentController : ControllerBase
 
         return Ok(new
         {
-            message        = "Ghi nháº­n há»ng thÃ nh cÃ´ng â€“ Kho Ä‘Ã£ Ä‘á»“ng bá»™",
+            message        = "Ghi nhận hỏng thành công - Kho đã đồng bộ",
             damageId       = record.Id,
             penaltyAmount  = penalty,
+            isLinkedToBooking = bookingDetailId.HasValue,
+            bookingCode    = bookingCode,
             newDamaged     = equipment.DamagedQuantity,
             inStock        = equipment.TotalQuantity
                             - equipment.InUseQuantity

@@ -34,7 +34,7 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var result = await _roomService.GetRoomByIdAsync(id);
-        if (result == null) return NotFound(new { message = "Phòng không t?n t?i" });
+        if (result == null) return NotFound(new { message = "Phï¿½ng khï¿½ng t?n t?i" });
         return Ok(result);
     }
 
@@ -51,7 +51,7 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomDto dto)
     {
         var result = await _roomService.UpdateRoomAsync(id, dto);
-        if (result == null) return NotFound(new { message = "Phòng không t?n t?i" });
+        if (result == null) return NotFound(new { message = "Phï¿½ng khï¿½ng t?n t?i" });
         return Ok(result);
     }
 
@@ -60,8 +60,8 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _roomService.DeleteRoomAsync(id);
-        if (!result) return NotFound(new { message = "Phòng không t?n t?i" });
-        return Ok(new { message = "Ðã vô hi?u hóa phòng thành công" });
+        if (!result) return NotFound(new { message = "Phï¿½ng khï¿½ng t?n t?i" });
+        return Ok(new { message = "ï¿½ï¿½ vï¿½ hi?u hï¿½a phï¿½ng thï¿½nh cï¿½ng" });
     }
 
     [HttpPost("{id}/clone-items")]
@@ -69,10 +69,10 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> CloneItems(int id, [FromBody] CloneRoomItemsDto dto)
     {
         var targetRoom = await _context.Rooms.FindAsync(id);
-        if (targetRoom == null) return NotFound(new { message = "Phòng m?c tiêu không t?n t?i" });
+        if (targetRoom == null) return NotFound(new { message = "Phï¿½ng m?c tiï¿½u khï¿½ng t?n t?i" });
 
         var templateRoom = await _context.Rooms.FindAsync(dto.TemplateRoomId);
-        if (templateRoom == null) return NotFound(new { message = "Phòng m?u không t?n t?i" });
+        if (templateRoom == null) return NotFound(new { message = "Phï¿½ng m?u khï¿½ng t?n t?i" });
 
         var templateInventories = await LoadTemplateInventoriesAsync(dto.TemplateRoomId);
         var oldInventories = await _context.RoomInventories
@@ -100,7 +100,7 @@ public class RoomsController : ControllerBase
 
         return Ok(new
         {
-            message = $"Ðã copy thành công {templateInventories.Count} v?t tu t? phòng {templateRoom.RoomNumber} sang phòng {targetRoom.RoomNumber}"
+            message = $"ï¿½ï¿½ copy thï¿½nh cï¿½ng {templateInventories.Count} v?t tu t? phï¿½ng {templateRoom.RoomNumber} sang phï¿½ng {targetRoom.RoomNumber}"
         });
     }
 
@@ -109,14 +109,14 @@ public class RoomsController : ControllerBase
     public async Task<IActionResult> SyncItems(int id)
     {
         var templateRoom = await _context.Rooms.FindAsync(id);
-        if (templateRoom == null) return NotFound(new { message = "Phòng m?u không t?n t?i" });
+        if (templateRoom == null) return NotFound(new { message = "Phï¿½ng m?u khï¿½ng t?n t?i" });
 
         var targetRooms = await _context.Rooms
             .Where(r => r.RoomTypeId == templateRoom.RoomTypeId && r.Id != id && r.IsActive)
             .ToListAsync();
 
         if (!targetRooms.Any())
-            return Ok(new { message = "Không có phòng nào cùng h?ng d? d?ng b?" });
+            return Ok(new { message = "Khï¿½ng cï¿½ phï¿½ng nï¿½o cï¿½ng h?ng d? d?ng b?" });
 
         var templateItems = await LoadTemplateInventoriesAsync(id);
         var targetRoomIds = targetRooms.Select(r => r.Id).ToList();
@@ -152,7 +152,7 @@ public class RoomsController : ControllerBase
 
         return Ok(new
         {
-            message = $"Ðã d?ng b? {templateItems.Count} v?t tu t? phòng {templateRoom.RoomNumber} sang {targetRooms.Count} phòng cùng h?ng."
+            message = $"ï¿½ï¿½ d?ng b? {templateItems.Count} v?t tu t? phï¿½ng {templateRoom.RoomNumber} sang {targetRooms.Count} phï¿½ng cï¿½ng h?ng."
         });
     }
 
@@ -164,17 +164,17 @@ public class RoomsController : ControllerBase
             .AnyAsync(rt => rt.Id == dto.RoomTypeId && rt.IsActive);
 
         if (!roomTypeExists)
-            return BadRequest(new { message = "H?ng phòng không t?n t?i" });
+            return BadRequest(new { message = "H?ng phï¿½ng khï¿½ng t?n t?i" });
 
         if (dto.Count <= 0 || dto.Count > 50)
-            return BadRequest(new { message = "S? lu?ng phòng ph?i t? 1 d?n 50" });
+            return BadRequest(new { message = "S? lu?ng phï¿½ng ph?i t? 1 d?n 50" });
 
         var templateInventories = new List<RoomInventory>();
         if (dto.TemplateRoomId.HasValue)
         {
             var templateRoomExists = await _context.Rooms.AnyAsync(r => r.Id == dto.TemplateRoomId.Value);
             if (!templateRoomExists)
-                return BadRequest(new { message = "Phòng m?u không t?n t?i" });
+                return BadRequest(new { message = "Phï¿½ng m?u khï¿½ng t?n t?i" });
 
             templateInventories = await LoadTemplateInventoriesAsync(dto.TemplateRoomId.Value);
         }
@@ -189,7 +189,7 @@ public class RoomsController : ControllerBase
 
             if (await _context.Rooms.AnyAsync(r => r.RoomNumber == roomNumber))
             {
-                errors.Add($"Phòng {roomNumber} dã t?n t?i, b? qua");
+                errors.Add($"Phï¿½ng {roomNumber} dï¿½ t?n t?i, b? qua");
                 continue;
             }
 
@@ -234,7 +234,7 @@ public class RoomsController : ControllerBase
 
         return Ok(new
         {
-            message = $"Ðã t?o {createdRooms.Count} phòng thành công",
+            message = $"ï¿½ï¿½ t?o {createdRooms.Count} phï¿½ng thï¿½nh cï¿½ng",
             created = createdRooms,
             skipped = errors
         });

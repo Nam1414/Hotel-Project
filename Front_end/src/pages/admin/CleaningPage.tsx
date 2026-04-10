@@ -1,12 +1,11 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card as AntCard, Col, Row, Select, Space, Statistic, Table, Tag, Typography, Modal, Form, InputNumber, Input, Upload } from 'antd';
+import { message as antdMessage, Button, Card as AntCard, Col, Row, Select, Space, Statistic, Table, Tag, Typography, Modal, Form, InputNumber, Input, Upload } from 'antd';
 import { adminApi, RoomDto, RoomInventoryDto } from '../../services/adminApi';
 import { useAppSelector } from '../../hooks/useAppStore';
-import { AlertTriangle, ImagePlus } from 'lucide-react';
+import { AlertTriangle, ImagePlus, Coffee } from 'lucide-react';
 
 const CleaningPage: React.FC = () => {
-  const { message } = App.useApp();
   const user = useAppSelector((state) => state.auth.user);
   const [rooms, setRooms] = useState<RoomDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -20,13 +19,18 @@ const CleaningPage: React.FC = () => {
   const [damageImage, setDamageImage] = useState<File | null>(null);
   const [reportForm] = Form.useForm();
 
+  // Minibar State
+  const [minibarModalOpen, setMinibarModalOpen] = useState(false);
+  const [minibarServices, setMinibarServices] = useState<any[]>([]);
+  const [minibarForm] = Form.useForm();
+
   const loadData = async () => {
     setLoading(true);
     try {
       const roomData = await adminApi.getRooms();
       setRooms(roomData);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể tải danh sách đơn phòng');
+      antdMessage.error(err.response?.data?.message || 'Không thể tải danh sách đơn phòng');
     } finally {
       setLoading(false);
     }
@@ -55,7 +59,7 @@ const CleaningPage: React.FC = () => {
         cleaningStatus: nextCleaningStatus,
         status: nextStatus || record.status,
       });
-      message.success('Đã cập nhật trạng thái đơn phòng');
+      antdMessage.success('Đã cập nhật trạng thái đơn phòng');
       loadData();
     } catch (err: any) {
       const statusCode = err.response?.status;
@@ -65,7 +69,7 @@ const CleaningPage: React.FC = () => {
           : statusCode === 403
             ? 'Tài khoản hiện tại không được phép cập nhật đơn phòng.'
             : 'Không thể cập nhật trạng thái';
-      message.error(err.response?.data?.message || fallbackMessage);
+      antdMessage.error(err.response?.data?.message || fallbackMessage);
     }
   };
 
@@ -79,7 +83,7 @@ const CleaningPage: React.FC = () => {
       const inventory = await adminApi.getRoomInventory(room.id);
       setRoomInventory(inventory);
     } catch (err: any) {
-      message.error('Không thể lấy danh sách vật tư của phòng này');
+      antdMessage.error('Không thể lấy danh sách vật tư của phòng này');
     }
   };
 
@@ -87,7 +91,7 @@ const CleaningPage: React.FC = () => {
     try {
       const inventoryItem = roomInventory.find((item) => item.id === values.roomInventoryId);
       if (!inventoryItem) {
-         message.error('Vui lòng chọn vật tư bị hỏng');
+         antdMessage.error('Vui lòng chọn vật tư bị hỏng');
          return;
       }
       
@@ -101,20 +105,60 @@ const CleaningPage: React.FC = () => {
         roomInventoryId: inventoryItem.id
       }) as any;
 
-      const damageId = res?.damageId || res?.data?.damageId;
+      const responseData = res.data || res;
+      const damageId = responseData.damageId;
+      const penaltyAmount = responseData.penaltyAmount || (inventoryItem.priceIfLost || 0) * values.quantity;
+      const isLinked = responseData.isLinkedToBooking;
+      const bCode = responseData.bookingCode;
+
       if (damageId && damageImage) {
         try {
           await adminApi.uploadDamageImage(damageId, damageImage);
         } catch (uploadErr) {
-          message.warning('Đã tạo báo cáo nhưng không thể tải ảnh lên');
+          antdMessage.warning('Đã tạo báo cáo nhưng không thể tải ảnh lên');
         }
       }
 
-      message.success('Đã gửi báo cáo sự cố thành công!');
+      if (isLinked) {
+        antdMessage.success(`Đã báo hỏng ${inventoryItem.equipmentName} thành công. Phí bồi thường ${penaltyAmount.toLocaleString()} VNĐ đã được cộng vào hóa đơn booking ${bCode}.`);
+      } else {
+        antdMessage.success(`Đã báo hỏng thành công. Do phòng hiện không có khách thuê hoặc hóa đơn đã tất toán, phí này chỉ được ghi nhận vào kho hỏng.`);
+      }
+
+      loadData();
       setReportModalOpen(false);
       setDamageImage(null);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể gửi báo cáo');
+      console.error('Report damage error:', err);
+      antdMessage.error(err.response?.data?.message || 'Không thể gửi báo cáo');
+    }
+  };
+
+  const openMinibarModal = async (room: RoomDto) => {
+    setSelectedRoom(room);
+    setMinibarModalOpen(true);
+    minibarForm.resetFields();
+    try {
+      const services = await adminApi.getServices();
+      setMinibarServices(services || []);
+    } catch (err: any) {
+      antdMessage.error('Không thể lấy danh sách dịch vụ');
+    }
+  };
+
+  const handleMinibarSubmit = async (values: any) => {
+    try {
+      if (!values.items || values.items.length === 0) {
+        antdMessage.error('Vui lòng chọn ít nhất 1 dịch vụ');
+        return;
+      }
+      const res = await adminApi.reportMinibar(selectedRoom!.id, values.items) as any;
+      const data = res.data || res;
+      antdMessage.success(`${data.message}. Số tiền: ${data.totalAmount?.toLocaleString()} VNĐ (Booking: ${data.bookingCode})`);
+      setMinibarModalOpen(false);
+      loadData();
+    } catch (err: any) {
+      antdMessage.error(err.response?.data?.message || 'Không thể cộng Minibar');
     }
   };
 
@@ -192,31 +236,64 @@ const CleaningPage: React.FC = () => {
             },
             {
               title: 'Cập nhật',
-              render: (_, record: RoomDto) => (
-                <Space wrap>
-                  <Button onClick={() => updateCleaning(record, 'Dirty', 'Cleaning')}>Đánh dấu bận</Button>
-                  <Button onClick={() => updateCleaning(record, 'Inspecting', 'Cleaning')}>Đang dọn</Button>
-                  <Button danger icon={<AlertTriangle size={14} />} onClick={() => openReportModal(record)}>
-                    Báo sự cố
-                  </Button>
-                  <Button type="primary" onClick={() => updateCleaning(record, 'Clean', 'Available')}>
-                    Hoàn tất
-                  </Button>
-                </Space>
-              ),
+              render: (_, record: RoomDto) => {
+                const isCleaning = record.status === 'Cleaning';
+                const isOccupied = record.status === 'Occupied';
+                
+                return (
+                  <Space wrap>
+                    {!isCleaning && (
+                      <Button onClick={() => updateCleaning(record, 'Inspecting', 'Cleaning')}>
+                        Bắt đầu dọn
+                      </Button>
+                    )}
+                    
+                    <Button danger icon={<AlertTriangle size={14} />} onClick={() => openReportModal(record)}>
+                      Báo sự cố
+                    </Button>
+                    <Button icon={<Coffee size={14} />} onClick={() => openMinibarModal(record)}>
+                      Báo Minibar
+                    </Button>
+
+                    {isCleaning && (
+                      <Button type="primary" onClick={() => updateCleaning(record, 'Clean', 'Available')}>
+                        Hoàn tất dọn dẹp
+                      </Button>
+                    )}
+
+                    {(!isOccupied && record.cleaningStatus !== 'Dirty' && !isCleaning) && (
+                      <Button onClick={() => updateCleaning(record, 'Dirty')}>Đánh dấu bận</Button>
+                    )}
+                  </Space>
+                );
+              },
             },
           ]}
         />
       </AntCard>
 
-      <Modal open={reportModalOpen} title={`Báo hỏng vật tư - Phòng ${selectedRoom?.roomNumber || ''}`} onCancel={() => setReportModalOpen(false)} footer={null}>
-        <Form form={reportForm} layout="vertical" onFinish={handleReportSubmit}>
-          <Form.Item name="roomInventoryId" label="Vật tư bị hỏng/thiếu" rules={[{ required: true, message: 'Vui lòng chọn vật tư' }]}>
-            <Select 
-              options={roomInventory.map((item) => ({ value: item.id, label: `${item.equipmentName} (Kho phòng: ${item.quantity || 0})` }))} 
-              placeholder="Chọn vật tư"
-            />
-          </Form.Item>
+      <Modal 
+        open={reportModalOpen} 
+        title={<Space><AlertTriangle style={{ color: '#dc2626' }} size={18} /><span>Báo hỏng vật tư - Phòng {selectedRoom?.roomNumber || ''}</span></Space>}
+        onCancel={() => setReportModalOpen(false)} 
+        footer={null}
+      >
+        {roomInventory.length === 0 ? (
+          <div style={{ padding: '24px 0', textAlign: 'center' }}>
+            <div style={{ color: '#9ca3af', marginBottom: 12 }}>Phòng này hiện chưa được thiết lập danh mục vật tư.</div>
+            <Button onClick={() => setReportModalOpen(false)}>Quay lại</Button>
+          </div>
+        ) : (
+          <Form form={reportForm} layout="vertical" onFinish={handleReportSubmit}>
+            <div style={{ marginBottom: 16, padding: 12, background: '#fef2f2', borderRadius: 8, fontSize: 13, color: '#991b1b' }}>
+              ℹ️ Các khoản bồi thường sẽ được tự động cộng vào hóa đơn của khách đang ở (nếu có).
+            </div>
+            <Form.Item name="roomInventoryId" label="Vật tư bị hỏng/thiếu" rules={[{ required: true, message: 'Vui lòng chọn vật tư' }]}>
+              <Select 
+                options={roomInventory.map((item) => ({ value: item.id, label: `${item.equipmentName} (Kho phòng: ${item.quantity || 0})` }))} 
+                placeholder="Chọn vật tư"
+              />
+            </Form.Item>
           <Form.Item name="quantity" label="Số lượng hỏng/mất" rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}>
             <InputNumber min={1} style={{ width: '100%' }} placeholder="Nhập số lượng" />
           </Form.Item>
@@ -239,6 +316,64 @@ const CleaningPage: React.FC = () => {
             <Button onClick={() => setReportModalOpen(false)}>Hủy</Button>
             <Button type="primary" danger htmlType="submit">
               Gửi báo cáo
+            </Button>
+          </div>
+          </Form>
+        )}
+      </Modal>
+
+      <Modal 
+        open={minibarModalOpen} 
+        title={<Space><Coffee style={{ color: '#0ea5e9' }} size={18} /><span>Báo dùng Minibar - Phòng {selectedRoom?.roomNumber || ''}</span></Space>}
+        onCancel={() => setMinibarModalOpen(false)} 
+        footer={null}
+      >
+        <Form form={minibarForm} layout="vertical" onFinish={handleMinibarSubmit}>
+          <div style={{ marginBottom: 16, padding: 12, background: '#f0f9ff', borderRadius: 8, fontSize: 13, color: '#0369a1' }}>
+            ℹ️ Tiền dịch vụ sẽ được cộng tự động vào hóa đơn của booking đang ở.
+          </div>
+          
+          <Form.List name="items">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'serviceId']}
+                      rules={[{ required: true, message: 'Chọn dịch vụ' }]}
+                    >
+                      <Select
+                        placeholder="Chọn dịch vụ"
+                        style={{ width: 250 }}
+                        showSearch
+                        optionFilterProp="children"
+                        options={minibarServices.map(s => ({ value: s.id, label: `${s.name} (${s.price?.toLocaleString()}đ)` }))}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'quantity']}
+                      rules={[{ required: true, message: 'Nhập số lượng' }]}
+                    >
+                      <InputNumber min={1} placeholder="SL" />
+                    </Form.Item>
+                    <Button danger onClick={() => remove(name)}>Xóa</Button>
+                  </Space>
+                ))}
+                <Form.Item>
+                  <Button type="dashed" onClick={() => add()} block>
+                    + Thêm món
+                  </Button>
+                </Form.Item>
+              </>
+            )}
+          </Form.List>
+
+          <div className="flex justify-end gap-3 mt-4">
+            <Button onClick={() => setMinibarModalOpen(false)}>Hủy</Button>
+            <Button type="primary" htmlType="submit">
+              Lưu Minibar
             </Button>
           </div>
         </Form>

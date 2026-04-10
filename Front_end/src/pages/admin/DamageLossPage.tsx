@@ -1,12 +1,11 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
-import { App, Button, Card as AntCard, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, Image, Upload } from 'antd';
+import { message as antdMessage, Button, Card as AntCard, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Statistic, Table, Tag, Typography, Image, Upload } from 'antd';
 import { Check, ImagePlus, Plus, X } from 'lucide-react';
 import { adminApi, DamageDto, EquipmentDto, RoomDto, RoomInventoryDto } from '../../services/adminApi';
 import { formatVietnamTime, formatVietnamTimeShort } from '../../utils/dateFormatter';
 
 const DamageLossPage: React.FC = () => {
-  const { message } = App.useApp();
   const [damages, setDamages] = useState<DamageDto[]>([]);
   const [equipments, setEquipments] = useState<EquipmentDto[]>([]);
   const [rooms, setRooms] = useState<RoomDto[]>([]);
@@ -29,7 +28,7 @@ const DamageLossPage: React.FC = () => {
       setEquipments(equipmentData);
       setRooms(roomData);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể tải dữ liệu hỏng / mất');
+      antdMessage.error(err.response?.data?.message || 'Không thể tải dữ liệu hỏng / mất');
     } finally {
       setLoading(false);
     }
@@ -77,12 +76,12 @@ const DamageLossPage: React.FC = () => {
       if (damageId && damageImage) {
         try {
           await adminApi.uploadDamageImage(damageId, damageImage);
-          message.success('Đã ghi nhận hỏng / mất kèm ảnh');
+          antdMessage.success('Đã ghi nhận hỏng / mất kèm ảnh');
         } catch (uploadErr) {
-          message.warning('Đã ghi nhận hỏng / mất nhưng tải ảnh thất bại');
+          antdMessage.warning('Đã ghi nhận hỏng / mất nhưng tải ảnh thất bại');
         }
       } else {
-        message.success('Đã ghi nhận hỏng / mất');
+        antdMessage.success('Đã ghi nhận hỏng / mất');
       }
 
       setOpenForm(false);
@@ -91,17 +90,17 @@ const DamageLossPage: React.FC = () => {
       setRoomInventory([]);
       loadData(filters);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể ghi nhận');
+      antdMessage.error(err.response?.data?.message || 'Không thể ghi nhận');
     }
   };
 
   const updateStatus = async (record: DamageDto, status: 'confirmed' | 'cancelled') => {
     try {
       await adminApi.updateDamageStatus(record.id, status);
-      message.success(status === 'confirmed' ? 'Đã xác nhận' : 'Đã hủy');
+      antdMessage.success(status === 'confirmed' ? 'Đã xác nhận' : 'Đã hủy');
       loadData(filters);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể cập nhật trạng thái');
+      antdMessage.error(err.response?.data?.message || 'Không thể cập nhật trạng thái');
     }
   };
 
@@ -110,10 +109,10 @@ const DamageLossPage: React.FC = () => {
 
     try {
       await adminApi.uploadDamageImage(damageId, file);
-      message.success('Đã tải ảnh hỏng lên');
+      antdMessage.success('Đã tải ảnh hỏng lên');
       loadData(filters);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể upload ảnh');
+      antdMessage.error(err.response?.data?.message || 'Không thể upload ảnh');
     }
   };
 

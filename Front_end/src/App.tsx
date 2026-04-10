@@ -8,7 +8,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Provider, useDispatch } from 'react-redux';
 import { store } from './store';
 import AppRoutes from './routes';
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { useScrollToTop } from './hooks/useScrollToTop';
 import { useThemeStore } from './store/themeStore';
 import { addNotification } from './store/slices/notificationSlice';
@@ -66,16 +66,18 @@ const AppContent = () => {
         token: {
           colorPrimary: '#C6A96B',
           borderRadius: 12,
-          colorBgContainer: isDarkMode ? '#1E293B' : '#FFFFFF',
-          colorBgElevated: isDarkMode ? '#334155' : '#FFFFFF',
-          colorText: isDarkMode ? '#F1F5F9' : '#1E293B',
-          colorTextSecondary: isDarkMode ? '#9CA3AF' : '#64748B',
+          colorBgContainer: isDarkMode ? '#111827' : '#FFFFFF',
+          colorBgElevated: isDarkMode ? '#1F2937' : '#FFFFFF',
+          colorText: isDarkMode ? '#F8FAFC' : '#1E293B',
+          colorTextSecondary: isDarkMode ? '#94A3B8' : '#64748B',
           fontFamily: 'Outfit, sans-serif',
         },
       }}
     >
-      <GlobalLoading />
-      <AppRoutes />
+      <AntdApp>
+        <GlobalLoading />
+        <AppRoutes />
+      </AntdApp>
     </ConfigProvider>
   );
 };

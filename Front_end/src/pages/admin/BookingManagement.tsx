@@ -1,10 +1,9 @@
 // @ts-nocheck
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import type { RootState } from '../../store';
+import { useAppSelector } from '../../hooks/useAppStore';
 import {
-  App,
+  message as antdMessage,
   Button,
   Card as AntCard,
   Col,
@@ -27,7 +26,6 @@ import {
 } from 'antd';
 import {
   BanknoteIcon,
-  BadgePercent,
   CalendarDays,
   CheckCircle2,
   CreditCard,
@@ -52,6 +50,7 @@ import {
 import { adminApi, RoomDto, RoomTypeDto } from '../../services/adminApi';
 import { voucherApi, VoucherResponseDto } from '../../services/voucherApi';
 import HotelInvoicePrint from '../../components/print/HotelInvoicePrint';
+
 const { Title, Paragraph, Text } = Typography;
 
 // ─── helpers ───────────────────────────────────────────────────────────────
@@ -99,10 +98,10 @@ const VIEW_CONFIG: Record<
     showCreate: true,
   },
   arrivals: {
-    title: 'Khách đến hôm nay',
-    subtitle: 'Danh sách booking dự kiến check-in trong ngày để lễ tân xử lý nhanh.',
+    title: 'Khách đến',
+    subtitle: 'Danh sách booking dự kiến check-in trong ngày được chọn để lễ tân xử lý nhanh.',
     createLabel: 'Tạo booking mới',
-    defaultStatus: 'Confirmed',
+    defaultStatus: 'all',
     showCreate: false,
   },
   'in-house': {
@@ -151,16 +150,24 @@ interface PrintInvoiceProps {
   invoice: InvoiceResponseDto;
   rooms: RoomDto[];
   cashierName?: string | null;
+  damages?: any[];
+  services?: any[];
 }
 
-const PrintInvoice: React.FC<PrintInvoiceProps> = ({ booking, invoice, rooms, cashierName }) => (
-  <HotelInvoicePrint booking={booking} invoice={invoice} rooms={rooms} cashierName={cashierName} />
+const PrintInvoice: React.FC<PrintInvoiceProps> = ({ booking, invoice, rooms, cashierName, damages, services }) => (
+  <HotelInvoicePrint
+    booking={booking}
+    invoice={invoice}
+    rooms={rooms}
+    cashierName={cashierName}
+    damages={damages}
+    services={services}
+  />
 );
 
 // ─── Main Component ────────────────────────────────────────────────────────
 const BookingPage: React.FC = () => {
-  const { message } = App.useApp();
-  const cashierName = useSelector((s: RootState) => s.auth.user?.fullName || s.auth.user?.name || null);
+  const cashierName = useAppSelector((s) => s.auth.user?.fullName || s.auth.user?.name || null);
   const location = useLocation();
   const viewMode = getViewMode(location.pathname);
   const viewConfig = VIEW_CONFIG[viewMode];
@@ -172,18 +179,24 @@ const BookingPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<BookingStatus | 'all'>('all');
+  const [arrivalDate, setArrivalDate] = useState<dayjs.Dayjs | null>(dayjs());
 
   const [createOpen, setCreateOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [checkOutOpen, setCheckOutOpen] = useState(false);
+  const [selectedBookingForCheckOut, setSelectedBookingForCheckOut] = useState<BookingResponseDto | null>(null);
 
   const [selectedBooking, setSelectedBooking] = useState<BookingResponseDto | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponseDto | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceDamages, setInvoiceDamages] = useState<any[]>([]);
+  const [invoiceServices, setInvoiceServices] = useState<any[]>([]);
 
   const [form] = Form.useForm();
   const [paymentForm] = Form.useForm();
+  const [checkOutForm] = Form.useForm();
 
   // ── load ──
   const loadData = useCallback(async () => {
@@ -200,7 +213,7 @@ const BookingPage: React.FC = () => {
       setRoomTypes(rt);
       setVouchers(vc);
     } catch {
-      message.error('Không thể tải dữ liệu đặt phòng');
+      antdMessage.error('Không thể tải dữ liệu đặt phòng');
     } finally {
       setLoading(false);
     }
@@ -213,7 +226,7 @@ const BookingPage: React.FC = () => {
     if (paymentOpen) {
       paymentForm.setFieldsValue({ transactionCode: generateTxnCode() });
     }
-  }, [paymentOpen]);
+  }, [paymentOpen, paymentForm]);
 
   useEffect(() => {
     setStatusFilter(viewConfig.defaultStatus);
@@ -229,7 +242,7 @@ const BookingPage: React.FC = () => {
     checkedOut: bookings.filter(b => b.status === 'CheckedOut').length,
     cancelled: bookings.filter(b => b.status === 'Cancelled').length,
     arrivalsToday: bookings.filter(
-      b => (b.status === 'Pending' || b.status === 'Confirmed') && b.details?.some(d => isToday(d.checkInDate))
+      b => (b.status === 'Pending' || b.status === 'Confirmed') && b.details?.some(d => dayjs(d.checkInDate).isSame(arrivalDate || dayjs(), 'day'))
     ).length,
     departuresToday: bookings.filter(
       b => b.status === 'CheckedIn' && b.details?.some(d => isToday(d.checkOutDate))
@@ -252,11 +265,11 @@ const BookingPage: React.FC = () => {
 
     const matchView =
       viewMode === 'arrivals'
-        ? (b.status === 'Pending' || b.status === 'Confirmed') && b.details?.some(d => isToday(d.checkInDate))
+        ? (b.status === 'Pending' || b.status === 'Confirmed') && b.details?.some(d => dayjs(d.checkInDate).isSame(arrivalDate || dayjs(), 'day'))
         : viewMode === 'in-house'
           ? b.status === 'CheckedIn'
           : viewMode === 'check-out'
-            ? b.status === 'CheckedIn' && b.details?.some(d => isToday(d.checkOutDate))
+            ? b.status === 'CheckedIn'
             : viewMode === 'invoices'
               ? Boolean(b.invoiceId) || b.status === 'CheckedOut'
               : true;
@@ -267,7 +280,7 @@ const BookingPage: React.FC = () => {
   const statCards =
     viewMode === 'arrivals'
       ? [
-          { label: 'Khách đến hôm nay', value: stats.arrivalsToday, color: '#0ea5e9', icon: <CalendarDays size={20} /> },
+          { label: 'Số khách đến (ngày này)', value: stats.arrivalsToday, color: '#0ea5e9', icon: <CalendarDays size={20} /> },
           { label: 'Chờ xác nhận', value: stats.pending, color: '#d97706', icon: <Ticket size={20} /> },
           { label: 'Đã xác nhận', value: stats.confirmed, color: '#2563eb', icon: <CheckCircle2 size={20} /> },
         ]
@@ -301,10 +314,10 @@ const BookingPage: React.FC = () => {
   const updateStatus = async (booking: BookingResponseDto, status: BookingStatus) => {
     try {
       await bookingApi.updateStatus(booking.id, status);
-      message.success(`Đã cập nhật → ${STATUS_LABEL[status]}`);
+      antdMessage.success(`Đã cập nhật → ${STATUS_LABEL[status]}`);
       loadData();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Cập nhật thất bại');
+      antdMessage.error(err.response?.data?.message || 'Cập nhật thất bại');
     }
   };
 
@@ -318,9 +331,23 @@ const BookingPage: React.FC = () => {
     setInvoiceOpen(true);
     setInvoiceLoading(true);
     setSelectedInvoice(null);
+    setInvoiceDamages([]);
+    setInvoiceServices([]);
     try {
-      const inv = await bookingApi.getInvoiceByBookingId(booking.id);
+      const [inv, services] = await Promise.all([
+        bookingApi.getInvoiceByBookingId(booking.id),
+        adminApi.getOrderServicesByBookingId(booking.id).catch(() => []),
+      ]);
       setSelectedInvoice(inv);
+      setInvoiceServices(services.filter((s: any) => s.status === 'Delivered' || s.status === 1));
+
+      // Load damages for all booking details
+      if (booking.details?.length) {
+        const allDamages = await Promise.all(
+          booking.details.map(d => adminApi.getLossDamagesByBookingDetail(d.id).catch(() => []))
+        );
+        setInvoiceDamages(allDamages.flat());
+      }
     } catch {
       setSelectedInvoice(null);
     } finally {
@@ -333,9 +360,65 @@ const BookingPage: React.FC = () => {
     try {
       const inv = await bookingApi.createInvoice(selectedBooking.id);
       setSelectedInvoice(inv);
-      message.success('Tạo hóa đơn thành công');
+      antdMessage.success('Tạo hóa đơn thành công');
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể tạo hóa đơn');
+      antdMessage.error(err.response?.data?.message || 'Không thể tạo hóa đơn');
+    }
+  };
+
+  const requestCleaning = async (booking: BookingResponseDto) => {
+    try {
+      if (!booking.details || booking.details.length === 0) return;
+      
+      const promises = booking.details.map(d => {
+        if (d.roomId) {
+          const room = rooms.find(r => r.id === d.roomId);
+          return adminApi.updateRoomCleaningStatus(d.roomId, {
+            status: room?.status || 'Occupied',
+            cleaningStatus: 'Dirty'
+          });
+        }
+        return Promise.resolve();
+      });
+      
+      await Promise.all(promises);
+      antdMessage.success('Đã gửi yêu cầu buồng phòng kiểm tra và báo cáo!');
+      loadData();
+    } catch (err: any) {
+      antdMessage.error('Lỗi khi gửi yêu cầu. Có thể phòng chưa được thiết lập.');
+    }
+  };
+
+  const openCheckOut = (booking: BookingResponseDto) => {
+    setSelectedBookingForCheckOut(booking);
+    checkOutForm.resetFields();
+    setCheckOutOpen(true);
+  };
+
+  const submitCheckOut = async (values: any) => {
+    try {
+      if (values.damages && values.damages.length > 0) {
+        for (const damage of values.damages) {
+          if (damage.penaltyAmount > 0) {
+            await adminApi.createLossDamage({
+              bookingDetailId: damage.bookingDetailId,
+              quantity: damage.quantity || 1,
+              penaltyAmount: damage.penaltyAmount,
+              description: damage.description
+            });
+          }
+        }
+      }
+      
+      await bookingApi.updateStatus(selectedBookingForCheckOut!.id, 'CheckedOut');
+      antdMessage.success(`Đã trả phòng xuất sắc!`);
+      
+      await bookingApi.createInvoice(selectedBookingForCheckOut!.id).catch(() => {});
+      
+      setCheckOutOpen(false);
+      loadData();
+    } catch (err: any) {
+      antdMessage.error(err.response?.data?.message || 'Có lỗi xảy ra khi trả phòng');
     }
   };
 
@@ -345,17 +428,16 @@ const BookingPage: React.FC = () => {
       await bookingApi.addPayment(selectedInvoice.id, {
         paymentMethod: values.paymentMethod,
         amountPaid: values.amountPaid,
-        // Gửi lên backend (backend sẽ tự sinh nếu rỗng)
         transactionCode: values.transactionCode || undefined,
       });
-      message.success('Ghi nhận thanh toán thành công');
+      antdMessage.success('Ghi nhận thanh toán thành công');
       paymentForm.resetFields();
       setPaymentOpen(false);
       const inv = await bookingApi.getInvoiceByBookingId(selectedBooking!.id);
       setSelectedInvoice(inv);
       loadData();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Thanh toán thất bại');
+      antdMessage.error(err.response?.data?.message || 'Thanh toán thất bại');
     }
   };
 
@@ -364,9 +446,9 @@ const BookingPage: React.FC = () => {
       const details = values.details.map((d: any) => ({
         roomId: d.roomId ?? null,
         roomTypeId: rooms.find(r => r.id === d.roomId)?.roomTypeId ?? null,
-        checkInDate: d.dates[0].toISOString(),
-        checkOutDate: d.dates[1].toISOString(),
-        pricePerNight: d.pricePerNight,
+        checkInDate: d.dates[0].format('YYYY-MM-DDT14:00:00'), // Đặt nhận phòng 14:00 (chuẩn giờ địa phương)
+        checkOutDate: d.dates[1].format('YYYY-MM-DDT12:00:00'), // Trả phòng 12:00 (tránh lệch timezone)
+        pricePerNight: Number(d.pricePerNight || 0),
       }));
       await bookingApi.create({
         guestName: values.guestName,
@@ -374,23 +456,25 @@ const BookingPage: React.FC = () => {
         guestEmail: values.guestEmail,
         voucherId: values.voucherId ?? null,
         details,
+        depositAmount: Number(values.depositAmount || 0),
       });
-      message.success('Tạo booking thành công');
+      antdMessage.success('Tạo booking thành công');
       setCreateOpen(false);
       form.resetFields();
       loadData();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể tạo booking');
+      antdMessage.error(err.response?.data?.message || 'Không thể tạo booking');
     }
   };
 
-  /** Mở hộp thoại in hóa đơn */
   const handlePrint = () => {
+    if (!selectedInvoice || !selectedBooking) return;
+    // Just trigger standard print - HotelInvoicePrint will handle CSS visibility
     window.print();
   };
 
   const remainingAmount = selectedInvoice
-    ? selectedInvoice.finalTotal - selectedInvoice.payments.reduce((s, p) => s + p.amountPaid, 0)
+    ? selectedInvoice.finalTotal - selectedInvoice.depositAmount - selectedInvoice.payments.reduce((s, p) => s + p.amountPaid, 0)
     : 0;
 
   // ── table columns ──────────────────────────────────────────────────────
@@ -450,6 +534,16 @@ const BookingPage: React.FC = () => {
       width: 120,
     },
     {
+      title: 'Tiền cọc',
+      key: 'deposit',
+      render: (_: any, r: BookingResponseDto) => (
+        <Text strong style={{ color: r.depositAmount > 0 ? '#16a34a' : 'inherit' }}>
+          {formatMoney(r.depositAmount)}
+        </Text>
+      ),
+      width: 110,
+    },
+    {
       title: 'Hóa đơn',
       key: 'invoice',
       render: (_: any, r: BookingResponseDto) =>
@@ -475,17 +569,40 @@ const BookingPage: React.FC = () => {
               Nhận phòng
             </Button>
           )}
-          {r.status === 'CheckedIn' && (
-            <Button size="small" style={{ background: '#7c3aed', color: '#fff', border: 'none' }} icon={<LogOut size={13} />} onClick={() => updateStatus(r, 'CheckedOut')}>
-              Trả phòng
-            </Button>
-          )}
+          {r.status === 'CheckedIn' && viewMode !== 'in-house' && (() => {
+            const bookingRooms = r.details?.map(d => rooms.find(rm => rm.id === d.roomId)).filter(Boolean) || [];
+            // Kiểm tra xem tất cả các phòng đã được dọn Sạch (Clean) hoặc Trống (Available) chưa
+            const allClean = bookingRooms.length > 0 && bookingRooms.every(rm => 
+               (rm?.cleaningStatus || '').toLowerCase() === 'clean' || rm?.status === 'Available'
+            );
+
+            return (
+              <Space wrap size="small">
+                {/* Luôn hiện nút Báo dọn & KT để Lễ tân có thể ép kiểm tra lại khi khách xuống */}
+                <Button size="small" style={{ background: '#f59e0b', color: '#fff', border: 'none' }} icon={<RefreshCw size={13} />} onClick={() => requestCleaning(r)} title="Yêu cầu kiểm tra phòng trước khi khách đi">
+                  Báo dọn & KT
+                </Button>
+                
+                {allClean ? (
+                  <Button size="small" style={{ background: '#7c3aed', color: '#fff', border: 'none' }} icon={<LogOut size={13} />} onClick={() => openCheckOut(r)} title="Phòng đang báo Sạch, có thể trả ngay">
+                    Trả phòng
+                  </Button>
+                ) : (
+                  <Button size="small" type="dashed" danger icon={<LogOut size={13} />} onClick={() => openCheckOut(r)} title="Phòng chưa dọn xong! Bỏ qua kiểm tra để trả liền">
+                    Bỏ qua
+                  </Button>
+                )}
+              </Space>
+            );
+          })()}
           {(r.status === 'Pending' || r.status === 'Confirmed') && (
             <Button size="small" danger icon={<XCircle size={13} />} onClick={() => updateStatus(r, 'Cancelled')}>Hủy</Button>
           )}
-          <Button size="small" icon={<FileText size={13} />} onClick={() => openInvoice(r)}>
-            Hóa đơn
-          </Button>
+          {viewMode !== 'in-house' && (
+            <Button size="small" icon={<FileText size={13} />} onClick={() => openInvoice(r)}>
+              Hóa đơn
+            </Button>
+          )}
         </Space>
       ),
     },
@@ -494,9 +611,16 @@ const BookingPage: React.FC = () => {
   // ── render ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* PrintInvoice wrapper - ẩn trên màn hình, hiện khi in */}
+      {/* PrintInvoice wrapper - ẩn trên màn hình, in trong cửa sổ mới */}
       {selectedInvoice && selectedBooking && (
-        <PrintInvoice booking={selectedBooking} invoice={selectedInvoice} rooms={rooms} cashierName={cashierName} />
+        <PrintInvoice
+          booking={selectedBooking}
+          invoice={selectedInvoice}
+          rooms={rooms}
+          cashierName={cashierName}
+          damages={invoiceDamages}
+          services={invoiceServices}
+        />
       )}
 
       {/* Header */}
@@ -520,7 +644,6 @@ const BookingPage: React.FC = () => {
       {/* Stats */}
       <Row gutter={[16, 16]}>
         {statCards.map((s, i) => (
-
           <Col key={i} xs={24} sm={12} md={8} lg={5}>
             <AntCard className="glass-card text-center" bodyStyle={{ padding: '16px' }}>
               <div style={{ color: s.color }} className="flex justify-center mb-2">{s.icon}</div>
@@ -546,6 +669,17 @@ const BookingPage: React.FC = () => {
               allowClear
             />
           </Col>
+          {viewMode === 'arrivals' && (
+            <Col xs={24} md={6}>
+              <DatePicker 
+                value={arrivalDate} 
+                onChange={d => setArrivalDate(d)} 
+                style={{ width: '100%' }} 
+                format="DD/MM/YYYY" 
+                placeholder="Chọn ngày nhận phòng" 
+              />
+            </Col>
+          )}
           <Col xs={24} md={8}>
             <Select
               style={{ width: '100%' }}
@@ -592,7 +726,7 @@ const BookingPage: React.FC = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="guestPhone" label="Số điện thoại">
+              <Form.Item name="guestPhone" label="Số điện thoại" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}>
                 <Input placeholder="0912345678" />
               </Form.Item>
             </Col>
@@ -601,15 +735,27 @@ const BookingPage: React.FC = () => {
             <Input placeholder="guest@example.com" />
           </Form.Item>
 
-          <Form.Item name="voucherId" label="Voucher ap dung">
+          <Form.Item name="depositAmount" label="Tiền đặt cọc (₫)" initialValue={0}>
+            <InputNumber 
+              className="w-full" 
+              style={{ width: '100%' }} 
+              placeholder="0" 
+              min={0}
+              formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              parser={v => v!.replace(/,/g, '') as any}
+              addonAfter="₫"
+            />
+          </Form.Item>
+
+          <Form.Item name="voucherId" label="Voucher áp dụng">
             <Select
               allowClear
               showSearch
               optionFilterProp="label"
-              placeholder="Chon voucher neu co..."
+              placeholder="Chọn voucher nếu có..."
               options={availableVouchers.map(voucher => ({
                 value: voucher.id,
-                label: `${voucher.code} � ${voucher.discountType === 'Percentage' ? `${voucher.discountValue}%` : formatMoney(voucher.discountValue)}`,
+                label: `${voucher.code} - ${voucher.discountType === 'Percentage' ? `${voucher.discountValue}%` : formatMoney(voucher.discountValue)}`,
               }))}
             />
           </Form.Item>
@@ -637,11 +783,39 @@ const BookingPage: React.FC = () => {
                               optionFilterProp="label"
                               placeholder="Chọn phòng..."
                               options={rooms.map(r => ({ value: r.id, label: `${r.roomNumber} – ${r.roomTypeName}` }))}
+                              onChange={(val) => {
+                                const selectedRoom = rooms.find(r => r.id === val);
+                                if (selectedRoom) {
+                                  const rt = roomTypes.find(t => t.id === selectedRoom.roomTypeId);
+                                  if (rt) {
+                                    const details = form.getFieldValue('details') || [];
+                                    if (details[name]) {
+                                      details[name] = { ...details[name], pricePerNight: rt.basePrice };
+                                      form.setFieldsValue({ details });
+                                    }
+                                  }
+                                }
+                              }}
                             />
                           </Form.Item>
                         </Col>
                         <Col span={12}>
-                          <Form.Item {...rest} name={[name, 'dates']} label="Ngày nhận / trả" rules={[{ required: true }]}>
+                          <Form.Item 
+                            {...rest} 
+                            name={[name, 'dates']} 
+                            label="Ngày nhận / trả" 
+                            rules={[
+                              { required: true, message: 'Vui lòng chọn ngày' },
+                              () => ({
+                                validator(_, value) {
+                                  if (value && value[0] && value[1] && value[0].isSame(value[1], 'day')) {
+                                    return Promise.reject(new Error('Phải lưu trú ít nhất 1 đêm'));
+                                  }
+                                  return Promise.resolve();
+                                }
+                              })
+                            ]}
+                          >
                             <DatePicker.RangePicker
                               style={{ width: '100%' }}
                               format="DD/MM/YYYY"
@@ -655,8 +829,27 @@ const BookingPage: React.FC = () => {
                           min={0}
                           style={{ width: '100%' }}
                           formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          parser={v => v!.replace(/,/g, '') as any}
                           addonAfter="₫"
                         />
+                      </Form.Item>
+
+                      <Form.Item shouldUpdate={(prev, curr) => 
+                        prev.details?.[name]?.dates !== curr.details?.[name]?.dates || 
+                        prev.details?.[name]?.pricePerNight !== curr.details?.[name]?.pricePerNight
+                      }>
+                        {({ getFieldValue }) => {
+                          const dates = getFieldValue(['details', name, 'dates']);
+                          const price = getFieldValue(['details', name, 'pricePerNight']) || 0;
+                          if (!dates || !dates[0] || !dates[1]) return null;
+                          const nights = nightsBetween(dates[0].toISOString(), dates[1].toISOString());
+                          return (
+                            <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg mt-2 text-right">
+                              <span className="text-gray-500 text-sm mr-2">Tạm tính ({nights} đêm):</span>
+                              <strong className="text-primary text-lg">{formatMoney(nights * price)}</strong>
+                            </div>
+                          );
+                        }}
                       </Form.Item>
                     </AntCard>
                   );
@@ -703,7 +896,10 @@ const BookingPage: React.FC = () => {
                 <Tag color={STATUS_COLOR[selectedBooking.status]}>{STATUS_LABEL[selectedBooking.status]}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Voucher" span={2}>
-                {selectedBooking.voucherCode ? <Tag color="blue">{selectedBooking.voucherCode}</Tag> : 'Khong ap dung'}
+                {selectedBooking.voucherCode ? <Tag color="blue">{selectedBooking.voucherCode}</Tag> : 'Không áp dụng'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Tiền đặt cọc" span={2}>
+                <Text strong style={{ color: '#16a34a', fontSize: 16 }}>{formatMoney(selectedBooking.depositAmount)}</Text>
               </Descriptions.Item>
             </Descriptions>
 
@@ -745,128 +941,288 @@ const BookingPage: React.FC = () => {
         )}
       </Modal>
 
+      {/* ── CheckOut Modal ─────────────────────────────────────────────────────── */}
+      <Modal
+        open={checkOutOpen}
+        title="Tiến hành trả phòng & Dọn phòng"
+        onCancel={() => setCheckOutOpen(false)}
+        footer={null}
+        width={600}
+      >
+        <Form form={checkOutForm} layout="vertical" onFinish={submitCheckOut}>
+          <Paragraph className="mb-4 text-gray-500">
+            Xác nhận trả phòng cho khách <strong className="text-[#A6894B]">{selectedBookingForCheckOut?.guestName}</strong>. 
+            Phòng sẽ tự động chuyển sang trạng thái <strong>Cần dọn dẹp (Dirty)</strong>.
+          </Paragraph>
+          <Divider orientation="left">Khai báo hỏng hóc/Mất mát (Nếu có)</Divider>
+          
+          <Form.List name="damages">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...rest }) => (
+                  <AntCard key={key} size="small" className="mb-2 bg-gray-50 relative">
+                    <Button type="text" danger size="small" className="absolute top-2 right-2 z-10" onClick={() => remove(name)}><XCircle size={15} /></Button>
+                    <Row gutter={10}>
+                      <Col span={24} className="mb-2 mt-2">
+                        <Form.Item {...rest} name={[name, 'bookingDetailId']} rules={[{ required: true, message: 'Chọn phòng' }]} style={{ marginBottom: 0 }}>
+                          <Select placeholder="Thuộc phòng...">
+                            {selectedBookingForCheckOut?.details?.map(d => (
+                              <Select.Option key={d.id} value={d.id}>
+                                {rooms.find(r => r.id === d.roomId)?.roomNumber ? `Phòng ${rooms.find(r => r.id === d.roomId)?.roomNumber}` : 'Phòng'}
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item {...rest} name={[name, 'penaltyAmount']} label="Tiền phạt (₫)" style={{ marginBottom: 0 }} rules={[{ required: true }]}>
+                          <InputNumber className="w-full" min={0} style={{ width: '100%' }} formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item {...rest} name={[name, 'description']} label="Mô tả" style={{ marginBottom: 0 }}>
+                          <Input placeholder="Vd: Vỡ ly, mất khăn..." />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </AntCard>
+                ))}
+                <Button type="dashed" block onClick={() => add({ quantity: 1, penaltyAmount: 0 })} icon={<Plus size={14} />}>
+                  + Thêm khoản phạt
+                </Button>
+              </>
+            )}
+          </Form.List>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <Button onClick={() => setCheckOutOpen(false)}>Hủy</Button>
+            <Button type="primary" htmlType="submit" danger>Xác nhận trả phòng</Button>
+          </div>
+        </Form>
+      </Modal>
+
       {/* ── Invoice Modal ─────────────────────────────────────────────────────── */}
       <Modal
         open={invoiceOpen}
         title={
           <Space>
             <FileText size={16} />
-            <span>Hóa đơn · {selectedBooking?.bookingCode}</span>
+            <span>Xác nhận thanh toán & Trả phòng</span>
           </Space>
         }
         onCancel={() => setInvoiceOpen(false)}
-        width={720}
-        footer={
-          <Space>
-            <Button onClick={() => setInvoiceOpen(false)}>Đóng</Button>
-            {!selectedInvoice && selectedBooking?.status !== 'Cancelled' && (
-              <Button type="primary" icon={<FileText size={14} />} onClick={createInvoice}>
-                Tạo hóa đơn
-              </Button>
-            )}
-            {selectedInvoice && (
-              <Tooltip title="In hóa đơn (PDF/máy in)">
-                <Button icon={<Printer size={14} />} onClick={handlePrint}>
-                  In hóa đơn
-                </Button>
-              </Tooltip>
-            )}
-            {selectedInvoice && selectedInvoice.status !== 'Paid' && (
-              <Button
-                type="primary"
-                className="btn-gold"
-                icon={<CreditCard size={14} />}
-                onClick={() => setPaymentOpen(true)}
-              >
-                Ghi nhận thanh toán
-              </Button>
-            )}
-          </Space>
-        }
+        width={1000}
+        footer={null}
       >
         {invoiceLoading ? (
           <div style={{ padding: '48px 0', textAlign: 'center', color: '#9ca3af' }}>Đang tải hóa đơn...</div>
         ) : !selectedInvoice ? (
           <div style={{ padding: '48px 0', textAlign: 'center', color: '#9ca3af' }}>
-            Chưa có hóa đơn. Nhấn <b>Tạo hóa đơn</b> để khởi tạo.
+            <div style={{ marginBottom: 12 }}>Chưa có hóa đơn.</div>
+            {selectedBooking?.status !== 'Cancelled' && (
+              <Button type="primary" icon={<FileText size={14} />} onClick={createInvoice}>
+                Tạo hóa đơn tạm tính
+              </Button>
+            )}
           </div>
         ) : (
-          <>
-            {/* Tổng tiền */}
-            <AntCard size="small" style={{ background: '#faf7f2', border: '1px solid #e8d9bb', marginBottom: 16 }}>
-              <Row gutter={16}>
-                <Col span={8} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Tiền phòng</div>
-                  <div style={{ fontSize: 16, fontWeight: 600 }}>{formatMoney(selectedInvoice.totalRoomAmount)}</div>
-                </Col>
-                <Col span={8} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Thuế VAT</div>
-                  <div style={{ fontSize: 16, fontWeight: 600 }}>{formatMoney(selectedInvoice.taxAmount)}</div>
-                </Col>
-                <Col span={8} style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Tổng cộng</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#A6894B' }}>{formatMoney(selectedInvoice.finalTotal)}</div>
-                </Col>
-              </Row>
-            </AntCard>
+          <Row gutter={24}>
+            {/* ── Left Column: Invoice Details ── */}
+            <Col span={16}>
+              <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 2 }}>HÓA ĐƠN TẠM TÍNH</div>
+                <div style={{ fontSize: 13, color: '#9ca3af' }}>Mã đơn #{selectedInvoice.id}</div>
+              </div>
 
-            <Descriptions bordered column={2} size="small">
-              {selectedInvoice.discountAmount > 0 && (
-                <Descriptions.Item label="Giảm giá" span={2} style={{ color: '#16a34a' }}>
-                  - {formatMoney(selectedInvoice.discountAmount)}
-                </Descriptions.Item>
-              )}
-              <Descriptions.Item label="Trạng thái" span={2}>
-                <Tag color={
-                  selectedInvoice.status === 'Paid' ? 'green'
-                    : selectedInvoice.status === 'PartiallyPaid' ? 'blue'
-                    : selectedInvoice.status === 'Cancelled' ? 'red' : 'gold'
-                }>
-                  {selectedInvoice.status === 'Paid' ? '✓ Đã thanh toán đủ'
-                    : selectedInvoice.status === 'PartiallyPaid' ? '◑ Thanh toán một phần'
-                    : selectedInvoice.status === 'Cancelled' ? '✗ Đã hủy'
-                    : '○ Chưa thanh toán'}
-                </Tag>
-              </Descriptions.Item>
-              {selectedInvoice.status !== 'Paid' && (
-                <Descriptions.Item label="Còn phải thu" span={2}>
-                  <Text strong style={{ color: '#dc2626', fontSize: 16 }}>{formatMoney(remainingAmount)}</Text>
-                </Descriptions.Item>
-              )}
-            </Descriptions>
+              {/* Cost Breakdown */}
+              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#fafafa', borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: '#111827' }}>Tổng hợp chi phí</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#374151' }}>
+                  <span>Tổng tiền phòng:</span>
+                  <span style={{ fontWeight: 500 }}>{formatMoney(selectedInvoice.totalRoomAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#374151' }}>
+                  <span>Dịch vụ & Vật tư (Minibar...):</span>
+                  <span>{formatMoney(invoiceServices.reduce((sum, s) => sum + (s.totalAmount || 0), 0))}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#dc2626' }}>
+                  <span>Hỏng hóc & Thất thoát:</span>
+                  <span style={{ fontWeight: 500 }}>+{formatMoney(invoiceDamages.reduce((sum, d) => sum + (d.penaltyAmount || 0), 0))}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: 14, fontWeight: 700, color: '#111827', borderTop: '1px dashed #e5e7eb', marginTop: 4 }}>
+                  <span>Tổng cộng (Trước giảm trừ):</span>
+                  <span>{formatMoney(selectedInvoice.totalRoomAmount + selectedInvoice.totalServiceAmount)}</span>
+                </div>
+              </div>
 
-            {/* Lịch sử thanh toán */}
-            {selectedInvoice.payments?.length > 0 && (
-              <>
-                <Divider orientation="left">Lịch sử thanh toán</Divider>
-                <Timeline
-                  items={selectedInvoice.payments.map((p, i) => ({
-                    color: 'green',
-                    dot: <BanknoteIcon size={14} />,
-                    children: (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 4 }}>
-                        <div>
+              {/* Deductions */}
+              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#f0fdf4', borderRadius: 6 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: '#111827' }}>Khấu trừ</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#16a34a' }}>
+                  <span>Giảm giá (Voucher/Member):</span>
+                  <span>-{formatMoney(selectedInvoice.discountAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#d97706' }}>
+                  <span>Tiền đã đặt cọc:</span>
+                  <span>-{formatMoney(selectedInvoice.depositAmount)}</span>
+                </div>
+              </div>
+
+              {/* Final */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '2px solid #e5e7eb', marginBottom: 20 }}>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>CẦN THANH TOÁN:</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: '#dc2626' }}>{formatMoney(remainingAmount)} VND</span>
+              </div>
+
+              {/* Room Details Table */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>Chi tiết phòng:</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#1f2937' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f3f4f6' }}>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151', fontWeight: 600 }}>Phòng</th>
+                      <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151', fontWeight: 600 }}>Số đêm</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151', fontWeight: 600 }}>Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedBooking?.details?.map((d, i) => {
+                      const nights = Math.max(1, dayjs(d.checkOutDate).diff(dayjs(d.checkInDate), 'day'));
+                      const total = nights * d.pricePerNight;
+                      return (
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
+                          <td style={{ padding: '8px 12px', border: '1px solid #e5e7eb', color: '#1f2937' }}>
+                            P.{rooms.find(r => r.id === d.roomId)?.roomNumber ?? d.roomId}
+                          </td>
+                          <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#1f2937' }}>{nights}</td>
+                          <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#1f2937', fontWeight: 600 }}>{formatMoney(total)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Services Table */}
+              {invoiceServices && invoiceServices.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#0369a1' }}>Dịch vụ & Vật tư đã sử dụng:</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#1f2937' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f0f9ff' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1', fontWeight: 600 }}>Sản phẩm/Dịch vụ</th>
+                        <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1', fontWeight: 600 }}>Số lượng</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1', fontWeight: 600 }}>Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoiceServices.map((order, i) => (
+                        <React.Fragment key={i}>
+                          {order.details?.map((item: any, j: number) => (
+                            <tr key={`${i}-${j}`} style={{ backgroundColor: '#ffffff' }}>
+                              <td style={{ padding: '8px 12px', border: '1px solid #bae6fd' }}>{item.serviceName}</td>
+                              <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #bae6fd' }}>{item.quantity}</td>
+                              <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd' }}>{formatMoney(item.lineTotal)}</td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Loss & Damage Table */}
+              {invoiceDamages && invoiceDamages.length > 0 && (
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 8 }}>Chi tiết đền bù & Thất thoát:</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#1f2937' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#fff7ed' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #fed7aa', color: '#92400e', fontWeight: 600 }}>Phòng</th>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #fed7aa', color: '#92400e', fontWeight: 600 }}>Vật tư</th>
+                        <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #fed7aa', color: '#92400e', fontWeight: 600 }}>SL</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #fed7aa', color: '#92400e', fontWeight: 600 }}>Tiền phạt</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoiceDamages.map((d: any, i: number) => (
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#fff7ed' }}>
+                          <td style={{ padding: '8px 12px', border: '1px solid #fed7aa', color: '#1f2937' }}>{d.roomNumber ?? '—'}</td>
+                          <td style={{ padding: '8px 12px', border: '1px solid #fed7aa', color: '#1f2937' }}>{d.equipmentName ?? '—'}</td>
+                          <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #fed7aa', color: '#1f2937' }}>{d.quantity}</td>
+                          <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #fed7aa', color: '#dc2626', fontWeight: 600 }}>{formatMoney(d.penaltyAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Col>
+
+            {/* ── Right Column: Actions ── */}
+            <Col span={8}>
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 12 }}>Thao tác nhanh</div>
+                <Space direction="vertical" style={{ width: '100%' }} size={8}>
+                  <Button block icon={<Plus size={14} />} onClick={() => setPaymentOpen(true)}>
+                    + Thêm phụ phí
+                  </Button>
+                  <Button block icon={<Printer size={14} />} onClick={handlePrint}>
+                    🖨 In bản nháp
+                  </Button>
+                </Space>
+
+                <Divider />
+
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '16px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, color: '#1d4ed8', marginBottom: 4 }}>Tổng tiền phải thu</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#1d4ed8' }}>{formatMoney(remainingAmount)}</div>
+                </div>
+
+                {selectedInvoice.status !== 'Paid' ? (
+                  <Button
+                    type="primary"
+                    size="large"
+                    block
+                    style={{ background: '#2563eb', borderColor: '#2563eb', height: 48, fontSize: 15, fontWeight: 600 }}
+                    icon={<CreditCard size={16} />}
+                    onClick={() => setPaymentOpen(true)}
+                  >
+                    🔒 CHỐT & XUẤT HÓA ĐƠN
+                  </Button>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '12px', background: '#f0fdf4', borderRadius: 8, color: '#16a34a', fontWeight: 600 }}>
+                    ✓ Đã thanh toán đủ
+                  </div>
+                )}
+
+                {/* Payment History */}
+                {selectedInvoice.payments?.length > 0 && (
+                  <>
+                    <Divider orientation="left" style={{ fontSize: 13 }}>Lịch sử thanh toán</Divider>
+                    {selectedInvoice.payments.map((p, i) => (
+                      <div key={i} style={{ padding: '8px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Text strong>{formatMoney(p.amountPaid)}</Text>
-                          <Tag style={{ marginLeft: 8 }}>{p.paymentMethod}</Tag>
-                          <Tag color="default" style={{ fontFamily: 'monospace', fontSize: 11 }}>
-                            #{p.transactionCode}
-                          </Tag>
+                          <Tag>{p.paymentMethod}</Tag>
                         </div>
-                        <Text style={{ fontSize: 12, color: '#9ca3af' }}>
-                          {p.paymentDate ? dayjs(p.paymentDate).format('DD/MM/YYYY HH:mm') : ''}
+                        <Text style={{ fontSize: 11, color: '#9ca3af' }}>
+                          {p.paymentDate ? dayjs(p.paymentDate).format('DD/MM HH:mm') : ''}
+                          {p.transactionCode ? ` · #${p.transactionCode}` : ''}
                         </Text>
                       </div>
-                    ),
-                  }))}
-                />
-                <div style={{ textAlign: 'right', borderTop: '1px solid #eee', paddingTop: 8, fontWeight: 600 }}>
-                  Đã thanh toán: <Text strong style={{ color: '#16a34a', fontSize: 15 }}>
-                    {formatMoney(selectedInvoice.payments.reduce((s, p) => s + p.amountPaid, 0))}
-                  </Text>
-                </div>
-              </>
-            )}
-          </>
+                    ))}
+                    <div style={{ textAlign: 'right', paddingTop: 8, fontWeight: 600, fontSize: 13 }}>
+                      Đã thu: <Text strong style={{ color: '#16a34a' }}>
+                        {formatMoney(selectedInvoice.payments.reduce((s, p) => s + p.amountPaid, 0))}
+                      </Text>
+                    </div>
+                  </>
+                )}
+              </div>
+            </Col>
+          </Row>
         )}
       </Modal>
 
@@ -964,9 +1320,3 @@ const BookingPage: React.FC = () => {
 };
 
 export default BookingPage;
-
-
-
-
-
-

@@ -6,6 +6,7 @@ using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Enums;
 using HotelManagementAPI.Middleware;
 using HotelManagementAPI.Models;
+using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,10 +18,12 @@ namespace HotelManagementAPI.Controllers;
 public class OrderServicesController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IInvoiceService _invoiceService;
 
-    public OrderServicesController(AppDbContext context)
+    public OrderServicesController(AppDbContext context, IInvoiceService invoiceService)
     {
         _context = context;
+        _invoiceService = invoiceService;
     }
 
     [HttpGet("booking/{bookingId}")]
@@ -82,7 +85,7 @@ public class OrderServicesController : ControllerBase
 
         if (bookingDetail.BookingId != null)
         {
-            await RecalculateInvoiceAsync(bookingDetail.BookingId.Value);
+            await _invoiceService.RecalculateInvoiceAsync(bookingDetail.BookingId.Value);
         }
 
         // Reload with service names for response
@@ -107,10 +110,90 @@ public class OrderServicesController : ControllerBase
 
         if (order.BookingDetail?.BookingId != null)
         {
-            await RecalculateInvoiceAsync(order.BookingDetail.BookingId.Value);
+            await _invoiceService.RecalculateInvoiceAsync(order.BookingDetail.BookingId.Value);
         }
 
         return Ok(new { success = true });
+    }
+
+    [HttpPost("room/{roomId}/minibar")]
+    public async Task<IActionResult> ReportMinibar(int roomId, [FromBody] List<CreateOrderServiceItemDto> items)
+    {
+        if (items == null || items.Count == 0)
+            return BadRequest(new { message = "Danh sách dịch vụ/Minibar trống" });
+
+        var activeBookingDetail = await _context.BookingDetails
+            .Include(bd => bd.Booking)
+                .ThenInclude(b => b.Invoice)
+            .Where(bd => bd.RoomId == roomId && bd.Booking != null)
+            .OrderByDescending(bd => bd.CheckInDate)
+            .FirstOrDefaultAsync();
+
+        if (activeBookingDetail == null)
+            return BadRequest(new { message = "Phòng không có khách đang ở hoặc chưa có booking hợp lệ." });
+
+        var b = activeBookingDetail.Booking;
+        bool canCharge = false;
+        
+        if (b.StatusString == "CheckedIn") 
+        {
+            canCharge = true;
+        }
+        else if (b.StatusString == "CheckedOut" && (b.Invoice == null || b.Invoice.StatusString != "Paid"))
+        {
+            canCharge = true;
+        }
+
+        if (!canCharge)
+            return BadRequest(new { message = "Khách đã trả phòng và thanh toán xong, không thể cộng Minibar." });
+
+        var serviceIds = items.Select(i => i.ServiceId).Distinct().ToList();
+        var services = await _context.Services.Where(s => serviceIds.Contains(s.Id)).ToListAsync();
+        if (services.Count != serviceIds.Count)
+            return BadRequest(new { message = "Một số dịch vụ không tồn tại" });
+
+        var order = new OrderService
+        {
+            BookingDetailId = activeBookingDetail.Id,
+            OrderDate = DateTime.Now,
+            Status = OrderServiceStatus.Delivered, 
+        };
+
+        foreach (var item in items)
+        {
+            if (item.Quantity <= 0) continue;
+            var service = services.First(s => s.Id == item.ServiceId);
+            order.Details.Add(new OrderServiceDetail
+            {
+                ServiceId = service.Id,
+                Quantity = item.Quantity,
+                UnitPrice = service.Price,
+            });
+        }
+
+        if (order.Details.Count == 0)
+            return BadRequest(new { message = "Không có mục dịch vụ hợp lệ" });
+
+        order.TotalAmount = order.Details.Sum(d => d.UnitPrice * d.Quantity);
+
+        await _context.OrderServices.AddAsync(order);
+        await _context.SaveChangesAsync();
+
+        if (activeBookingDetail.BookingId != null)
+        {
+            await _invoiceService.RecalculateInvoiceAsync(activeBookingDetail.BookingId.Value);
+        }
+
+        var reloaded = await _context.OrderServices
+            .Include(o => o.Details).ThenInclude(d => d.Service)
+            .FirstAsync(o => o.Id == order.Id);
+
+        return Ok(new { 
+            message = "Đã cộng dồn Minibar vào hóa đơn thành công", 
+            order = MapToDto(reloaded),
+            totalAmount = order.TotalAmount,
+            bookingCode = b.BookingCode
+        });
     }
 
     private OrderServiceResponseDto MapToDto(OrderService order)
@@ -131,36 +214,5 @@ public class OrderServicesController : ControllerBase
             order.Status,
             details
         );
-    }
-
-    private async Task RecalculateInvoiceAsync(int bookingId)
-    {
-        var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.BookingId == bookingId);
-        if (invoice == null) return;
-
-        var booking = await _context.Bookings
-            .Include(b => b.BookingDetails)
-            .FirstOrDefaultAsync(b => b.Id == bookingId);
-        if (booking == null) return;
-
-        var totalRoom = booking.BookingDetails.Sum(bd =>
-            Math.Max(1, (decimal)(bd.CheckOutDate - bd.CheckInDate).TotalDays) * bd.PricePerNight);
-
-        var deliveredServiceTotal = await _context.OrderServices
-            .Include(o => o.BookingDetail)
-            .Where(o => o.BookingDetail != null && o.BookingDetail.BookingId == bookingId && o.StatusString == OrderServiceStatus.Delivered.ToString())
-            .SumAsync(o => (decimal?)(o.TotalAmount ?? 0)) ?? 0m;
-
-        var discount = invoice.DiscountAmount ?? 0m;
-        var subTotal = totalRoom + deliveredServiceTotal - discount;
-        if (subTotal < 0) subTotal = 0;
-
-        var tax = subTotal * 0.1m;
-        invoice.TotalRoomAmount = totalRoom;
-        invoice.TotalServiceAmount = deliveredServiceTotal;
-        invoice.TaxAmount = tax;
-        invoice.FinalTotal = subTotal + tax;
-
-        await _context.SaveChangesAsync();
     }
 }

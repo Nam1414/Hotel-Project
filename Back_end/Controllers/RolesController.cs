@@ -175,7 +175,7 @@ public class RolesController : ControllerBase
                 null,
                 HotelManagementAPI.Enums.NotificationAction.UpdateRolePermissions,
                 NotificationType.PermissionUpdate,
-                roleName
+                roleName ?? "Unknown Role"
             );
         } catch (Exception ex) {
             Console.WriteLine($"[AssignPermission Notification Error]: {ex.Message}");
@@ -211,7 +211,7 @@ public class RolesController : ControllerBase
                 null, 
                 HotelManagementAPI.Enums.NotificationAction.UpdateRolePermissions,
                 NotificationType.PermissionUpdate,
-                roleName
+                roleName ?? "Unknown Role"
             );
         } catch (Exception ex) {
             Console.WriteLine($"[RemovePermission Notification Error]: {ex.Message}");

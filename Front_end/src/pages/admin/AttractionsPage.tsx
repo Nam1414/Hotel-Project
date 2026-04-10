@@ -213,7 +213,7 @@ const AttractionsPage: React.FC = () => {
         open={open}
         onCancel={() => setOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ isActive: true }}>
           <Form.Item
