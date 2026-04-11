@@ -78,7 +78,7 @@ const Inventory: React.FC = () => {
       title: 'Item Name',
       dataIndex: 'name',
       key: 'name',
-      render: (text: string) => <span className="font-bold text-white uppercase tracking-wider">{text}</span>,
+      render: (text: string) => <span className="font-bold text-title uppercase tracking-wider">{text}</span>,
     },
     {
       title: 'Price ($)',
@@ -93,7 +93,7 @@ const Inventory: React.FC = () => {
       render: (isActive: boolean) => (
         <Badge 
           status={isActive ? 'success' : 'error'} 
-          text={<span className="text-white">{isActive ? 'In Stock' : 'Out of Stock'}</span>} 
+          text={<span className="text-title">{isActive ? 'In Stock' : 'Out of Stock'}</span>} 
         />
       ),
     },
@@ -131,7 +131,7 @@ const Inventory: React.FC = () => {
       <Table columns={columns} dataSource={filteredItems} rowKey="id" loading={loading} />
 
       <Modal
-        title={<span className="text-white font-display text-xl">{editingItem ? 'EDIT ITEM' : 'ADD NEW ITEM'}</span>}
+        title={<span className="text-title font-display text-xl">{editingItem ? 'EDIT ITEM' : 'ADD NEW ITEM'}</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
@@ -148,10 +148,10 @@ const Inventory: React.FC = () => {
           </Form.Item>
           <Form.Item label="Status" name="isActive" valuePropName="checked">
             <Badge status={form.getFieldValue('isActive') ? 'success' : 'error'} />
-            <span className="text-gray-400 ml-2">Active in Inventory</span>
+            <span className="text-muted ml-2">Active in Inventory</span>
           </Form.Item>
           <div className="flex justify-end space-x-4 mt-8">
-            <Button onClick={() => setIsModalOpen(false)} className="bg-transparent text-white border-white/10 hover:bg-white/5">
+            <Button onClick={() => setIsModalOpen(false)} className="border-[var(--border-color)] text-title hover:bg-black/5 dark:hover:bg-white/5">
               Cancel
             </Button>
             <Button type="primary" htmlType="submit" loading={loading} className="btn-gold">

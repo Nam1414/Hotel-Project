@@ -119,9 +119,13 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
 
 // =============================================
-// 5. CONTROLLERS
+// 5. CONTROLLERS & JSON OPTIONS
 // =============================================
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 // =============================================

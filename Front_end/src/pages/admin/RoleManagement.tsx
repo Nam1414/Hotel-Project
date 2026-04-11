@@ -123,7 +123,7 @@ const RoleManagement: React.FC = () => {
       render: (name: string) => (
         <div className="flex items-center space-x-3">
           <Shield size={20} className="text-primary" />
-          <span className="font-bold text-white tracking-widest uppercase">{name}</span>
+          <span className="font-bold text-title tracking-widest uppercase">{name}</span>
         </div>
       ),
     },
@@ -182,7 +182,7 @@ const RoleManagement: React.FC = () => {
   return (
     <div className="glass-card p-8">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-display font-bold text-white">Roles & Permissions</h2>
+        <h2 className="text-2xl font-display font-bold text-title">Roles & Permissions</h2>
         <button 
           className="btn-gold flex items-center space-x-2"
           onClick={handleAddRole}
@@ -201,7 +201,7 @@ const RoleManagement: React.FC = () => {
 
       {/* Role Add/Edit Modal */}
       <Modal
-        title={<span className="text-white font-display text-xl">{editingRole ? 'EDIT ROLE' : 'CREATE ROLE'}</span>}
+        title={<span className="text-title font-display text-xl">{editingRole ? 'EDIT ROLE' : 'CREATE ROLE'}</span>}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
@@ -213,11 +213,11 @@ const RoleManagement: React.FC = () => {
             <Input className="input-luxury w-full" placeholder="e.g. MANAGER" />
           </Form.Item>
           <Form.Item label="Description" name="description">
-            <Input.TextArea className="input-luxury w-full bg-transparent border border-white/10 rounded-xl p-3 text-white focus:border-primary transition-colors h-24" placeholder="Enter role description..." />
+            <Input.TextArea className="input-luxury w-full bg-transparent border-[var(--border-color)] rounded-xl p-3 text-title focus:border-primary transition-colors h-24" placeholder="Enter role description..." />
           </Form.Item>
           
           <div className="flex justify-end space-x-4 mt-8">
-            <Button onClick={() => setIsModalVisible(false)} className="bg-transparent text-white border-white/10 hover:bg-white/5">
+            <Button onClick={() => setIsModalVisible(false)} className="border-[var(--border-color)] text-title hover:bg-black/5 dark:hover:bg-white/5">
               Cancel
             </Button>
             <Button type="primary" htmlType="submit" loading={loading} className="btn-gold">
@@ -230,7 +230,7 @@ const RoleManagement: React.FC = () => {
       {/* Permissions Management Modal */}
       <Modal
         title={
-          <div className="text-white font-display">
+          <div className="text-title font-display">
             <div className="text-xl uppercase tracking-widest">MANAGE PERMISSIONS</div>
             <div className="text-xs text-primary mt-1">Role: {selectedRole?.name}</div>
           </div>
@@ -257,7 +257,7 @@ const RoleManagement: React.FC = () => {
                   onClick={() => handleTogglePermission(perm.id, isChecked)}
                 >
                   <div>
-                    <div className="text-white font-bold text-sm">{perm.name}</div>
+                    <div className="text-title font-bold text-sm">{perm.name}</div>
                     <div className="text-[10px] text-gray-500 uppercase">System Permission</div>
                   </div>
                   <Checkbox checked={isChecked} className="luxury-checkbox" />

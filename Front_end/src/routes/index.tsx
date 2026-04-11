@@ -16,6 +16,8 @@ const Booking = lazy(() => import('../pages/public/Booking'));
 const Services = lazy(() => import('../pages/public/Services'));
 const About = lazy(() => import('../pages/public/About'));
 const Contact = lazy(() => import('../pages/public/Contact'));
+const Articles = lazy(() => import('../pages/public/Articles'));
+const ArticleDetail = lazy(() => import('../pages/public/ArticleDetail'));
 const ProfilePage = lazy(() => import('../pages/admin/Profile'));
 
 const Login = lazy(() => import('../pages/auth/Login'));
@@ -28,6 +30,7 @@ const RoomTypeManagement = lazy(() => import('../pages/admin/RoomTypeManagement'
 const RoleManagement = lazy(() => import('../pages/admin/RoleManagement'));
 const InventoryPage = lazy(() => import('../pages/admin/InventoryPage'));
 const DamageLossPage = lazy(() => import('../pages/admin/DamageLossPage'));
+const ReviewManagement = lazy(() => import('../pages/admin/ReviewManagement'));
 const CleaningPage = lazy(() => import('../pages/admin/CleaningPage'));
 const AttractionsPage = lazy(() => import('../pages/admin/AttractionsPage'));
 const AmenitiesPage = lazy(() => import('../pages/admin/AmenitiesPage'));
@@ -59,6 +62,8 @@ const AppRoutes: React.FC = () => {
           <Route path="/services" element={<Services />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/news" element={<Articles />} />
+          <Route path="/news/:slug" element={<ArticleDetail />} />
           <Route
             path="/profile"
             element={
@@ -171,6 +176,14 @@ const AppRoutes: React.FC = () => {
             element={
               <RequirePermission allowedPermissions={['MANAGE_CONTENT']}>
                 <CMSPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="reviews"
+            element={
+              <RequirePermission allowedPermissions={['MANAGE_CONTENT']}>
+                <ReviewManagement />
               </RequirePermission>
             }
           />

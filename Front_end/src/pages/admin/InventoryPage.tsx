@@ -306,7 +306,22 @@ const InventoryPage: React.FC = () => {
       </Card>
 
       <Modal open={openForm} title={editingItem ? 'Cập nhật vật tư' : 'Thêm vật tư'} onCancel={() => setOpenForm(false)} footer={null}>
-        <Form form={form} layout="vertical" onFinish={submitForm}>
+        <Form 
+          form={form} 
+          layout="vertical" 
+          onFinish={submitForm}
+          onValuesChange={(changedValues) => {
+            if (changedValues.basePrice !== undefined && !editingItem) {
+              const base = changedValues.basePrice || 0;
+              let multiplier = 1.1; // Tài sản giá trị rất cao (> 5tr) bù thêm 10% phí rủi ro/vận chuyển
+              if (base <= 50000) multiplier = 4.0;       // Đồ lặt vặt (ly, tách, bàn chải, dép) -> x4 (VD: 20k -> 80k)
+              else if (base <= 200000) multiplier = 2.5; // Đồ dùng vừa (khăn tắm, áo choàng, ấm siêu tốc nhỏ) -> x2.5 (VD: 100k -> 250k)
+              else if (base <= 1000000) multiplier = 1.5; // Đồ giá trị trung bình (chăn ga gối, máy sấy) -> x1.5 (VD: 500k -> 750k)
+              else if (base <= 5000000) multiplier = 1.2; // Đồ điện tử/móc cứng (Tivi, tủ lạnh mini) -> x1.2 (VD: 3tr -> 3.6tr)
+              form.setFieldsValue({ defaultPriceIfLost: Math.round(base * multiplier) }); // Làm tròn số
+            }
+          }}
+        >
           <Row gutter={12}>
             <Col span={12}>
               <Form.Item name="itemCode" label="Mã vật tư" rules={[{ required: !editingItem }]}>
@@ -375,7 +390,22 @@ const InventoryPage: React.FC = () => {
       </Modal>
 
       <Modal open={openPriceForm} title={`Giá và đền bù: ${priceTarget?.name || ''}`} onCancel={() => setOpenPriceForm(false)} footer={null}>
-        <Form form={priceForm} layout="vertical" onFinish={submitPrice}>
+        <Form 
+          form={priceForm} 
+          layout="vertical" 
+          onFinish={submitPrice}
+          onValuesChange={(changedValues) => {
+            if (changedValues.basePrice !== undefined) {
+              const base = changedValues.basePrice || 0;
+              let multiplier = 1.1;
+              if (base <= 50000) multiplier = 4.0;
+              else if (base <= 200000) multiplier = 2.5;
+              else if (base <= 1000000) multiplier = 1.5;
+              else if (base <= 5000000) multiplier = 1.2;
+              priceForm.setFieldsValue({ defaultPriceIfLost: Math.round(base * multiplier) });
+            }
+          }}
+        >
           <Form.Item name="basePrice" label="Giá gốc" rules={[{ required: true }]}>
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>

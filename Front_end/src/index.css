@@ -42,6 +42,11 @@
     @apply bg-[var(--bg-main)] text-[var(--text-body)] font-sans antialiased transition-colors duration-300 leading-[1.6];
   }
   
+  a, a:hover {
+    color: inherit;
+    text-decoration: inherit;
+  }
+  
   h1, .h1 {
     @apply font-display text-[var(--text-title)] font-extrabold tracking-tight leading-tight;
   }
@@ -134,3 +139,17 @@
   @apply !text-primary;
 }
 
+
+/* Article prose – always light background, always dark text */
+.prose { line-height: 1.8; color: #374151; }
+.prose p { margin-bottom: 1.5em; color: #374151; }
+.prose h1 { font-size: 2.25rem; font-weight: 700; color: #111827; margin-top: 2em; margin-bottom: 0.5em; font-family: 'Bricolage Grotesque', sans-serif; }
+.prose h2 { font-size: 1.75rem; font-weight: 700; color: #111827; margin-top: 2em; margin-bottom: 0.5em; font-family: 'Bricolage Grotesque', sans-serif; }
+.prose h3 { font-size: 1.35rem; font-weight: 600; color: #1f2937; margin-top: 1.5em; margin-bottom: 0.5em; font-family: 'Bricolage Grotesque', sans-serif; }
+.prose ul { list-style: disc; padding-left: 1.5em; color: #374151; margin-bottom: 1em; }
+.prose ol { list-style: decimal; padding-left: 1.5em; color: #374151; margin-bottom: 1em; }
+.prose li { margin-bottom: 0.4em; }
+.prose img { width: 100%; border-radius: 1rem; margin-top: 2em; margin-bottom: 2em; }
+.prose a { color: #C6A96B; text-decoration: underline; }
+.prose strong, .prose b { font-weight: 700; color: #111827; }
+.prose blockquote { border-left: 4px solid #C6A96B; padding-left: 1rem; color: #6B7280; font-style: italic; margin: 1.5em 0; }

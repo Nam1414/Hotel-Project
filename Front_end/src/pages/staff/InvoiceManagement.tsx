@@ -391,7 +391,7 @@ const InvoiceManagementPage: React.FC = () => {
               </div>
 
               {/* Costs Breakdown */}
-              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#fafafa', borderRadius: 6 }}>
+              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#fafafa', borderRadius: 6, color: '#111827' }}>
                 <div style={{ fontWeight: 600, marginBottom: 8, color: '#111827' }}>Chi tiết chi phí</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
                   <span>Tiền phòng:</span>
@@ -412,7 +412,7 @@ const InvoiceManagementPage: React.FC = () => {
               </div>
 
               {/* Deductions */}
-              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#f0fdf4', borderRadius: 6 }}>
+              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#f0fdf4', borderRadius: 6, color: '#111827' }}>
                 <div style={{ fontWeight: 600, marginBottom: 8, color: '#111827' }}>Các khoản giảm trừ</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#16a34a' }}>
                   <span>Ưu đãi / Voucher:</span>
@@ -468,7 +468,7 @@ const InvoiceManagementPage: React.FC = () => {
                       {invoiceServices.map((order, i) => (
                         <React.Fragment key={i}>
                           {order.details?.map((item: any, j: number) => (
-                            <tr key={`${i}-${j}`} style={{ backgroundColor: '#ffffff' }}>
+                            <tr key={`${i}-${j}`} style={{ backgroundColor: '#ffffff', color: '#111827' }}>
                               <td style={{ padding: '8px 12px', border: '1px solid #bae6fd' }}>{item.serviceName}</td>
                               <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #bae6fd' }}>{item.quantity}</td>
                               <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd' }}>{formatMoney(item.lineTotal)}</td>
@@ -495,7 +495,7 @@ const InvoiceManagementPage: React.FC = () => {
                     </thead>
                     <tbody>
                       {invoiceDamages.map((d, i) => (
-                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#fff7ed' }}>
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#fff7ed', color: '#111827' }}>
                           <td style={{ padding: '8px 12px', border: '1px solid #fed7aa' }}>{d.equipmentName || 'Vật dụng'} ({d.roomNumber || 'N/A'})</td>
                           <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #fed7aa' }}>{d.quantity}</td>
                           <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #fed7aa', color: '#dc2626', fontWeight: 600 }}>{formatMoney(d.penaltyAmount)}</td>
@@ -517,7 +517,7 @@ const InvoiceManagementPage: React.FC = () => {
                   </Tag>
                 </div>
 
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px', marginBottom: 20, color: '#111827' }}>
                   <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Tổng cần thu</div>
                   <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a' }}>{formatMoney(remainingAmount)}</div>
                   
@@ -584,7 +584,7 @@ const InvoiceManagementPage: React.FC = () => {
       >
         <Form form={paymentForm} layout="vertical" onFinish={submitPayment}>
           {selectedInvoice && (
-            <div style={{ background: '#faf7f2', border: '1px solid #e8d9bb', borderRadius: 8, padding: '12px 16px', marginBottom: 20 }}>
+            <div style={{ background: '#faf7f2', border: '1px solid #e8d9bb', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#111827' }}>
               <Row>
                 <Col span={12}>
                   <div style={{ fontSize: 12, color: '#9ca3af' }}>Tổng hóa đơn</div>

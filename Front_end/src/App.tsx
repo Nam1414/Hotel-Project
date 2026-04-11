@@ -65,6 +65,10 @@ const AppContent = () => {
         algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: '#C6A96B',
+          colorLink: '#C6A96B',
+          colorLinkHover: '#A6894B',
+          colorLinkActive: '#A6894B',
+          colorInfo: '#C6A96B',
           borderRadius: 12,
           colorBgContainer: isDarkMode ? '#111827' : '#FFFFFF',
           colorBgElevated: isDarkMode ? '#1F2937' : '#FFFFFF',

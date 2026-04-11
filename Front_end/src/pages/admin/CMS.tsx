@@ -1,16 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { App, Button, Form, Input, Modal, Select, Table, Tabs, Tag, Upload } from 'antd';
+import { App, Button, Form, Input, Modal, Select, Table, Tabs, Tag, Upload, Switch, DatePicker } from 'antd';
 import { Edit3, FileText, FolderTree, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
 import type { ColumnsType } from 'antd/es/table';
+import RichEditor from '../../components/common/RichEditor';
 import { contentApi, type ArticleCategoryDto, type ArticleListItemDto } from '../../services/contentApi';
+import { userApi, type UserResponseDto } from '../../services/userApi';
 import { usePermission } from '../../hooks/useAppStore';
+import { adminApi } from '../../services/adminApi';
+import dayjs from 'dayjs';
 
 const CMS: React.FC = () => {
   const { message } = App.useApp();
   const canManageContent = usePermission('MANAGE_CONTENT');
   const [articles, setArticles] = useState<ArticleListItemDto[]>([]);
   const [categories, setCategories] = useState<ArticleCategoryDto[]>([]);
+  const [users, setUsers] = useState<UserResponseDto[]>([]);
+  const [attractions, setAttractions] = useState<any[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [articleModalOpen, setArticleModalOpen] = useState(false);
@@ -44,7 +50,12 @@ const CMS: React.FC = () => {
   };
 
   useEffect(() => {
-    void Promise.all([loadArticles(), loadCategories()]);
+    void Promise.all([
+      loadArticles(), 
+      loadCategories(), 
+      userApi.getAll().then(setUsers),
+      adminApi.getAttractions().then(data => setAttractions(data || []))
+    ]);
   }, []);
 
   const articleStats = useMemo(
@@ -72,6 +83,10 @@ const CMS: React.FC = () => {
         title: detail.title,
         content: detail.content,
         categoryId: detail.category.id,
+        authorId: detail.authorId,
+        isActive: detail.isActive,
+        attractionId: detail.attractionId,
+        publishedAt: detail.publishedAt ? dayjs(detail.publishedAt) : undefined,
       });
       setArticleModalOpen(true);
     } catch (err: any) {
@@ -79,14 +94,19 @@ const CMS: React.FC = () => {
     }
   };
 
-  const submitArticle = async (values: { title: string; content: string; categoryId: number }) => {
+  const submitArticle = async (values: any) => {
     try {
+      const payload = {
+        ...values,
+        publishedAt: values.publishedAt ? values.publishedAt.toISOString() : undefined,
+      };
+
       if (editingArticle) {
-        await contentApi.updateArticle(editingArticle.id, values);
+        await contentApi.updateArticle(editingArticle.id, payload);
         if (thumbnailFile) await contentApi.uploadThumbnail(editingArticle.id, thumbnailFile);
         message.success('Da cap nhat bai viet');
       } else {
-        const created = await contentApi.createArticle(values);
+        const created = await contentApi.createArticle(payload);
         if (thumbnailFile) await contentApi.uploadThumbnail(created.id, thumbnailFile);
         message.success('Da tao bai viet moi');
       }
@@ -113,16 +133,17 @@ const CMS: React.FC = () => {
   const openCreateCategory = () => {
     setEditingCategory(null);
     categoryForm.resetFields();
+    categoryForm.setFieldsValue({ isActive: true });
     setCategoryModalOpen(true);
   };
 
   const openEditCategory = (record: ArticleCategoryDto) => {
     setEditingCategory(record);
-    categoryForm.setFieldsValue({ name: record.name });
+    categoryForm.setFieldsValue({ name: record.name, description: record.description, isActive: record.isActive });
     setCategoryModalOpen(true);
   };
 
-  const submitCategory = async (values: { name: string }) => {
+  const submitCategory = async (values: any) => {
     try {
       if (editingCategory) {
         await contentApi.updateCategory(editingCategory.id, values);
@@ -156,7 +177,7 @@ const CMS: React.FC = () => {
     { title: 'Category', dataIndex: 'category' },
     { title: 'Author', dataIndex: 'author' },
     { title: 'Published', dataIndex: 'publishedAt', render: (value: string) => new Date(value).toLocaleDateString('vi-VN') },
-    { title: 'Status', render: (_, record) => <Tag color="green">{record.thumbnailUrl ? 'Published + image' : 'Published'}</Tag> },
+    { title: 'Status', render: (_, record) => <Tag color={record.isActive === false ? 'default' : 'green'}>{record.isActive === false ? 'Draft' : (record.thumbnailUrl ? 'Published + image' : 'Published')}</Tag> },
     {
       title: 'Actions',
       render: (_, record) => (
@@ -170,6 +191,7 @@ const CMS: React.FC = () => {
 
   const categoryColumns: ColumnsType<ArticleCategoryDto> = [
     { title: 'Category', dataIndex: 'name', render: (value: string) => <span className="font-bold text-title">{value}</span> },
+    { title: 'Status', dataIndex: 'isActive', render: (value?: boolean) => <Tag color={value === false ? 'default' : 'green'}>{value === false ? 'Inactive' : 'Active'}</Tag> },
     { title: 'Articles', dataIndex: 'articleCount', render: (value?: number) => <Tag color="blue">{value || 0}</Tag> },
     {
       title: 'Actions',
@@ -186,8 +208,8 @@ const CMS: React.FC = () => {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10 pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl">Content Management</h1>
-          <p className="text-muted mt-1">Quan ly bai viet va danh muc bai viet tu backend hien co</p>
+          <h1 className="text-4xl text-title">Content Management</h1>
+          <p className="text-muted mt-1">Quản lý bài viết và danh mục bài viết từ backend hiện có</p>
         </div>
         <div className="flex flex-wrap gap-3">
           {canManageContent ? (
@@ -223,11 +245,38 @@ const CMS: React.FC = () => {
         />
       </div>
 
-      <Modal title={editingArticle ? 'Cap nhat bai viet' : 'Tao bai viet moi'} open={articleModalOpen} onCancel={() => setArticleModalOpen(false)} footer={null} width={840}>
+      <Modal
+        title={<span className="text-title font-display text-lg font-bold">{editingArticle ? 'Cập nhật bài viết' : 'Tạo bài viết mới'}</span>}
+        open={articleModalOpen}
+        onCancel={() => setArticleModalOpen(false)}
+        footer={null}
+        width={840}
+      >
         <Form form={articleForm} layout="vertical" onFinish={submitArticle} className="mt-6">
           <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Nhap tieu de bai viet' }]}><Input className="h-12 rounded-xl" /></Form.Item>
-          <Form.Item name="categoryId" label="Category" rules={[{ required: true, message: 'Chon danh muc' }]}><Select className="h-12" options={categories.map((category) => ({ value: category.id, label: category.name }))} /></Form.Item>
-          <Form.Item name="content" label="Content" rules={[{ required: true, message: 'Nhap noi dung bai viet' }]}><Input.TextArea rows={10} className="rounded-xl" /></Form.Item>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item name="categoryId" label="Category" rules={[{ required: true, message: 'Chon danh muc' }]}><Select className="h-12" options={categories.map((category) => ({ value: category.id, label: category.name }))} /></Form.Item>
+            <Form.Item name="authorId" label="Author"><Select className="h-12" allowClear placeholder="Chon tac gia (mac dinh User hien tai)" options={users.map((u) => ({ value: u.id, label: u.fullName }))} /></Form.Item>
+          </div>
+
+          <Form.Item name="attractionId" label="Linked Attraction (Optional)">
+            <Select 
+              className="h-12" 
+              allowClear 
+              placeholder="Chọn điểm tham quan liên quan đến bài viết này" 
+              options={attractions.map((a) => ({ value: a.id, label: a.name }))} 
+            />
+          </Form.Item>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item name="publishedAt" label="Published Date"><DatePicker className="h-12 w-full" format="YYYY-MM-DD HH:mm:ss" showTime /></Form.Item>
+            <Form.Item name="isActive" label="Status" valuePropName="checked" initialValue={true}><Switch checkedChildren="Published" unCheckedChildren="Draft" /></Form.Item>
+          </div>
+
+          <Form.Item name="content" label="Nội dung bài viết" rules={[{ required: true, message: 'Nhập nội dung bài viết' }]}>
+            <RichEditor placeholder="Viết nội dung bài viết ở đây..." minHeight={350} />
+          </Form.Item>
           <Form.Item label="Thumbnail">
             <Upload.Dragger beforeUpload={(file) => { setThumbnailFile(file); return false; }} maxCount={1} accept="image/*">
               <p className="ant-upload-drag-icon"><ImageIcon size={36} className="mx-auto text-primary" /></p>
@@ -242,9 +291,16 @@ const CMS: React.FC = () => {
         </Form>
       </Modal>
 
-      <Modal title={editingCategory ? 'Cap nhat danh muc' : 'Tao danh muc moi'} open={categoryModalOpen} onCancel={() => setCategoryModalOpen(false)} footer={null}>
+      <Modal
+        title={<span className="text-title font-display text-lg font-bold">{editingCategory ? 'Cập nhật danh mục' : 'Tạo danh mục mới'}</span>}
+        open={categoryModalOpen}
+        onCancel={() => setCategoryModalOpen(false)}
+        footer={null}
+      >
         <Form form={categoryForm} layout="vertical" onFinish={submitCategory} className="mt-6">
           <Form.Item name="name" label="Category Name" rules={[{ required: true, message: 'Nhap ten danh muc' }]}><Input className="h-12 rounded-xl" /></Form.Item>
+          <Form.Item name="description" label="Description"><Input.TextArea rows={4} className="rounded-xl" /></Form.Item>
+          <Form.Item name="isActive" label="Status" valuePropName="checked"><Switch checkedChildren="Active" unCheckedChildren="Inactive" /></Form.Item>
           <div className="flex justify-end gap-3">
             <Button onClick={() => setCategoryModalOpen(false)}>Cancel</Button>
             <Button type="primary" htmlType="submit" className="btn-gold">{editingCategory ? 'Save' : 'Create'}</Button>

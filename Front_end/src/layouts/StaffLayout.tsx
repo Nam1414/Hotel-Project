@@ -78,7 +78,7 @@ const StaffLayout: React.FC = () => {
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0`}
       >
         <div className="p-8 border-b border-gray-100/50">
-          <Link to="/" className="text-3xl font-display font-bold text-primary tracking-widest drop-shadow-sm">
+          <Link to="/" className="text-3xl font-display font-bold !text-primary tracking-widest drop-shadow-sm">
             KANT
           </Link>
           <p className="text-[10px] text-primary/60 tracking-[0.2em] mt-1 font-bold">
@@ -110,7 +110,7 @@ const StaffLayout: React.FC = () => {
                       key={item.path}
                       to={item.path}
                       className={`flex items-center space-x-3 rounded-xl px-4 py-3 transition-all duration-200 ${
-                        location.pathname === item.path ? 'bg-primary/20 text-primary-dark shadow-sm font-bold' : 'text-gray-500 hover:bg-gray-50'
+                        location.pathname === item.path ? 'bg-primary/20 !text-primary-dark shadow-sm font-bold' : '!text-gray-500 hover:bg-gray-50'
                       }`}
                     >
                       {item.icon}
@@ -127,7 +127,7 @@ const StaffLayout: React.FC = () => {
               key={item.path}
               to={item.path}
               className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                location.pathname === item.path ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:bg-gray-50'
+                location.pathname === item.path ? 'bg-primary !text-white shadow-lg shadow-primary/20' : '!text-gray-500 hover:bg-gray-50'
               }`}
             >
               {item.icon}

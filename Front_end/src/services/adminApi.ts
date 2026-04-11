@@ -120,6 +120,8 @@ export interface NotificationDto {
 export interface AttractionDto {
   id: number;
   name: string;
+  category?: string | null;
+  address?: string | null;
   distanceKm?: number | null;
   description?: string | null;
   mapEmbedLink?: string | null;
@@ -359,8 +361,12 @@ export const adminApi = {
 
   getAttractions: async () => (await axiosClient.get('/api/Attractions')) as AttractionDto[],
 
+  getAttractionById: async (id: number) => (await axiosClient.get(`/api/Attractions/${id}`)) as AttractionDto,
+
   createAttraction: async (dto: {
     name: string;
+    category?: string;
+    address?: string;
     distanceKm?: number;
     description?: string;
     mapEmbedLink?: string;
@@ -373,6 +379,8 @@ export const adminApi = {
     id: number,
     dto: {
       name: string;
+      category?: string;
+      address?: string;
       distanceKm?: number;
       description?: string;
       mapEmbedLink?: string;

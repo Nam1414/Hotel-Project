@@ -83,7 +83,7 @@ const RoomManagement: React.FC = () => {
       title: 'Room Number',
       dataIndex: 'roomNumber',
       key: 'roomNumber',
-      render: (text: string) => <span className="font-bold text-white text-lg">{text}</span>,
+      render: (text: string) => <span className="font-bold text-title text-lg">{text}</span>,
     },
     {
       title: 'Type',
@@ -101,7 +101,7 @@ const RoomManagement: React.FC = () => {
         if (status === 'Occupied') color = 'error';
         if (status === 'Cleaning') color = 'warning';
         if (status === 'Maintenance') color = 'processing';
-        return <Badge status={color as any} text={<span className="text-gray-300 capitalize">{status}</span>} />;
+        return <Badge status={color as any} text={<span className="text-muted capitalize">{status}</span>} />;
       },
     },
     {
@@ -129,7 +129,7 @@ const RoomManagement: React.FC = () => {
   return (
     <div className="glass-card p-8">
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-display font-bold text-white tracking-widest">ROOM MANAGEMENT</h2>
+        <h2 className="text-2xl font-display font-bold text-title tracking-widest">ROOM MANAGEMENT</h2>
         <button className="btn-gold flex items-center space-x-2" onClick={handleAdd}>
           <Plus size={20} />
           <span>ADD NEW ROOM</span>
@@ -138,7 +138,7 @@ const RoomManagement: React.FC = () => {
       <Table columns={columns} dataSource={rooms} rowKey="id" loading={loading} />
 
       <Modal
-        title={<span className="text-white font-display text-xl">{editingRoom ? 'EDIT ROOM' : 'ADD NEW ROOM'}</span>}
+        title={<span className="text-title font-display text-xl">{editingRoom ? 'EDIT ROOM' : 'ADD NEW ROOM'}</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
@@ -183,7 +183,7 @@ const RoomManagement: React.FC = () => {
           )}
           
           <div className="flex justify-end space-x-4 mt-8">
-            <Button onClick={() => setIsModalOpen(false)} className="bg-transparent text-white border-white/10 hover:bg-white/5">
+            <Button onClick={() => setIsModalOpen(false)} className="border-[var(--border-color)] text-title hover:bg-black/5 dark:hover:bg-white/5">
               Cancel
             </Button>
             <Button type="primary" htmlType="submit" loading={loading} className="btn-gold">

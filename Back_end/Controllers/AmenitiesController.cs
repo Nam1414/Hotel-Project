@@ -1,7 +1,9 @@
+using HotelManagementAPI.Data;
 using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace HotelManagementAPI.Controllers;
 
@@ -10,10 +12,17 @@ namespace HotelManagementAPI.Controllers;
 public class AmenitiesController : ControllerBase
 {
     private readonly IAmenityService _amenityService;
+    private readonly AppDbContext _context;
+    private readonly ICloudinaryService _cloudinaryService;
 
-    public AmenitiesController(IAmenityService amenityService)
+    public AmenitiesController(
+        IAmenityService amenityService,
+        AppDbContext context,
+        ICloudinaryService cloudinaryService)
     {
         _amenityService = amenityService;
+        _context = context;
+        _cloudinaryService = cloudinaryService;
     }
 
     [HttpGet]
@@ -57,6 +66,31 @@ public class AmenitiesController : ControllerBase
         var result = await _amenityService.DeleteAsync(id);
         if (!result) return NotFound(new { message = "Tiện nghi không tồn tại" });
         return Ok(new { message = "Đã xóa tiện nghi thành công" });
+    }
+
+    // UPLOAD ICON
+    [HttpPost("{id}/icon")]
+    [Authorize(Roles = "Admin")]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<IActionResult> UploadIcon(int id, IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "Vui lòng chọn ảnh hợp lệ" });
+
+        var amenity = await _context.Amenities.FirstOrDefaultAsync(a => a.Id == id);
+        if (amenity == null)
+            return NotFound(new { message = "Tiện nghi không tồn tại" });
+
+        var (url, _) = await _cloudinaryService.UploadImageAsync(
+            file,
+            $"HotelManagement/Amenities/{id}",
+            new CloudinaryDotNet.Transformation().Width(256).Height(256).Crop("fill").Quality("auto").FetchFormat("auto")
+        );
+
+        amenity.IconUrl = url;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Đã cập nhật icon tiện nghi", iconUrl = amenity.IconUrl });
     }
 
     // LINKING

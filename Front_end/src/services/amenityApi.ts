@@ -24,5 +24,13 @@ export const amenityApi = {
 
   unlinkFromRoomType: async (roomTypeId: number, amenityId: number) =>
     axiosClient.delete(`/api/Amenities/link/${roomTypeId}/${amenityId}`),
+
+  uploadIcon: async (id: number, file: File): Promise<{ message: string; iconUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return axiosClient.post(`/api/Amenities/${id}/icon`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }) as Promise<{ message: string; iconUrl: string }>;
+  },
 };
 

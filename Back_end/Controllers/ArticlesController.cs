@@ -54,8 +54,10 @@ public class ArticlesController : ControllerBase
                 a.Slug,
                 ThumbnailUrl = a.ImageUrl,       // property ImageUrl → DB column: thumbnail_url
                 PublishedAt  = a.CreatedAt ?? DateTime.Now,  // property CreatedAt → DB column: published_at
-                Author   = a.Author!.FullName,
-                Category = a.Category!.Name
+                IsActive = a.IsActive,
+                Author   = a.Author != null ? a.Author.FullName : "Unknown",
+                Category = a.Category != null ? a.Category.Name : "None",
+                AttractionId = a.AttractionId
             })
             .ToListAsync();
 
@@ -84,8 +86,11 @@ public class ArticlesController : ControllerBase
             ThumbnailUrl = article.ImageUrl,      // property ImageUrl → DB column: thumbnail_url
             PublishedAt  = article.CreatedAt ?? DateTime.Now,  // property CreatedAt → DB column: published_at
             UpdatedAt    = article.UpdatedAt ?? DateTime.Now,
-            Author   = article.Author!.FullName,
-            Category = new { article.Category!.Id, article.Category.Name }
+            IsActive     = article.IsActive,
+            Author   = article.Author != null ? article.Author.FullName : "Unknown",
+            AuthorId = article.AuthorId,
+            AttractionId = article.AttractionId,
+            Category = new { article.Category?.Id, article.Category?.Name }
         });
     }
 
@@ -113,9 +118,11 @@ public class ArticlesController : ControllerBase
             Slug       = slug,
             Content    = dto.Content,
             CategoryId = dto.CategoryId,
-            AuthorId   = int.Parse(authorIdClaim), // Lấy từ Token
-            CreatedAt  = DateTime.UtcNow,          // → DB column: published_at
-            UpdatedAt  = DateTime.UtcNow           // → DB column: updated_at (thêm qua SQL patch)
+            AttractionId = dto.AttractionId,
+            AuthorId   = dto.AuthorId ?? int.Parse(authorIdClaim), // Sử dụng AuthorId truyền vào, không có thì xài Token
+            CreatedAt  = dto.PublishedAt ?? DateTime.UtcNow,          // → DB column: published_at
+            UpdatedAt  = DateTime.UtcNow,           // → DB column: updated_at (thêm qua SQL patch)
+            IsActive   = dto.IsActive
         };
 
         _context.Articles.Add(article);
@@ -149,6 +156,10 @@ public class ArticlesController : ControllerBase
 
         article.Content    = dto.Content;
         article.CategoryId = dto.CategoryId;
+        article.AttractionId = dto.AttractionId;
+        article.AuthorId   = dto.AuthorId ?? article.AuthorId;
+        article.CreatedAt  = dto.PublishedAt ?? article.CreatedAt;
+        article.IsActive   = dto.IsActive;
         article.UpdatedAt  = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

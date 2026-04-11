@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Table, Button, Input, Modal, Form, Select, Space, Tag, Popconfirm, App, Tooltip } from 'antd';
 import { Search, Plus, Edit2, Lock, Unlock, Trash2 } from 'lucide-react';
 import axiosClient from '../../api/axiosClient';
@@ -13,6 +13,7 @@ const UserManagement: React.FC = () => {
   const [togglingUserId, setTogglingUserId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [form] = Form.useForm();
 
   const currentUserId = useAppSelector((s) => s.auth.user?.id);
@@ -139,8 +140,8 @@ const UserManagement: React.FC = () => {
             {record.fullName?.charAt(0) || '?'}
           </div>
           <div>
-            <div className="font-bold text-white">{record.fullName}</div>
-            <div className="text-xs text-gray-500">{record.email}</div>
+            <div className="font-bold text-title">{record.fullName}</div>
+            <div className="text-xs text-muted">{record.email}</div>
           </div>
         </div>
       ),
@@ -220,12 +221,22 @@ const UserManagement: React.FC = () => {
     },
   ];
 
+  const filteredUsers = users.filter((u) => {
+    const q = searchTerm.toLowerCase();
+    return (u.fullName || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+  });
+
   return (
     <div className="glass-card p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 sm:gap-6 mb-8">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-          <Input placeholder="Search by name, email..." className="input-luxury pl-12" />
+          <Input 
+            placeholder="Tìm kiếm theo tên, email..." 
+            className="input-luxury pl-12"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
         {canManageUsers ? (
           <button
@@ -245,7 +256,7 @@ const UserManagement: React.FC = () => {
       <Table
         className="responsive-table"
         columns={columns}
-        dataSource={users}
+        dataSource={filteredUsers}
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 5 }}
@@ -253,7 +264,7 @@ const UserManagement: React.FC = () => {
       />
 
       <Modal
-        title={<span className="text-white font-display text-xl">{editingUser ? 'Edit User' : 'Add New User'}</span>}
+        title={<span className="text-title font-display text-xl">{editingUser ? 'Edit User' : 'Add New User'}</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
@@ -262,30 +273,30 @@ const UserManagement: React.FC = () => {
         forceRender
       >
         <Form form={form} layout="vertical" className="mt-6" onFinish={handleSaveUser}>
-          <Form.Item label={<span className="text-gray-400">Full Name</span>} name="fullName" rules={[{ required: true }]}>
+          <Form.Item label={<span className="text-muted">Full Name</span>} name="fullName" rules={[{ required: true }]}>
             <Input className="input-luxury" placeholder="Enter full name" />
           </Form.Item>
 
           {!editingUser && (
-            <Form.Item label={<span className="text-gray-400">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
+            <Form.Item label={<span className="text-muted">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
               <Input className="input-luxury" placeholder="Enter email" />
             </Form.Item>
           )}
 
-          <Form.Item label={<span className="text-gray-400">Password</span>} name="password" rules={[{ required: !editingUser, min: 6 }]}>
+          <Form.Item label={<span className="text-muted">Password</span>} name="password" rules={[{ required: !editingUser, min: 6 }]}>
             <Input.Password className="input-luxury" placeholder={editingUser ? 'Enter new password (leave blank to keep current)' : 'Enter password (min 6 chars)'} />
           </Form.Item>
 
-          <Form.Item label={<span className="text-gray-400">Phone Number</span>} name="phone">
+          <Form.Item label={<span className="text-muted">Phone Number</span>} name="phone">
             <Input className="input-luxury" placeholder="Enter phone number" />
           </Form.Item>
 
-          <Form.Item label={<span className="text-gray-400">Role</span>} name="roleId" rules={[{ required: true }]}>
+          <Form.Item label={<span className="text-muted">Role</span>} name="roleId" rules={[{ required: true }]}>
             <Select className="luxury-select" placeholder="Select a role" options={roles.map((r) => ({ value: r.id, label: r.name }))} />
           </Form.Item>
 
           {editingUser && (
-            <Form.Item label={<span className="text-gray-400">Status</span>} name="status">
+            <Form.Item label={<span className="text-muted">Status</span>} name="status">
               <Select
                 className="luxury-select"
                 disabled={editingUser.id.toString() === currentUserId?.toString()}
@@ -298,7 +309,7 @@ const UserManagement: React.FC = () => {
           )}
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8">
-            <Button onClick={() => setIsModalOpen(false)} className="flex-grow h-12 border-white/10 text-white hover:bg-white/5">
+            <Button onClick={() => setIsModalOpen(false)} className="flex-grow h-12 border-[var(--border-color)] text-title hover:bg-black/5 dark:hover:bg-white/5">
               CANCEL
             </Button>
             <Button type="primary" htmlType="submit" className="flex-grow h-12 bg-primary border-none text-dark-base font-bold">

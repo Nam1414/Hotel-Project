@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<RoomImage> RoomImages { get; set; }
     public DbSet<RoomInventory> RoomInventories { get; set; }
     public DbSet<Attraction> Attractions { get; set; }
+    public DbSet<Review> Reviews { get; set; }
     public DbSet<Amenity> Amenities { get; set; }
     public DbSet<RoomItem> RoomItems { get; set; }
     public DbSet<Notification> Notifications { get; set; }
@@ -75,6 +76,19 @@ public class AppDbContext : DbContext
             .HasOne(a => a.Author)
             .WithMany()
             .HasForeignKey(a => a.AuthorId);
+
+        modelBuilder.Entity<Article>()
+            .HasOne(a => a.Attraction)
+            .WithMany()
+            .HasForeignKey(a => a.AttractionId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // ─── Review → User ──────────────────────────────────────────────────────
+        modelBuilder.Entity<Review>()
+            .HasOne(r => r.User)
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // ─── Room → RoomType ─────────────────────────────────────────────────────
         modelBuilder.Entity<Room>()

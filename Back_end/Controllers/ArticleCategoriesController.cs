@@ -29,6 +29,8 @@ public class ArticleCategoriesController : ControllerBase
             {
                 c.Id,
                 c.Name,
+                c.IsActive,
+                c.Description,
                 ArticleCount = c.Articles.Count(a => a.IsActive)
             })
             .ToListAsync();
@@ -44,7 +46,7 @@ public class ArticleCategoriesController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Name))
             return BadRequest(new { message = "Tên danh mục không được để trống" });
 
-        var category = new ArticleCategory { Name = dto.Name };
+        var category = new ArticleCategory { Name = dto.Name, Description = dto.Description, IsActive = dto.IsActive };
         _context.ArticleCategories.Add(category);
         await _context.SaveChangesAsync();
 
@@ -63,6 +65,8 @@ public class ArticleCategoriesController : ControllerBase
             return NotFound(new { message = "Danh mục không tồn tại" });
 
         category.Name = dto.Name;
+        category.Description = dto.Description;
+        category.IsActive = dto.IsActive;
         await _context.SaveChangesAsync();
 
         return Ok(category);

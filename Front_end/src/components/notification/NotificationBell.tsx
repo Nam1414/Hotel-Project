@@ -50,12 +50,14 @@ const NotificationBell: React.FC = () => {
         aria-label="Open notifications"
       >
         {unreadCount > 0 ? <BellRing size={22} /> : <Bell size={22} />}
+        {/* Dot trạng thái realtime – tạm ẩn
         <span
           className={`absolute left-1.5 top-1.5 h-2.5 w-2.5 rounded-full border border-white ${
             connected ? 'bg-emerald-500' : 'bg-amber-400'
           }`}
           title={connected ? 'Realtime connected' : 'Realtime reconnecting'}
         />
+        */}
         {unreadCount > 0 && (
           <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 bg-primary text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-sm">
             {unreadCount > 99 ? '99+' : unreadCount}

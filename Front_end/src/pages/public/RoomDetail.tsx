@@ -1,8 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, Shield, Star, Users } from 'lucide-react';
-import { publicHotelApi, PublicRoomType } from '../../services/publicHotelApi';
+import {
+  AlertCircle, ArrowLeft, Bed, CheckCircle2, ChevronLeft, ChevronRight,
+  Loader2, Maximize, Shield, Star, Users,
+} from 'lucide-react';
+import { publicHotelApi, type PublicRoomType } from '../../services/publicHotelApi';
+
+const FALLBACK =
+  'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=1600&auto=format&fit=crop';
 
 const RoomDetail: React.FC = () => {
   const { id } = useParams();
@@ -10,161 +16,252 @@ const RoomDetail: React.FC = () => {
   const [room, setRoom] = useState<PublicRoomType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeImg, setActiveImg] = useState(0);
 
   useEffect(() => {
     const roomId = Number(id);
-    if (!roomId) {
-      setError('Loai phong khong hop le');
-      setLoading(false);
-      return;
-    }
-
-    const loadRoom = async () => {
-      try {
-        const data = await publicHotelApi.getRoomTypeById(roomId);
-        setRoom(data);
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Khong tim thay thong tin phong');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void loadRoom();
+    if (!roomId) { setError('Loại phòng không hợp lệ'); setLoading(false); return; }
+    publicHotelApi.getRoomTypeById(roomId)
+      .then(data => { setRoom(data); setActiveImg(0); })
+      .catch((err: any) => setError(err.response?.data?.message || 'Không tìm thấy thông tin phòng'))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  const amenities = useMemo(
-    () =>
-      room?.amenities?.map((amenity) => amenity.name) ?? [
-        'Premium bedding',
-        'Daily housekeeping',
-        'Complimentary bottled water',
-      ],
-    [room],
-  );
+  const images = useMemo(() => {
+    if (!room) return [FALLBACK];
+    const imgs = room.images?.map(i => i.imageUrl).filter(Boolean) as string[];
+    return imgs?.length ? imgs : [room.primaryImage || FALLBACK];
+  }, [room]);
+
+  const prevImg = () => setActiveImg(i => (i - 1 + images.length) % images.length);
+  const nextImg = () => setActiveImg(i => (i + 1) % images.length);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-[var(--text-muted)]">
-        <Loader2 className="mr-3 h-6 w-6 animate-spin text-primary" />
-        Dang tai thong tin phong...
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (!room || error) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="admin-card max-w-xl w-full flex items-center gap-3 text-red-500">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)] px-4">
+        <div className="flex items-center gap-3 text-red-500">
           <AlertCircle size={20} />
-          <span>{error || 'Khong tim thay phong'}</span>
+          <span>{error || 'Không tìm thấy phòng'}</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-[var(--bg-main)] min-h-screen pb-20">
-      <div className="relative h-[60vh]">
-        <img
-          src={room.primaryImage}
+    <div className="bg-[var(--bg-main)] min-h-screen pb-24">
+      {/* ── Hero Image Gallery ── */}
+      <div className="relative h-[65vh] bg-black overflow-hidden">
+        <motion.img
+          key={activeImg}
+          src={images[activeImg]}
           alt={room.name}
+          initial={{ opacity: 0, scale: 1.03 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
+          onError={e => { (e.target as HTMLImageElement).src = FALLBACK; }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute top-8 left-8">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+        {/* Back button */}
+        <div className="absolute top-8 left-8 z-20">
           <button
             onClick={() => navigate(-1)}
-            className="p-3 bg-black/40 backdrop-blur-lg rounded-full text-white hover:text-primary transition-colors border border-white/10"
+            className="p-3 bg-black/50 backdrop-blur-lg rounded-full text-white hover:text-primary transition-colors border border-white/10"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={22} />
           </button>
         </div>
+
+        {/* Gallery arrows */}
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prevImg}
+              className="absolute left-6 top-1/2 -translate-y-1/2 p-3 bg-black/50 backdrop-blur-lg rounded-full text-white hover:text-primary transition-colors z-20 border border-white/10"
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <button
+              onClick={nextImg}
+              className="absolute right-6 top-1/2 -translate-y-1/2 p-3 bg-black/50 backdrop-blur-lg rounded-full text-white hover:text-primary transition-colors z-20 border border-white/10"
+            >
+              <ChevronRight size={22} />
+            </button>
+          </>
+        )}
+
+        {/* Dots */}
+        {images.length > 1 && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveImg(i)}
+                className={`h-1.5 rounded-full transition-all ${i === activeImg ? 'w-8 bg-primary' : 'w-1.5 bg-white/50'}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Image counter */}
+        {images.length > 1 && (
+          <div className="absolute top-6 right-6 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full z-20">
+            {activeImg + 1} / {images.length}
+          </div>
+        )}
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-32 relative z-10">
+      {/* Thumbnail strip */}
+      {images.length > 1 && (
+        <div className="max-w-7xl mx-auto px-4 pt-4">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            {images.map((img, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveImg(i)}
+                className={`shrink-0 w-24 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                  i === activeImg ? 'border-primary scale-105' : 'border-transparent opacity-60 hover:opacity-90'
+                }`}
+              >
+                <img
+                  src={img}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={e => { (e.target as HTMLImageElement).src = FALLBACK; }}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Content ── */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          <div className="lg:col-span-2 space-y-12">
-            <div className="glass-card">
-              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                <h1 className="text-4xl md:text-5xl font-display font-bold text-title">{room.name}</h1>
+
+          {/* Left: Detail */}
+          <div className="lg:col-span-2 space-y-8">
+
+            {/* Header */}
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+              <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                <h1 className="text-4xl md:text-5xl font-display font-bold text-[var(--text-title)]">{room.name}</h1>
                 <div className="flex items-center text-primary">
-                  {[...Array(5)].map((_, index) => (
-                    <Star key={index} size={20} fill={index < 4 ? 'currentColor' : 'none'} />
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={18} fill={i < 5 ? 'currentColor' : 'none'} />
                   ))}
-                  <span className="ml-2 text-lg font-bold text-muted">4.8</span>
                 </div>
               </div>
-
-              <p className="text-body text-lg leading-relaxed mb-10">
-                {room.description || 'Room details are being updated. Please contact the front desk for more information.'}
+              <p className="text-[var(--text-body)] text-lg leading-relaxed">
+                {room.description || 'Không gian nghỉ dưỡng đẳng cấp, được thiết kế để mang lại trải nghiệm tuyệt vời nhất.'}
               </p>
+            </motion.div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div className="admin-card !p-4 text-center">
-                  <Users className="text-primary mx-auto mb-3" size={28} />
-                  <span className="text-sm text-muted">{room.capacityLabel}</span>
+            {/* Specs grid */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+            >
+              {[
+                { icon: <Users size={22} />, label: 'Sức chứa', value: room.capacityLabel },
+                { icon: <Bed size={22} />, label: 'Giường', value: room.bedType || '—' },
+                { icon: <Maximize size={22} />, label: 'Diện tích', value: room.sizeSqm ? `${room.sizeSqm} m²` : '—' },
+                { icon: <Shield size={22} />, label: 'Hướng nhìn', value: room.viewType || '—' },
+              ].map(spec => (
+                <div key={spec.label} className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-4 text-center">
+                  <div className="text-primary mx-auto mb-2 flex justify-center">{spec.icon}</div>
+                  <div className="text-xs text-[var(--text-muted)] mb-1">{spec.label}</div>
+                  <div className="font-semibold text-[var(--text-title)] text-sm">{spec.value}</div>
                 </div>
-                <div className="admin-card !p-4 text-center">
-                  <Shield className="text-primary mx-auto mb-3" size={28} />
-                  <span className="text-sm text-muted">{room.viewType || 'Premium view'}</span>
+              ))}
+            </motion.div>
+
+            {/* Amenities */}
+            {(room.amenities?.length ?? 0) > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-7"
+              >
+                <h3 className="text-xl font-display font-bold text-[var(--text-title)] mb-6">Tiện nghi phòng</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {room.amenities!.map(amenity => (
+                    <div key={amenity.id} className="flex items-center gap-3 text-[var(--text-body)]">
+                      {amenity.iconUrl && amenity.iconUrl.startsWith('http') ? (
+                        <img src={amenity.iconUrl} alt="" className="w-6 h-6 object-contain" />
+                      ) : amenity.iconUrl ? (
+                        <span className="text-xl leading-none">{amenity.iconUrl}</span>
+                      ) : (
+                        <CheckCircle2 size={18} className="text-primary shrink-0" />
+                      )}
+                      <span className="text-sm">{amenity.name}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="admin-card !p-4 text-center">
-                  <CheckCircle2 className="text-primary mx-auto mb-3" size={28} />
-                  <span className="text-sm text-muted">{room.bedType || 'Luxury bed'}</span>
+              </motion.div>
+            )}
+
+            {/* Full content */}
+            {room.content && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-7"
+              >
+                <h3 className="text-xl font-display font-bold text-[var(--text-title)] mb-4">Mô tả chi tiết</h3>
+                <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: room.content }} />
+              </motion.div>
+            )}
+          </div>
+
+          {/* Right: Booking card */}
+          <div className="lg:col-span-1">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}
+              className="bg-[var(--card-bg)] border border-primary/30 rounded-2xl p-8 sticky top-24 shadow-lg"
+            >
+              <div className="text-center mb-8">
+                <span className="text-[var(--text-muted)] text-xs uppercase tracking-widest">Giá khởi điểm</span>
+                <div className="text-5xl font-display font-bold text-primary mt-2">
+                  {room.displayPrice.toLocaleString('vi-VN')} đ
                 </div>
-                <div className="admin-card !p-4 text-center">
-                  <CheckCircle2 className="text-primary mx-auto mb-3" size={28} />
-                  <span className="text-sm text-muted">{room.sizeSqm ? `${room.sizeSqm} m2` : 'Spacious suite'}</span>
-                </div>
+                <span className="text-[var(--text-muted)] text-sm">/ đêm</span>
               </div>
-            </div>
 
-            <div className="glass-card">
-              <h3 className="text-2xl font-display font-bold text-title mb-8">Room Amenities</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {amenities.map((amenity) => (
-                  <div key={amenity} className="flex items-center text-body">
-                    <CheckCircle2 className="text-primary mr-3" size={20} />
-                    <span>{amenity}</span>
+              <div className="space-y-4 mb-8">
+                {[
+                  ['Sức chứa tối đa', room.capacityLabel],
+                  ['Diện tích phòng', room.sizeSqm ? `${room.sizeSqm} m²` : 'Spacious'],
+                  ['Hướng nhìn', room.viewType || '—'],
+                  ['Loại giường', room.bedType || '—'],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex justify-between text-sm border-b border-[var(--border-color)] pb-3">
+                    <span className="text-[var(--text-muted)]">{label}</span>
+                    <span className="font-bold text-[var(--text-title)]">{value}</span>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
 
-          <div className="lg:col-span-1">
-            <div className="glass-card sticky top-24 border-primary/30">
-              <div className="text-center mb-8">
-                <span className="text-muted text-sm uppercase tracking-widest">Starting from</span>
-                <div className="text-5xl font-display font-bold text-primary mt-2">
-                  {room.displayPrice.toLocaleString('vi-VN')} d
-                </div>
-                <span className="text-muted text-sm">per night</span>
-              </div>
-
-              <div className="space-y-6 mb-8">
-                <div className="flex justify-between text-body text-sm pb-4 border-b border-[var(--border-color)]">
-                  <span>Max Guests</span>
-                  <span className="font-bold">{room.capacityLabel}</span>
-                </div>
-                <div className="flex justify-between text-body text-sm pb-4 border-b border-[var(--border-color)]">
-                  <span>Room Size</span>
-                  <span className="font-bold">{room.sizeSqm ? `${room.sizeSqm} m2` : 'Spacious'}</span>
-                </div>
-                <div className="flex justify-between text-body text-sm pb-4 border-b border-[var(--border-color)]">
-                  <span>View</span>
-                  <span className="font-bold">{room.viewType || 'City / Ocean'}</span>
-                </div>
-              </div>
-
-              <Link to={`/booking/${room.id}`} className="btn-gold w-full block text-center py-4 text-lg">
-                BOOK THIS ROOM
+              <Link
+                to={`/booking/${room.id}`}
+                className="btn-gold w-full block text-center py-4 text-base rounded-2xl"
+              >
+                ĐẶT PHÒNG NGAY
               </Link>
 
-              <p className="text-center text-muted text-xs mt-6">Reservation will be created directly in the current backend system.</p>
-            </div>
+              <p className="text-center text-[var(--text-muted)] text-xs mt-5 leading-relaxed">
+                Đặt phòng trực tiếp qua hệ thống — không qua trung gian
+              </p>
+            </motion.div>
           </div>
         </div>
       </div>

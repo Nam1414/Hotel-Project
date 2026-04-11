@@ -28,6 +28,8 @@ import {
   MapPin,
   TriangleAlert,
   BadgePercent,
+  LayoutGrid,
+  MessageSquare
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../utils/cn';
@@ -55,15 +57,17 @@ const AdminLayout: React.FC = () => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
     { icon: Users, label: 'User Management', path: '/admin/users', permissions: ['MANAGE_USERS'] },
     { icon: Bed, label: 'Room Management', path: '/admin/rooms', permissions: ['MANAGE_ROOMS'] },
+    { icon: LayoutGrid, label: 'Hạng phòng & Ảnh', path: '/admin/room-types', permissions: ['MANAGE_ROOMS'] },
     { icon: ClipboardList, label: 'Cleaning', path: '/admin/cleaning', permissions: ['MANAGE_ROOMS'] },
     { icon: Sparkles, label: 'Amenities', path: '/admin/amenities', permissions: ['MANAGE_ROOMS'] },
     { icon: Package, label: 'Inventory', path: '/admin/inventory', permissions: ['MANAGE_INVENTORY'] },
     { icon: TriangleAlert, label: 'Damage & Loss', path: '/admin/inventory/damages', permissions: ['MANAGE_INVENTORY'] },
     { icon: MapPin, label: 'Attractions', path: '/admin/attractions', permissions: ['MANAGE_CONTENT'] },
     { icon: FileText, label: 'CMS', path: '/admin/cms', permissions: ['MANAGE_CONTENT'] },
+    { icon: MessageSquare, label: 'Reviews', path: '/admin/reviews', permissions: ['MANAGE_CONTENT'] },
     { icon: CreditCard, label: 'Invoices', path: '/admin/invoices', permissions: ['MANAGE_INVOICES'] },
     { icon: BadgePercent, label: 'Vouchers', path: '/admin/vouchers', permissions: ['MANAGE_BOOKINGS'] },
-    { icon: Package, label: 'Service Orders', path: '/admin/orders', permissions: ['MANAGE_SERVICES', 'MANAGE_ROOMS'] },
+    // { icon: Package, label: 'Service Orders', path: '/admin/orders', permissions: ['MANAGE_SERVICES', 'MANAGE_ROOMS'] }, // Tạm ẩn
     { icon: ShieldCheck, label: 'Roles & Permissions', path: '/admin/roles', permissions: ['MANAGE_ROLES'] },
   ];
 
@@ -111,7 +115,7 @@ const AdminLayout: React.FC = () => {
               onClick={() => setIsBookingMenuOpen((prev) => !prev)}
               className={cn(
                 'flex w-full items-center justify-between px-4 py-3 rounded-xl transition-all duration-200',
-                isBookingSectionActive ? 'bg-primary/10 text-primary' : 'text-gray-400 hover:bg-white/5 hover:text-primary'
+                isBookingSectionActive ? 'bg-primary/10 !text-primary' : '!text-gray-400 hover:bg-white/5 hover:!text-primary'
               )}
             >
               <span className="flex items-center space-x-3">
@@ -132,10 +136,10 @@ const AdminLayout: React.FC = () => {
                       to={item.path}
                       className={cn(
                         'flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group',
-                        isActive ? 'bg-primary text-dark-base shadow-lg shadow-primary/20' : 'text-white/60 hover:bg-white/5 hover:text-primary'
+                        isActive ? 'bg-primary/10 !text-primary' : '!text-white/60 hover:bg-white/5 hover:!text-primary'
                       )}
                     >
-                      <Icon size={18} className={cn(isActive ? 'text-dark-base' : 'group-hover:text-primary')} />
+                      <Icon size={18} className={cn(isActive ? '!text-primary' : 'group-hover:text-primary')} />
                       <span className={cn('font-medium', isActive ? 'font-bold' : '')}>{item.label}</span>
                     </Link>
                   );
@@ -146,7 +150,7 @@ const AdminLayout: React.FC = () => {
         )}
 
         {filteredMenu.map((item) => {
-          const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+          const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(`${item.path}/`));
           const Icon = item.icon;
           return (
             <Link
@@ -154,10 +158,10 @@ const AdminLayout: React.FC = () => {
               to={item.path}
               className={cn(
                 'flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group',
-                isActive ? 'bg-primary text-dark-base shadow-lg shadow-primary/20' : 'text-white/60 hover:bg-white/5 hover:text-primary'
+                isActive ? 'bg-primary/10 !text-primary' : '!text-white/60 hover:bg-white/5 hover:!text-primary'
               )}
             >
-              <Icon size={20} className={cn(isActive ? 'text-dark-base' : 'group-hover:text-primary')} />
+              <Icon size={20} className={cn(isActive ? '!text-primary' : 'group-hover:text-primary')} />
               {!isCollapsed && <span className={cn('font-medium', isActive ? 'font-bold' : '')}>{item.label}</span>}
             </Link>
           );
@@ -185,7 +189,7 @@ const AdminLayout: React.FC = () => {
       >
         <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
           {!isCollapsed && (
-            <Link to="/" className="text-2xl font-display font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent tracking-[0.2em]">KANT</Link>
+            <Link to="/" className="text-2xl font-display font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text !text-transparent tracking-[0.2em]">KANT</Link>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -213,7 +217,7 @@ const AdminLayout: React.FC = () => {
         )}
       >
         <div className="h-20 flex items-center justify-between px-6 border-b border-white/5">
-          <Link to="/" className="text-xl font-display font-bold text-primary tracking-widest">KANT</Link>
+          <Link to="/" className="text-xl font-display font-bold !text-primary tracking-widest">KANT</Link>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
             className="p-2 rounded-lg hover:bg-white/5 text-primary transition-colors"

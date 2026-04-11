@@ -14,6 +14,9 @@ public class Article
     [Column("author_id")]
     public int? AuthorId { get; set; }
 
+    [Column("attraction_id")]
+    public int? AttractionId { get; set; }
+
     [Column("title")]
     public string Title { get; set; } = string.Empty;
 
@@ -45,4 +48,5 @@ public class Article
     // Navigation
     public ArticleCategory? Category { get; set; }
     public User? Author { get; set; }
+    public Attraction? Attraction { get; set; }
 }
