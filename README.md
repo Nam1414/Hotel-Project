@@ -84,7 +84,7 @@ Mở file `appsettings.json` và cập nhật:
 - `sql/`: Các mã nguồn SQL theo module.
 
 ## 🔒 Tài Khoản Mặc Định
-- **Admin**: `admin@hotel.com` / `Password123` (Hoặc theo cấu hình trong file SQL).
+- **Admin**: `admin@hotel.com` / `Admin@123` (Hoặc theo cấu hình trong file SQL).
 
 ---
-*Dự án ERP Khách sạn - Phiên bản nâng cấp 2026/03*
+*Dự án ERP Khách sạn*
