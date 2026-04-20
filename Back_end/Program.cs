@@ -117,6 +117,8 @@ builder.Services.AddScoped<IEmailService, EmailService>(); // Đăng ký EmailSe
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
+builder.Services.AddScoped<IMoMoService, MoMoService>(); // MoMo Payment
+builder.Services.AddHttpClient("MoMo");                  // Named HttpClient cho MoMo
 
 // =============================================
 // 5. CONTROLLERS & JSON OPTIONS

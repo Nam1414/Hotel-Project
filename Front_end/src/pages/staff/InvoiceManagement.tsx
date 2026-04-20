@@ -34,6 +34,7 @@ import {
 import dayjs from 'dayjs';
 import { bookingApi, BookingResponseDto, InvoiceResponseDto } from '../../services/bookingApi';
 import { adminApi, RoomDto } from '../../services/adminApi';
+import { createMoMoPayment, parseMoMoReturnParams, clearMoMoReturnParams } from '../../services/momoApi';
 import HotelInvoicePrint from '../../components/print/HotelInvoicePrint';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
@@ -54,6 +55,8 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
 };
 
 const PAYMENT_METHODS = ['Cash', 'Card', 'BankTransfer', 'MoMo', 'VNPay'];
+
+const MOMO_LOGO = 'https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-MoMo-Square.png';
 
 const formatMoney = (v?: number | null) =>
   v !== undefined && v !== null ? v.toLocaleString('vi-VN') + ' ₫' : '—';
@@ -106,6 +109,28 @@ const InvoiceManagementPage: React.FC = () => {
   const [invoiceServices, setInvoiceServices] = useState<any[]>([]);
 
   const [paymentForm] = Form.useForm();
+  const [momoLoading, setMomoLoading] = useState(false);
+
+  // ── Xử lý redirect từ MoMo (sau khi khách thanh toán) ──
+  useEffect(() => {
+    const { paymentStatus, invoiceId: retInvoiceId } = parseMoMoReturnParams();
+    if (paymentStatus === 'success') {
+      message.success({
+        content: '✅ Thanh toán MoMo thành công! Đang cập nhật hóa đơn...',
+        duration: 5,
+      });
+      clearMoMoReturnParams();
+      // Reload data sau 2s để IPN có thời gian xử lý
+      setTimeout(() => {
+        loadData();
+        // Nếu đang mở invoice tương ứng thì reload lại
+        if (retInvoiceId && selectedBooking) {
+          openInvoice(selectedBooking);
+        }
+      }, 2000);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -197,6 +222,15 @@ const InvoiceManagementPage: React.FC = () => {
 
   const submitPayment = async (values: any) => {
     if (!selectedInvoice) return;
+
+    // ── Nếu chọn MoMo → tạo link và mở tab mới ──
+    if (values.paymentMethod === 'MoMo') {
+      await handleMoMoPayment();
+      setPaymentOpen(false);
+      paymentForm.resetFields();
+      return;
+    }
+
     try {
       await bookingApi.addPayment(selectedInvoice.id, {
         paymentMethod: values.paymentMethod,
@@ -209,16 +243,35 @@ const InvoiceManagementPage: React.FC = () => {
       if (selectedBooking) {
         const inv = await bookingApi.getInvoiceByBookingId(selectedBooking.id);
         setSelectedInvoice(inv);
-        if (inv.serviceOrders) {
-          setInvoiceServices(inv.serviceOrders);
-        }
-        if (inv.lossDamages) {
-          setInvoiceDamages(inv.lossDamages);
-        }
+        if (inv.serviceOrders) setInvoiceServices(inv.serviceOrders);
+        if (inv.lossDamages) setInvoiceDamages(inv.lossDamages);
       }
       loadData();
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Thanh toán thất bại');
+    }
+  };
+
+  // ── Xử lý tạo thanh toán MoMo ──
+  const handleMoMoPayment = async (customAmount?: number) => {
+    if (!selectedInvoice) return;
+    setMomoLoading(true);
+    try {
+      const result = await createMoMoPayment(
+        selectedInvoice.id,
+        customAmount,
+        `Thanh toan hoa don #${selectedInvoice.id} - Kant Hotel`
+      );
+      // Mở tab mới với payUrl
+      window.open(result.payUrl, '_blank', 'noopener,noreferrer');
+      message.info({
+        content: '🔗 Đã mở trang thanh toán MoMo. Sau khi thanh toán xong, quay lại đây để xem kết quả.',
+        duration: 8,
+      });
+    } catch (err: any) {
+      message.error(err?.response?.data?.message || err?.message || 'Không thể tạo thanh toán MoMo');
+    } finally {
+      setMomoLoading(false);
     }
   };
 
@@ -535,17 +588,59 @@ const InvoiceManagementPage: React.FC = () => {
                   </Button>
                   
                   {selectedInvoice.status !== 'Paid' ? (
-                    <Button 
-                      block 
-                      size="large" 
-                      type="primary" 
-                      className="btn-gold" 
-                      icon={<CreditCard size={16} />} 
-                      onClick={() => setPaymentOpen(true)}
-                      style={{ height: 50, fontSize: 15, fontWeight: 600 }}
-                    >
-                      GHI NHẬN THANH TOÁN
-                    </Button>
+                    <>
+                      {/* ── Nút MoMo nổi bật ── */}
+                      <Button
+                        block
+                        size="large"
+                        loading={momoLoading}
+                        onClick={() => handleMoMoPayment()}
+                        style={{
+                          height: 48,
+                          fontSize: 15,
+                          fontWeight: 600,
+                          backgroundColor: '#A50064',
+                          border: 'none',
+                          color: '#fff',
+                          borderRadius: 8,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 10,
+                          boxShadow: '0 4px 10px rgba(165,0,100,0.2)',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        <img
+                          src={MOMO_LOGO}
+                          alt="MoMo"
+                          style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'cover', flexShrink: 0, backgroundColor: 'white', padding: 1 }}
+                        />
+                        THANH TOÁN QUA MOMO
+                      </Button>
+
+                      {/* ── Nút ghi nhận thủ công ── */}
+                      <Button 
+                        block 
+                        size="large" 
+                        type="primary" 
+                        className="btn-gold" 
+                        onClick={() => setPaymentOpen(true)}
+                        style={{ 
+                          height: 48, 
+                          fontSize: 15, 
+                          fontWeight: 600,
+                          borderRadius: 8,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 10,
+                        }}
+                      >
+                        <CreditCard size={18} />
+                        TIỀN MẶT / CHUYỂN KHOẢN
+                      </Button>
+                    </>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '12px', background: '#f0fdf4', borderRadius: 8, color: '#16a34a', fontWeight: 600 }}>
                       ✓ ĐÃ THANH TOÁN ĐỦ
@@ -602,9 +697,20 @@ const InvoiceManagementPage: React.FC = () => {
 
           <Form.Item name="paymentMethod" label="Phương thức thanh toán" rules={[{ required: true, message: 'Vui lòng chọn phương thức' }]}>
             <Select
-              options={PAYMENT_METHODS.map(m => ({ value: m, label: m }))}
+              options={PAYMENT_METHODS.map(m => ({ 
+                value: m, 
+                label: m === 'MoMo'
+                  ? <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <img src={MOMO_LOGO} alt="MoMo" style={{ width: 18, height: 18, borderRadius: 3 }} />
+                      MoMo (Chuyển hướng)
+                    </span>
+                  : m
+              }))}
               placeholder="Chọn phương thức..."
-              onChange={() => paymentForm.setFieldsValue({ transactionCode: generateTxnCode() })}
+              onChange={(v) => {
+                paymentForm.setFieldsValue({ transactionCode: generateTxnCode() });
+                // Ẩn/hiện trường số tiền khi chọn MoMo
+              }}
             />
           </Form.Item>
 

@@ -32,6 +32,21 @@ namespace HotelManagementAPI.Services
 
         public async Task<InvoiceResponseDto> CreateInvoiceAsync(int bookingId)
         {
+            // ── Kiểm tra hóa đơn đã tồn tại → trả về luôn, không tạo trùng ──
+            var existingInvoice = await _context.Invoices
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.BookingId == bookingId);
+
+            if (existingInvoice != null)
+            {
+                // Recalculate để cập nhật số liệu mới nhất rồi trả về
+                await RecalculateInvoiceAsync(bookingId);
+                existingInvoice = await _context.Invoices
+                    .Include(i => i.Payments)
+                    .FirstOrDefaultAsync(i => i.BookingId == bookingId);
+                return await MapToDtoAsync(existingInvoice!);
+            }
+
             var booking = await _context.Bookings
                 .Include(b => b.BookingDetails)
                 .Include(b => b.Voucher)

@@ -80,15 +80,14 @@ const HotelInvoicePrint: React.FC<HotelInvoicePrintProps> = ({
 
         /* Print-specific logic */
         @media print {
-          /* Hide everything by default */
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             height: auto !important;
             visibility: hidden !important;
+            overflow: hidden !important;
           }
 
-          /* Show ONLY the specific invoice container */
           #print-invoice {
             visibility: visible !important;
             display: block !important;
@@ -97,46 +96,46 @@ const HotelInvoicePrint: React.FC<HotelInvoicePrintProps> = ({
             top: 0 !important;
             width: 100% !important;
             margin: 0 !important;
-            padding: 30px !important;
+            padding: 12mm 15mm !important;
             background: #fff !important;
+            box-sizing: border-box !important;
           }
 
-          /* Explicitly ensure all children are visible */
           #print-invoice * {
             visibility: visible !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
 
-          /* Remove headers/footers browser might add */
           @page {
+            size: A4 portrait;
             margin: 0;
-            size: auto;
           }
         }
 
-        /* Shared Styles */
-        #print-invoice { font-family: 'Segoe UI', Arial, sans-serif; color: #000; }
-        #print-invoice .pi-header { text-align: center; border-bottom: 2px solid #A6894B; padding-bottom: 14px; margin-bottom: 18px; }
-        #print-invoice .pi-hotel-name { font-size: 26px; font-weight: 900; color: #A6894B !important; letter-spacing: 1.4px; }
-        #print-invoice .pi-hotel-sub { font-size: 12px; color: #444 !important; margin-top: 4px; }
-        #print-invoice .pi-title { font-size: 20px; font-weight: 900; margin: 10px 0 0; text-transform: uppercase; }
-        #print-invoice .pi-meta { margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px; font-size: 12px; }
-        #print-invoice .pi-section { margin: 18px 0; }
-        #print-invoice .pi-section-title { font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.9px; color: #A6894B !important; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-        #print-invoice .pi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; }
-        #print-invoice .pi-label { color: #555 !important; font-size: 12px; }
-        #print-invoice .pi-value { font-weight: 700; font-size: 12px; }
-        #print-invoice table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-        #print-invoice th { background: #f9f9f9 !important; border-bottom: 2px solid #eee; text-align: left; padding: 10px; font-weight: 900; }
-        #print-invoice td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: top; }
-        #print-invoice .pi-total-box { background: #fdfbf7 !important; border: 1px solid #eee; border-radius: 8px; padding: 16px; margin-top: 20px; }
-        #print-invoice .pi-total-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
-        #print-invoice .pi-grand-total { font-size: 18px; font-weight: 900; color: #A6894B !important; padding-top: 12px; margin-top: 10px; border-top: 2px solid #A6894B; }
-        #print-invoice .pi-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-top: 40px; }
-        #print-invoice .pi-sign-col { text-align: center; font-size: 12px; }
-        #print-invoice .pi-sign-line { margin-top: 60px; border-top: 1px solid #ddd; padding-top: 8px; width: 150px; margin-left: auto; margin-right: auto; }
-        #print-invoice .pi-footer { margin-top: 30px; text-align: center; font-size: 11px; color: #888 !important; border-top: 1px solid #eee; padding-top: 15px; }
+        /* ── Compact Styles for A4 fit ── */
+        #print-invoice { font-family: 'Segoe UI', Arial, sans-serif; color: #000; font-size: 10px; line-height: 1.35; }
+        #print-invoice .pi-header { text-align: center; border-bottom: 1.5px solid #A6894B; padding-bottom: 8px; margin-bottom: 10px; }
+        #print-invoice .pi-hotel-name { font-size: 20px; font-weight: 900; color: #A6894B !important; letter-spacing: 1px; }
+        #print-invoice .pi-hotel-sub { font-size: 9px; color: #555 !important; margin-top: 2px; }
+        #print-invoice .pi-title { font-size: 15px; font-weight: 900; margin: 6px 0 0; text-transform: uppercase; }
+        #print-invoice .pi-meta { margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; font-size: 10px; }
+        #print-invoice .pi-section { margin: 8px 0; }
+        #print-invoice .pi-section-title { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.6px; color: #A6894B !important; margin-bottom: 4px; border-bottom: 1px solid #eee; padding-bottom: 2px; }
+        #print-invoice .pi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+        #print-invoice .pi-label { color: #555 !important; font-size: 10px; }
+        #print-invoice .pi-value { font-weight: 700; font-size: 10px; }
+        #print-invoice table { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 4px; }
+        #print-invoice th { background: #f5f5f5 !important; border-bottom: 1.5px solid #ddd; text-align: left; padding: 4px 6px; font-weight: 800; font-size: 9px; }
+        #print-invoice td { padding: 3px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+        #print-invoice .pi-total-box { background: #fdfbf7 !important; border: 1px solid #eee; border-radius: 6px; padding: 8px 12px; margin-top: 10px; }
+        #print-invoice .pi-total-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10px; }
+        #print-invoice .pi-grand-total { font-size: 14px; font-weight: 900; color: #A6894B !important; padding-top: 6px; margin-top: 4px; border-top: 1.5px solid #A6894B; }
+        #print-invoice .pi-note { font-size: 8px; color: #888 !important; margin-top: 4px; font-style: italic; }
+        #print-invoice .pi-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 20px; }
+        #print-invoice .pi-sign-col { text-align: center; font-size: 10px; }
+        #print-invoice .pi-sign-line { margin-top: 35px; border-top: 1px solid #ddd; padding-top: 4px; width: 130px; margin-left: auto; margin-right: auto; font-size: 9px; }
+        #print-invoice .pi-footer { margin-top: 12px; text-align: center; font-size: 8px; color: #999 !important; border-top: 1px solid #eee; padding-top: 6px; }
       `}</style>
 
       <div className="pi-header">
