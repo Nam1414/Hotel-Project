@@ -6,24 +6,72 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import { publicHotelApi, PublicRoomType } from '../../services/publicHotelApi';
 import { bookingApi } from '../../services/bookingApi';
+import { voucherApi, VoucherResponseDto } from '../../services/voucherApi';
 
 const Booking: React.FC = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { user } = useSelector((state: RootState) => state.auth);
 
-  const [room, setRoom] = useState<PublicRoomType | null>(null);
+  const [allRoomTypes, setAllRoomTypes] = useState<PublicRoomType[]>([]);
+  const [selectedRooms, setSelectedRooms] = useState<{ roomTypeId: number; quantity: number }[]>([{ roomTypeId: Number(roomId), quantity: 1 }]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [bookingCode, setBookingCode] = useState('');
+  const [vouchers, setVouchers] = useState<VoucherResponseDto[]>([]);
   const [formData, setFormData] = useState({
     checkIn: '',
     checkOut: '',
-    guests: 1,
+    guests: 1, // Overall guests per room or global? Let's leave it as global per room avg or remove it. We'll keep it for API validation if needed.
+    depositAmount: 0,
+    voucherId: null as number | null,
+    fullName: user?.fullName || user?.name || '',
+    email: user?.email || '',
+    phone: '',
     specialRequests: '',
   });
+
+  const nights = useMemo(() => {
+    if (!formData.checkIn || !formData.checkOut) return 0;
+    const start = new Date(formData.checkIn);
+    const end = new Date(formData.checkOut);
+    const diff = end.getTime() - start.getTime();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }, [formData.checkIn, formData.checkOut]);
+
+  const totalRoomPrice = useMemo(() => {
+    let total = 0;
+    for (const sr of selectedRooms) {
+       const rt = allRoomTypes.find(x => x.id === sr.roomTypeId);
+       if (rt) {
+           total += nights * sr.quantity * (rt.displayPrice || 0);
+       }
+    }
+    return total;
+  }, [nights, selectedRooms, allRoomTypes]);
+
+  const totalRoomsCount = useMemo(() => selectedRooms.reduce((acc, curr) => acc + curr.quantity, 0), [selectedRooms]);
+
+  const discountAmount = useMemo(() => {
+    if (!formData.voucherId || !vouchers.length) return 0;
+    const v = vouchers.find(x => x.id === formData.voucherId);
+    if (!v) return 0;
+    if (totalRoomPrice < v.minBookingAmount) return 0;
+    
+    let discount = 0;
+    if (v.discountType === 'Percentage') {
+      discount = (totalRoomPrice * v.discountValue) / 100;
+      if (v.maxDiscountAmount && discount > v.maxDiscountAmount) discount = v.maxDiscountAmount;
+    } else {
+      discount = v.discountValue;
+    }
+    return discount;
+  }, [formData.voucherId, vouchers, totalRoomPrice]);
+
+  const finalTotal = useMemo(() => Math.max(0, totalRoomPrice - discountAmount), [totalRoomPrice, discountAmount]);
+  const remainingAmount = useMemo(() => Math.max(0, finalTotal - formData.depositAmount), [finalTotal, formData.depositAmount]);
 
   useEffect(() => {
     const id = Number(roomId);
@@ -33,48 +81,73 @@ const Booking: React.FC = () => {
       return;
     }
 
-    const loadRoom = async () => {
+    const loadData = async () => {
       try {
-        const data = await publicHotelApi.getRoomTypeById(id);
-        setRoom(data);
+        const [roomsData, vList] = await Promise.all([
+          publicHotelApi.getRoomTypes(),
+          voucherApi.getAll().catch(() => [])
+        ]);
+        setAllRoomTypes(roomsData);
+        
+        // Ensure the initial roomId exists or fallback
+        const validInitial = roomsData.find(r => r.id === id) ? id : roomsData[0]?.id || 0;
+        setSelectedRooms([{ roomTypeId: validInitial, quantity: 1 }]);
+
         setFormData((current) => ({
           ...current,
-          guests: Math.max(1, Math.min(data.capacityAdults || 1, current.guests)),
+          guests: Math.max(1, current.guests),
         }));
+        
+        const activeVouchers = vList.filter(x => x.isActive && new Date(x.endDate).getTime() >= new Date().getTime());
+        setVouchers(activeVouchers);
       } catch (err: any) {
-        setError(err.response?.data?.message || 'Khong the tai thong tin phong');
+        setError(err.response?.data?.message || 'Không thể tải thông tin phòng');
       } finally {
         setLoading(false);
       }
     };
 
-    void loadRoom();
+    void loadData();
   }, [roomId]);
 
   const canContinue = useMemo(() => {
-    return Boolean(formData.checkIn && formData.checkOut && room);
-  }, [formData.checkIn, formData.checkOut, room]);
+    return Boolean(
+      formData.checkIn &&
+      formData.checkOut &&
+      nights > 0 &&
+      formData.fullName &&
+      formData.email &&
+      formData.phone &&
+      selectedRooms.length > 0 && selectedRooms.every(sr => sr.roomTypeId && sr.quantity > 0)
+    );
+  }, [formData, nights, selectedRooms]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!room) return;
+    if (selectedRooms.length === 0) return;
 
     setSubmitting(true);
     setError(null);
 
     try {
+      const detailsPayload = selectedRooms.flatMap(sr => {
+        const rt = allRoomTypes.find(x => x.id === sr.roomTypeId);
+        return Array.from({ length: sr.quantity }).map(() => ({
+          roomTypeId: sr.roomTypeId,
+          checkInDate: new Date(formData.checkIn).toISOString(),
+          checkOutDate: new Date(formData.checkOut).toISOString(),
+          pricePerNight: rt?.displayPrice || 0,
+        }));
+      });
+
       const booking = await bookingApi.create({
         userId: user?.id && Number(user.id) > 0 ? Number(user.id) : undefined,
-        guestName: user?.fullName || user?.name || '',
-        guestEmail: user?.email || '',
-        details: [
-          {
-            roomTypeId: room.id,
-            checkInDate: new Date(formData.checkIn).toISOString(),
-            checkOutDate: new Date(formData.checkOut).toISOString(),
-            pricePerNight: room.displayPrice,
-          },
-        ],
+        guestName: formData.fullName,
+        guestEmail: formData.email,
+        guestPhone: formData.phone,
+        voucherId: formData.voucherId || undefined,
+        depositAmount: formData.depositAmount,
+        details: detailsPayload,
       });
 
       setBookingCode(booking.bookingCode);
@@ -95,16 +168,18 @@ const Booking: React.FC = () => {
     );
   }
 
-  if (!room || error && step === 1) {
+  if (allRoomTypes.length === 0 || error && step === 1) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="admin-card max-w-xl w-full flex items-center gap-3 text-red-500">
           <AlertCircle size={20} />
-          <span>{error || 'Khong tim thay phong'}</span>
+          <span>{error || 'Không tìm thấy loại phòng nào phù hợp'}</span>
         </div>
       </div>
     );
   }
+
+  const primaryRoomType = allRoomTypes.find(rt => rt.id === selectedRooms[0]?.roomTypeId) || allRoomTypes[0];
 
   return (
     <div className="bg-[var(--bg-main)] min-h-screen py-20">
@@ -134,59 +209,186 @@ const Booking: React.FC = () => {
             >
               <h2 className="text-3xl font-display font-bold text-title mb-2">Reservation Details</h2>
               <p className="text-muted mb-8">
-                You are booking <span className="font-semibold text-title">{room?.name}</span> from the live hotel system.
+                You are booking multiple rooms from the live hotel system.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-muted uppercase tracking-widest">Check-in Date</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={20} />
-                    <input
-                      type="date"
-                      className="input-luxury w-full pl-12"
-                      value={formData.checkIn}
-                      min={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setFormData({ ...formData, checkIn: e.target.value })}
+
+              <div className="flex flex-col lg:flex-row gap-10 mb-10">
+                <div className="lg:w-1/3">
+                  <div className="aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
+                    <img
+                      src={primaryRoomType?.primaryImage}
+                      alt={primaryRoomType?.name}
+                      className="w-full h-full object-cover"
                     />
                   </div>
-                </div>
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-muted uppercase tracking-widest">Check-out Date</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={20} />
-                    <input
-                      type="date"
-                      className="input-luxury w-full pl-12"
-                      value={formData.checkOut}
-                      min={formData.checkIn || new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
-                    />
+                  <div className="mt-4 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted">Avg Price / Night</span>
+                      <span className="text-primary font-bold">{primaryRoomType?.displayPrice.toLocaleString('vi-VN')} ₫</span>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-muted uppercase tracking-widest">Number of Guests</label>
-                  <div className="relative">
-                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={20} />
-                    <select
-                      className="input-luxury w-full pl-12 appearance-none"
-                      value={formData.guests}
-                      onChange={(e) => setFormData({ ...formData, guests: Number(e.target.value) })}
+
+                <div className="lg:w-2/3 space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-sm font-bold text-muted uppercase tracking-widest">Check-in Date</label>
+                      <div className="relative">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={20} />
+                        <input
+                          type="date"
+                          className="input-luxury w-full pl-12"
+                          value={formData.checkIn}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => {
+                            const newCheckIn = e.target.value;
+                            setFormData(prev => ({
+                              ...prev,
+                              checkIn: newCheckIn,
+                              checkOut: prev.checkOut && prev.checkOut <= newCheckIn ? '' : prev.checkOut
+                            }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-sm font-bold text-muted uppercase tracking-widest">Check-out Date</label>
+                      <div className="relative">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={20} />
+                        <input
+                          type="date"
+                          className="input-luxury w-full pl-12"
+                          value={formData.checkOut}
+                          min={formData.checkIn ? new Date(new Date(formData.checkIn).getTime() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4 pt-6 border-t border-[var(--border-color)]">
+                    <label className="text-sm font-bold text-muted uppercase tracking-widest">Select Rooms</label>
+                    {selectedRooms.map((sr, index) => (
+                      <div key={index} className="flex flex-col sm:flex-row items-center gap-4 bg-[var(--bg-main)] p-3 rounded-lg border border-[var(--border-color)] relative">
+                        <select
+                          className="input-luxury flex-1 w-full"
+                          value={sr.roomTypeId}
+                          onChange={(e) => {
+                            const newArr = [...selectedRooms];
+                            newArr[index].roomTypeId = Number(e.target.value);
+                            setSelectedRooms(newArr);
+                          }}
+                        >
+                          {allRoomTypes.map(rt => (
+                            <option key={rt.id} value={rt.id}>{rt.name} - {rt.displayPrice.toLocaleString('vi-VN')}₫/night</option>
+                          ))}
+                        </select>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <select
+                            className="input-luxury w-full sm:w-32"
+                            value={sr.quantity}
+                            onChange={(e) => {
+                              const newArr = [...selectedRooms];
+                              newArr[index].quantity = Number(e.target.value);
+                              setSelectedRooms(newArr);
+                            }}
+                          >
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => <option key={num} value={num}>{num} Room{num > 1 ? 's' : ''}</option>)}
+                          </select>
+                          {selectedRooms.length > 1 && (
+                            <button 
+                              type="button" 
+                              onClick={() => setSelectedRooms(selectedRooms.filter((_, i) => i !== index))} 
+                              className="text-red-500 font-bold p-3 hover:bg-red-50 rounded-lg shrink-0"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedRooms([...selectedRooms, { roomTypeId: allRoomTypes[0]?.id || 0, quantity: 1 }])} 
+                      className="text-primary font-bold text-sm hover:underline flex items-center"
                     >
-                      {Array.from({ length: Math.max(room?.capacityAdults || 1, 1) }, (_, idx) => idx + 1).map((guest) => (
-                        <option key={guest} value={guest}>
-                          {guest} Guest{guest > 1 ? 's' : ''}
-                        </option>
-                      ))}
-                    </select>
+                      + Add another room type
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-[var(--border-color)]">
+                    <div className="space-y-3">
+                      <label className="text-sm font-bold text-muted uppercase tracking-widest">Voucher / Promo Code</label>
+                      <select
+                        className="input-luxury w-full"
+                        value={formData.voucherId || ''}
+                        onChange={(e) => setFormData({ ...formData, voucherId: e.target.value ? Number(e.target.value) : null })}
+                      >
+                        <option value="">No voucher applied</option>
+                        {vouchers.map(v => (
+                          <option key={v.id} value={v.id} disabled={totalRoomPrice < v.minBookingAmount}>
+                            {v.code} - {v.discountType === 'Percentage' ? `${v.discountValue}%` : `${v.discountValue.toLocaleString('vi-VN')}₫`} {totalRoomPrice < v.minBookingAmount ? '(Đơn chưa đủ ĐK)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-sm font-bold text-muted uppercase tracking-widest">Deposit Amount (VND)</label>
+                      <input
+                        type="number"
+                        className="input-luxury w-full"
+                        min={0}
+                        max={finalTotal}
+                        value={formData.depositAmount}
+                        onChange={(e) => setFormData({ ...formData, depositAmount: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 pt-6 border-t border-[var(--border-color)]">
+                    <h3 className="text-xl font-bold text-title">Contact Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-muted uppercase">Full Name</label>
+                        <input
+                          type="text"
+                          className="input-luxury w-full"
+                          placeholder="Your Name"
+                          value={formData.fullName}
+                          onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-muted uppercase">Email Address</label>
+                        <input
+                          type="email"
+                          className="input-luxury w-full"
+                          placeholder="your@email.com"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-xs font-bold text-muted uppercase">Phone Number</label>
+                        <input
+                          type="tel"
+                          className="input-luxury w-full"
+                          placeholder="e.g. +84 123 456 789"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+
               <button
                 onClick={() => setStep(2)}
                 disabled={!canContinue}
                 className="btn-gold w-full py-4 text-lg flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
               >
-                CONTINUE <ArrowRight size={20} className="ml-2" />
+                CONTINUE TO CONFIRMATION <ArrowRight size={20} className="ml-2" />
               </button>
             </motion.div>
           )}
@@ -201,22 +403,89 @@ const Booking: React.FC = () => {
               onSubmit={handleSubmit}
             >
               <h2 className="text-3xl font-display font-bold text-title mb-8">Confirm Booking</h2>
-              <div className="admin-card !p-6 mb-10">
-                <div className="flex justify-between text-sm mb-3">
-                  <span className="text-muted">Room</span>
-                  <span className="font-semibold text-title">{room?.name}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                <div className="space-y-6">
+                  <div className="admin-card !p-6">
+                    <h3 className="text-sm font-bold text-muted uppercase mb-4 tracking-widest">Guest Information</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted">Name</span>
+                        <span className="font-semibold text-title">{formData.fullName}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted">Email</span>
+                        <span className="font-semibold text-title">{formData.email}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted">Phone</span>
+                        <span className="font-semibold text-title">{formData.phone}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="admin-card !p-6">
+                    <h3 className="text-sm font-bold text-muted uppercase mb-4 tracking-widest">Stay Details</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted">Check-in</span>
+                        <span className="font-semibold text-title">{formData.checkIn}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted">Check-out</span>
+                        <span className="font-semibold text-title">{formData.checkOut}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted">Total Nights</span>
+                        <span className="font-semibold text-primary">{nights} Night{nights > 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted">Total Rooms</span>
+                        <span className="font-semibold text-primary">{totalRoomsCount} Room{totalRoomsCount > 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm mb-3">
-                  <span className="text-muted">Check-in</span>
-                  <span className="font-semibold text-title">{formData.checkIn}</span>
-                </div>
-                <div className="flex justify-between text-sm mb-3">
-                  <span className="text-muted">Check-out</span>
-                  <span className="font-semibold text-title">{formData.checkOut}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted">Price / night</span>
-                  <span className="font-semibold text-primary">{room?.displayPrice.toLocaleString('vi-VN')} d</span>
+
+                <div className="space-y-6">
+                  <div className="admin-card !p-6 bg-primary/5 border-primary/20">
+                    <h3 className="text-sm font-bold text-muted uppercase mb-4 tracking-widest text-primary">Price Summary</h3>
+                    <div className="space-y-4">
+                      {selectedRooms.map((sr, idx) => {
+                        const rt = allRoomTypes.find(x => x.id === sr.roomTypeId);
+                        if (!rt) return null;
+                        const lineTotal = nights * sr.quantity * rt.displayPrice;
+                        return (
+                          <div key={idx} className="flex justify-between text-sm border-b border-[var(--border-color)] pb-2">
+                            <span className="text-muted">{rt.name} x {nights} nights x {sr.quantity} rooms</span>
+                            <span className="font-semibold text-title">{lineTotal.toLocaleString('vi-VN')} ₫</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between text-sm pt-2">
+                        <span className="font-bold text-title">Rooms Total</span>
+                        <span className="font-bold text-title">{totalRoomPrice.toLocaleString('vi-VN')} ₫</span>
+                      </div>
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between text-sm text-green-600">
+                          <span>Voucher Discount</span>
+                          <span className="font-semibold">-{discountAmount.toLocaleString('vi-VN')} ₫</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm text-amber-600">
+                        <span>Deposit Paid</span>
+                        <span className="font-semibold">-{formData.depositAmount.toLocaleString('vi-VN')} ₫</span>
+                      </div>
+                      <div className="pt-4 border-t border-primary/10 flex justify-between items-center">
+                        <span className="text-lg font-bold text-title">Amount Due</span>
+                        <span className="text-2xl font-display font-bold text-primary">
+                          {remainingAmount.toLocaleString('vi-VN')} ₫
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted text-center italic">
+                        Prices include taxes and fees. You will pay the remaining amount at the hotel.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -249,7 +518,7 @@ const Booking: React.FC = () => {
               </div>
               <h2 className="text-4xl font-display font-bold text-title mb-4">Booking Confirmed</h2>
               <p className="text-muted text-lg mb-10 max-w-md mx-auto">
-                Reservation for <strong>{room?.name}</strong> has been created successfully in the backend system.
+                Reservation for <strong>{totalRoomsCount} rooms</strong> has been created successfully in the backend system.
               </p>
               <div className="admin-card !p-6 mb-10 text-left space-y-3">
                 <div className="flex justify-between text-sm"><span className="text-muted">Booking Code:</span> <span className="text-primary font-bold">{bookingCode}</span></div>

@@ -5,12 +5,12 @@ using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Middleware;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[RequirePermission("MANAGE_ROOMS")]
 public class ServicesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -21,6 +21,7 @@ public class ServicesController : ControllerBase
     }
 
     [HttpGet("categories")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetCategories()
     {
         var data = await _context.ServiceCategories
@@ -32,6 +33,7 @@ public class ServicesController : ControllerBase
     }
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetServices()
     {
         var data = await _context.Services

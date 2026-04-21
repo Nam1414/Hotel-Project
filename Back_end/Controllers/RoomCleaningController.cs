@@ -22,7 +22,7 @@ public class RoomCleaningController : ControllerBase
     }
 
     [HttpPatch("{id}/cleaning-status")]
-    [Authorize(Roles = "Admin,Housekeeping")]
+    [Authorize(Roles = "Admin,Manager,Staff,Housekeeping,Receptionist,Lễ tân,Dọn phòng,Nhân viên")]
     public async Task<IActionResult> UpdateCleaningStatus(int id, [FromBody] UpdateRoomCleaningDto dto)
     {
         var room = await _context.Rooms

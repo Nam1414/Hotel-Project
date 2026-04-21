@@ -58,4 +58,53 @@ namespace HotelManagementAPI.DTOs
         // Nhận số nguyên index (0=Pending, 1=Confirmed, 2=CheckedIn, 3=CheckedOut, 4=Cancelled)
         public BookingStatus Status { get; set; }
     }
+
+    /// <summary>
+    /// DTO cho nghiệp vụ đổi phòng / phòng chưa sẵn sàng.
+    /// Staff dùng khi:
+    ///   - Phòng được đặt chưa dọn xong (CleaningStatus != Clean)
+    ///   - Khách trước chưa trả phòng (vẫn còn CheckedIn)
+    ///   - Sự cố kỹ thuật (Maintenance)
+    /// </summary>
+    public class ReassignRoomDto
+    {
+        /// <summary>Booking detail cần đổi phòng (ID của dòng trong Booking_Details)</summary>
+        public int BookingDetailId { get; set; }
+
+        /// <summary>Phòng mới muốn chuyển sang (nullable — nếu null thì tự tìm)</summary>
+        public int? NewRoomId { get; set; }
+
+        /// <summary>Loại phòng muốn tìm nếu không chỉ định NewRoomId</summary>
+        public int? RoomTypeId { get; set; }
+
+        /// <summary>Lý do đổi phòng (ghi log, hiển thị cho khách)</summary>
+        public string? Reason { get; set; }
+    }
+
+    /// <summary>
+    /// DTO tách booking: khi khách có 2 phòng trong 1 booking nhưng muốn
+    /// trả 1 phòng trước trong khi vẫn ở phòng còn lại.
+    /// Hệ thống sẽ tạo booking mới cho phòng được tách ra và checkout ngay.
+    /// </summary>
+    public class SplitBookingDto
+    {
+        /// <summary>Danh sách booking detail ID cần tách ra thành booking mới</summary>
+        public List<int> BookingDetailIds { get; set; } = new();
+
+        /// <summary>Tiền cọc phân bổ cho booking mới (nếu cần)</summary>
+        public decimal NewBookingDepositAmount { get; set; } = 0;
+
+        /// <summary>Tự động checkout ngay sau khi tách không?</summary>
+        public bool CheckOutImmediately { get; set; } = false;
+    }
+
+    /// <summary>Kết quả trả về sau khi tách booking</summary>
+    public class SplitBookingResultDto
+    {
+        /// <summary>Booking gốc (đã bỏ các phòng được tách)</summary>
+        public BookingResponseDto OriginalBooking { get; set; } = null!;
+        /// <summary>Booking mới được tạo chứa các phòng tách ra</summary>
+        public BookingResponseDto NewBooking { get; set; } = null!;
+        public string Message { get; set; } = string.Empty;
+    }
 }

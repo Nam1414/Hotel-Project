@@ -1,19 +1,19 @@
-﻿# 🏨 Hệ Thống Quản Lý Khách Sạn
+# 🏨 Hệ Thống Quản Lý & Đặt Phòng Khách Sạn (Hotel Management ERP & Booking Portal)
 
-Ứng dụng quản lý khách sạn **full-stack** được xây dựng với công nghệ hiện đại, tập trung vào hoạt động nội bộ của khách sạn.
+Ứng dụng toàn diện phục vụ kinh doanh khách sạn **full-stack**, kết hợp giữa Cổng thông tin cho Khách hàng (Customer Booking Portal) và Hệ thống Quản trị Nội bộ (ERP/Admin Dashboard).
 
 **Cấu Trúc:**
 - 🔧 **Backend**: ASP.NET Core 10 Web API
-- 🎨 **Frontend**: React 19 + TypeScript + Vite
+- 🎨 **Frontend**: React 19 + TypeScript + Vite + TailwindCSS
 
 ---
 
 ## 📋 Mục Lục
 
-1. [Tính Năng Chính](#✨-tính-năng-chính)
+1. [Tính Năng Nổi Bật](#✨-tính-năng-nổi-bật)
 2. [Stack Công Nghệ](#💻-stack-công-nghệ)
 3. [Cấu Trúc Dự Án](#-cấu-trúc-dự-án)
-4. [Các Tuyến Route](#-các-tuyến-route)
+4. [Các Tuyến Route (Routing)](#-các-tuyến-route)
 5. [Yêu Cầu Hệ Thống](#-yêu-cầu-hệ-thống)
 6. [Cài Đặt Nhanh](#-cài-đặt-nhanh)
 7. [Cấu Hình](#-cấu-hình)
@@ -21,64 +21,29 @@
 
 ---
 
-## ✨ Tính Năng Chính
+## ✨ Tính Năng Nổi Bật
+
+### 🌐 Trải nghiệm Khách hàng (Customer Portal)
+- ✅ **Hệ thống đặt phòng đa dạng:** Hỗ trợ khách hàng đặt nhiều loại phòng cùng lúc (Multi-room Booking), chọn ngày Check-in / Check-out, áp dụng Mã giảm giá (Voucher) và tính toán số tiền cọc.
+- ✅ **Cổng thông tin cá nhân (My Bookings):** Khách hàng quản lý lịch sử đặt phòng, xem trạng thái, theo dõi chi phí ngay tại trang Profile cá nhân.
+- ✅ **Gọi dịch vụ tại phòng (Room Service):** Tính năng tự phục vụ - Khách hàng đang lưu trú có thể gọi thức ăn, đồ uống, spa... ngay trên hệ thống. Bill tự động cộng dồn vào hóa đơn tổng khi trả phòng.
+- ✅ **Đánh giá & Trải nghiệm (Review System):** Khách hàng có thể để lại nhận xét, chấm điểm cho từng loại phòng. Đánh giá được kiểm duyệt qua Admin trước khi hiển thị công khai.
 
 ### 🔐 Xác Thực & Bảo Mật
-- ✅ Đăng nhập với JWT token
-- ✅ Refresh token lưu trong cookie `HttpOnly`
-- ✅ Mã hóa mật khẩu với BCrypt
-- ✅ Quản lý phiên làm việc an toàn
+- ✅ Đăng nhập với JWT token (Hỗ trợ Refresh Token lưu an toàn trong cookie `HttpOnly`).
+- ✅ Mã hóa mật khẩu với BCrypt.
+- ✅ Phân quyền chặt chẽ: Dựa trên Role (Admin, Staff, Guest) và Cấp quyền chi tiết (Permissions như `MANAGE_ROOMS`, `MANAGE_BOOKINGS`...).
 
-### 👥 Quản Lý Người Dùng & Phân Quyền
-- ✅ Quản lý danh sách người dùng
-- ✅ Phân quyền theo `Role` (Admin, Manager, Receptionist, Housekeeping)
-- ✅ Phân quyền chi tiết theo `Permission`
-- ✅ Hồ sơ cá nhân & đổi mật khẩu
-- ✅ Tải ảnh đại diện từ Cloudinary
+### 🏢 Quản Trị Hệ Thống (Admin ERP)
+- ✅ **Quản Lý Phòng & Loại Phòng:** Setup phòng, hạng phòng, tiện ích (Amenities), tải ảnh trực tiếp qua Cloudinary. Theo dõi trạng thái realtime (Trống, Đã đặt, Đang dọn, Bảo trì).
+- ✅ **Lễ Tân & Đặt Phòng (Receptionist):** Nhận/trả phòng, tách hóa đơn, chuyển phòng, theo dõi và tính phụ phí Minibar.
+- ✅ **Dọn Phòng (Housekeeping):** Tự động chuyển trạng thái phòng sang "Bẩn" sau khi trả phòng, giao việc cho nhân viên dọn dẹp.
+- ✅ **Quản Lý Vật Tư & Kho:** Theo dõi vật tư trong kho, trong phòng, quản lý hàng hỏng/mất mát và tự động tính tiền đền bù vào hóa đơn.
+- ✅ **Quản Lý Nội Dung (CMS):** Viết bài viết, quản lý danh mục (Blog/News), tự động tạo slug chuẩn SEO. Giới thiệu các "Điểm Tham Quan" lân cận kèm tọa độ GPS.
 
-### 🏠 Quản Lý Phòng
-- ✅ Danh sách phòng chi tiết
-- ✅ Phân loại phòng theo hạng (Standard, Deluxe, Suite, etc)
-- ✅ Quản lý hình ảnh phòng (upload via Cloudinary)
-- ✅ Quản lý tiện nghi phòng (Amenities)
-- ✅ Theo dõi trạng thái phòng (Trống, Đã đặt, Đang dọn, Bảo trì)
-- ✅ Tracking vệ sinh phòng (Sạch, Bẩn, Đang dọn)
-
-### 🧹 Quản Lý Dọn Phòng
-- ✅ Gán công việc dọn cho housekeeping  
-- ✅ Cập nhật trạng thái realtime
-- ✅ Theo dõi tiến độ công việc
-
-### 📦 Quản Lý Vật Tư & Kho
-- ✅ Danh sách vật tư đầy đủ
-- ✅ Theo dõi tồn kho (Trong kho, Đang dùng, Hỏng)
-- ✅ Ghi nhận vật tư hỏng/mất mát
-- ✅ Tính toán chi phí bồi thường tự động
-
-### 🎯 Quản Lý Điểm Tham Quan
-- ✅ Danh sách điểm tham quan gần khách sạn
-- ✅ Khoảng cách & tọa độ GPS
-- ✅ Tải lên ảnh qua Cloudinary
-- ✅ Hiển thị/ẩn điểm tham quan
-
-### 📰 Quản Lý Nội Dung / CMS
-- ✅ Tạo & quản lý bài viết
-- ✅ Phân loại bài viết theo danh mục (Article Categories)
-- ✅ Tạo slug tự động
-
-### 📢 Thông Báo Realtime
-- ✅ Thông báo tức thời qua SignalR WebSocket
-- ✅ Lọc thông báo theo vai trò (Admin, Manager)
-- ✅ Lưu lịch sử thông báo trong database
-- ✅ Thông báo các sự kiện quan trọng
-
-### 📊 Dashboard
-- ✅ Tổng phòng hoạt động
-- ✅ Tỉ lệ lấp đầy phòng
-- ✅ Số phòng cần dọn
-- ✅ Tồn kho vật tư
-- ✅ Danh sách phòng cần chú ý
-- ✅ Thông báo gần đây
+### 📢 Thông Báo & Thống Kê (Realtime & Dashboard)
+- ✅ WebSockets (SignalR) bắn thông báo thời gian thực khi có người đặt phòng, gọi dịch vụ, thay đổi trạng thái...
+- ✅ Dashboard trực quan: Báo cáo tỷ lệ lấp đầy, phòng trống, hàng tồn kho, công việc cần làm trong ngày.
 
 ---
 
@@ -104,240 +69,143 @@
 | React | 19.0.0 | UI Library |
 | TypeScript | 5.8.2 | Type Safety |
 | Vite | 6.2.0 | Build Tool |
+| TailwindCSS | 4.1.14 | Styling / Layout |
 | Redux Toolkit | 2.11.2 | State Management |
 | React Router | 7.13.2 | Routing |
 | Axios | 1.13.6 | HTTP Client |
 | Ant Design | 6.3.4 | UI Components |
 | Lucide React | 0.546.0 | Icons |
 | SignalR Client | 10.0.0 | WebSocket Client |
-| TailwindCSS | 4.1.14 | Styling |
 
 ---
 
 ## 🗂️ Cấu Trúc Dự Án
 
 ### Backend
-
 ```
 Back_end/
-├── Controllers/               # 19 API Controllers
-│   ├── AuthController.cs
-│   ├── UserManagementController.cs
-│   ├── RoomsController.cs
-│   ├── RoomCleaningController.cs
-│   ├── EquipmentController.cs
-│   ├── InventoryController.cs
-│   ├── LossAndDamagesController.cs
-│   ├── RolesController.cs
-│   ├── AttractionsController.cs
-│   └── ... (10 more)
-│
-├── Services/                  # Business Logic (10+ services)
-│   ├── TokenService.cs
-│   ├── UserManagementService.cs
-│   ├── EmailService.cs
-│   ├── NotificationService.cs
-│   ├── CloudinaryService.cs
-│   └── ...
-│
-├── Models/                    # 19 Database Models
-│   ├── User.cs
-│   ├── Room.cs
-│   ├── Equipment.cs
-│   ├── RoomInventory.cs
-│   ├── LossAndDamage.cs
-│   ├── Notification.cs
-│   └── ...
-│
-├── Data/
-│   ├── AppDbContext.cs
-│   └── DatabaseSchemaInitializer.cs
-│
+├── Controllers/               # 20+ API Controllers (Booking, Services, Auth, Rooms...)
+├── Services/                  # Business Logic (BookingService, InvoiceService, Notification...)
+├── Models/                    # Entity Models (User, Room, Booking, Invoice, Review...)
+├── Data/                      # Database Context & Init logic
 ├── DTOs/                      # Data Transfer Objects
-│   ├── UserDtos.cs
-│   ├── RoomDtos.cs
-│   ├── AuthDtos.cs
-│   └── ...
-│
-├── Middleware/
-│   ├── PermissionMiddleware.cs
-│   ├── RequirePermissionAttribute.cs
-│   └── RefreshTokenMiddleware.cs
-│
-├── Hubs/
-│   └── NotificationHub.cs      # SignalR Hub
-│
-├── sql/                        # Database Scripts
-│   ├── 00_MASTER_INSTALL.sql
-│   ├── create_admin_account.sql
-│   └── README_RUN_ORDER.sql
-│
-└── Program.cs                 # Entry Point
+├── Middleware/                # Auth, Permission & RefreshToken Middlewares
+├── Hubs/                      # SignalR Hub (NotificationHub)
+├── sql/                       # SQL Setup scripts (00_MASTER_INSTALL.sql)
+└── Program.cs                 # App Bootstrap & Service Registration
 ```
 
 ### Frontend
-
 ```
 Front_end/src/
 ├── pages/
-│   ├── auth/
-│   │   ├── LoginPage.tsx
-│   │   └── RegisterPage.tsx
-│   ├── admin/                 # 17+ admin pages
-│   │   ├── Dashboard.tsx
-│   │   ├── UserManagement.tsx
-│   │   ├── RoomManagement.tsx
-│   │   ├── RoomTypeManagement.tsx
-│   │   ├── CleaningPage.tsx
-│   │   ├── Inventory.tsx
-│   │   ├── DamageLossPage.tsx
-│   │   ├── RoleManagement.tsx
-│   │   ├── AttractionsPage.tsx
-│   │   ├── Profile.tsx
-│   │   ├── CMS.tsx
-│   │   └── ... (7 more)
-│   ├── staff/
-│   │   └── StaffPage.tsx
-│   └── errors/
-│       └── UnauthorizedPage.tsx
-│
-├── components/                # 20+ React Components
-│   ├── layouts/
-│   ├── admin/
-│   └── ...
-│
-├── services/
-│   ├── signalRService.ts      # SignalR Setup
-│   ├── adminApi.ts             # API Client
-│   └── ...
-│
-├── store/                      # Redux Store
-│   ├── index.ts
-│   └── slices/
-│
-├── routes/
-│   └── AppRoutes.tsx          # Route Definitions
-│
-├── hooks/
-├── types/
-├── utils/
-├── App.tsx
-└── main.tsx
+│   ├── auth/                  # Login, Register
+│   ├── public/                # Trang Khách hàng (Home, Rooms, RoomDetail, Booking...)
+│   ├── admin/                 # 20+ Trang Quản trị (Dashboard, Booking, Inventory, Users...)
+│   ├── staff/                 # Cổng Nhân viên (Dọn phòng, Xem lịch...)
+│   └── errors/                # 401, 404 Pages
+├── components/                # Reusable UI Components
+├── services/                  # API Callers (axios, bookingApi, reviewApi...)
+├── store/                     # Redux slices (authSlice, themeStore...)
+├── routes/                    # Private/Public Routing logic
+└── utils/                     # Formatters, Helpers
 ```
 
 ---
 
-## 🛣️ Các Tuyến Route
+## 🛣️ Các Tuyến Route (Routing)
 
-### 🔐 Public Routes
+### 🌟 Public Routes (Khách Hàng)
+| Route | Mô Tả |
+|-------|-------|
+| `/` | Trang chủ giới thiệu khách sạn |
+| `/rooms` | Danh sách loại phòng |
+| `/rooms/:id` | Chi tiết phòng & Đánh giá |
+| `/booking` | Trang thanh toán / Đặt phòng đa tùy chọn |
+
+### 👨‍💼 Customer Portal
 | Route | Mô Tả | Yêu cầu |
 |-------|-------|---------|
-| `/login` | Trang đăng nhập | - |
-| `/401` | Trang Unauthorized | - |
+| `/profile` | Quản lý thông tin, Đổi mật khẩu, **My Bookings**, Gọi dịch vụ | Đăng nhập |
 
-### 👨‍💼 Admin Routes (Yêu cầu role: Admin)
-| Route | Mô Tả |
-|-------|-------|
-| `/admin/users` | Quản lý người dùng |
-| `/admin/rooms` | Quản lý phòng |
-| `/admin/room-types` | Phân loại phòng |
-| `/admin/cleaning` | Quản lý dọn phòng |
-| `/admin/equipment` | Quản lý vật tư |
-| `/admin/inventory` | Quản lý kho |
-| `/admin/roles` | Quản lý vai trò |
-| `/admin/attractions` | Quản lý điểm tham quan |
-| `/admin/profile` | Hồ sơ cá nhân |
-
-### 👷 Staff Portal (Yêu cầu: authenticated)
-| Route | Mô Tả |
-|-------|-------|
-| `/staff-portal/staff` | Danh sách nhân viên |
-| `/staff-portal/equipment` | Quản lý vật tư (quyền chế) |
+### 👑 Admin / Staff Routes (Nội Bộ)
+| Route | Mô Tả | Yêu Cầu Phân Quyền |
+|-------|-------|--------------------|
+| `/admin` | Tổng quan (Dashboard) | Admin / Manager |
+| `/admin/bookings` | Quản lý đặt phòng, Check-in/out, Hóa đơn | `MANAGE_BOOKINGS` |
+| `/admin/users` | Quản lý người dùng, Vai trò | `MANAGE_USERS` |
+| `/admin/rooms` | Quản lý danh sách phòng vật lý | `MANAGE_ROOMS` |
+| `/admin/room-types` | Quản lý Loại phòng & Giá cả | `MANAGE_ROOMS` |
+| `/admin/cleaning` | Phân công Dọn dẹp phòng | Staff / Housekeeping |
+| `/admin/equipment` | Quản lý Vật tư, Tài sản cố định | `MANAGE_INVENTORY` |
+| `/admin/inventory` | Quản lý Kho lưu trữ tiêu hao | `MANAGE_INVENTORY` |
+| `/admin/reviews` | Duyệt / Xóa đánh giá của khách hàng | Admin / Manager |
 
 ---
 
 ## 💾 Yêu Cầu Hệ Thống
 
 ### Backend
-- 🔹 **.NET SDK 10.0.201** → [Download](https://dotnet.microsoft.com)
+- 🔹 **.NET SDK 10.0+**
 - 🔹 **SQL Server 2019+** hoặc **SQL Server Express**
-- 🔹 **Visual Studio 2022** hoặc **VS Code + C# Extension**
 
 ### Frontend
-- 🔹 **Node.js 20+** → [Download](https://nodejs.org)
-- 🔹 **npm 10+** (đi kèm Node.js)
-- 🔹 **Visual Studio Code** (tùy chọn)
+- 🔹 **Node.js 20+**
+- 🔹 **npm 10+**
 
 ---
 
 ## 🚀 Cài Đặt Nhanh
 
-### Bước 1: Cài Database
+### Bước 1: Khởi tạo Database
+1. Mở **SQL Server Management Studio (SSMS)** hoặc **Azure Data Studio**.
+2. Chạy script file `Back_end/sql/DBHotel.sql` hoặc `00_MASTER_INSTALL.sql` để tạo toàn bộ bảng, stored procedure, và dữ liệu mẫu mặc định.
 
-```bash
-# Mở SQL Server Management Studio (SSMS)
-# Chạy script:
-Back_end/sql/DBHotel.sql
-```
-
-✅ Database `HotelManagementDB` sẽ được tạo với dữ liệu khởi tạo.
-
-### Bước 2: Cài Backend
-
+### Bước 2: Chạy Backend
 ```bash
 cd Back_end
 dotnet restore
 dotnet build
 dotnet run
 ```
+> API chạy tại: `http://localhost:5206`
+> Swagger UI: `http://localhost:5206/swagger`
 
-✅ Backend: `https://localhost:5206`  
-📚 Swagger: `https://localhost:5206/swagger`
-
-### Bước 3: Cài Frontend
-
+### Bước 3: Chạy Frontend
 ```bash
 cd Front_end
 npm install
 npm run dev
 ```
-
-✅ Frontend: `http://localhost:5173`
+> Website chạy tại: `http://localhost:5173`
 
 ---
 
 ## ⚙️ Cấu Hình
 
 ### Backend - `Back_end/appsettings.json`
-
+Đảm bảo bạn thay đổi `ConnectionStrings` và thông tin `Cloudinary` / `JwtSettings` phù hợp với môi trường của bạn:
 ```json
 {
   "ConnectionStrings": {
     "DefaultConnection": "Server=.;Database=HotelManagementDB;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "JwtSettings": {
-    "Secret": "HotelManagementSuperSecretKey2024!@#$%",
+    "Secret": "Your_Super_Secret_Key_Here",
     "Issuer": "HotelManagementAPI",
     "Audience": "HotelManagementClient",
     "AccessTokenExpireMinutes": 480,
     "RefreshTokenExpireDays": 7
   },
   "Cloudinary": {
-    "CloudName": "dwkqcuanf",
-    "ApiKey": "283157785521954",
-    "ApiSecret": "csuQH3OXxhLTQmGo4wQNZLcGng0"
-  },
-  "EmailSettings": {
-    "Email": "khatong072@gmail.com",
-    "Password": "uurc xgbh msep faxe",
-    "Host": "smtp.gmail.com",
-    "Port": 587
+    "CloudName": "your_cloud_name",
+    "ApiKey": "your_api_key",
+    "ApiSecret": "your_api_secret"
   }
 }
 ```
 
 ### Frontend - `Front_end/.env.local`
-
 ```env
 VITE_API_URL=http://localhost:5206
 ```
@@ -346,43 +214,19 @@ VITE_API_URL=http://localhost:5206
 
 ## 🔑 Tài Khoản Mặc Định
 
-### Admin Account
+Nếu sử dụng DB mặc định, bạn có thể đăng nhập bằng tài khoản Quản trị viên:
 ```
 📧 Email: admin@hotel.com
 🔐 Password: Admin@123
 ```
-
-⚠️ **Thay đổi mật khẩu ngay sau lần đăng nhập đầu tiên!**
-
----
-
-## 🔧 Lệnh Hữu Ích
-
-```bash
-# Frontend
-npm run dev       # Chạy dev server
-npm run build     # Build production
-npm run lint      # Check TypeScript
-
-# Backend
-dotnet run        # Chạy ứng dụng
-dotnet build      # Build
-dotnet clean      # Clean build
-dotnet restore    # Restore packages
-```
+*(Khuyến cáo: Vui lòng thay đổi mật khẩu hoặc xóa tài khoản này trên môi trường Production!)*
 
 ---
 
-## 📝 Notes
-
-- **SignalR**: Kết nối WebSocket tự động khi user đăng nhập
-- **Thông báo**: Lọc theo role (Admin + Manager chủ yếu)
-- **Permissions**: 2 cấp - Role + Permission chi tiết
-- **Database**: Không dùng EF Migrations, dùng SQL scripts
-- **Images**: Tất cả ảnh lưu trên Cloudinary
+## 📝 Kiến Trúc & Quy Ước
+- **Database Logic:** Hệ thống ưu tiên chạy bằng các file `.sql` script (nằm ở thư mục `/sql`), hạn chế Entity Framework Migrations nhằm tăng tốc độ khởi tạo.
+- **Media Upload:** Toàn bộ file ảnh tĩnh/avatar đều được lưu trữ trực tiếp trên **Cloudinary**. Hệ thống DB chỉ lưu URL.
+- **Realtime / WebSockets:** Sử dụng SignalR Hub để liên lạc hai chiều giữa API và React (Thông báo dọn phòng, thông báo khách đặt dịch vụ, v.v).
 
 ---
-
-## 📄 License
-
-**Private** - Phần mềm được phát triển cho mục đích nội bộ.
+*Phát triển chuyên sâu dành cho mục tiêu Quản trị Khách sạn thông minh.*

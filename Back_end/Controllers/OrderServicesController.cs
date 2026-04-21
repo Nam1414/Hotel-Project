@@ -9,12 +9,12 @@ using HotelManagementAPI.Models;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[RequirePermission("MANAGE_ROOMS")]
 public class OrderServicesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -26,7 +26,9 @@ public class OrderServicesController : ControllerBase
         _invoiceService = invoiceService;
     }
 
-    [HttpGet("booking/{bookingId}")]
+    [HttpGet("booking/{bookingId:int}")]
+    [Authorize]
+    [RequirePermission("MANAGE_ROOMS")]
     public async Task<IActionResult> GetByBookingId(int bookingId)
     {
         var orders = await _context.OrderServices
@@ -41,15 +43,27 @@ public class OrderServicesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateOrderServiceRequestDto dto)
     {
         if (dto.Items == null || dto.Items.Count == 0)
             return BadRequest(new { message = "Items is required" });
 
         var bookingDetail = await _context.BookingDetails
+            .Include(bd => bd.Booking)
             .FirstOrDefaultAsync(bd => bd.Id == dto.BookingDetailId);
         if (bookingDetail == null)
             return NotFound(new { message = "Booking detail not found" });
+
+        var userIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (userRole != "Admin" && userRole != "Staff")
+        {
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId) || bookingDetail.Booking?.UserId != userId)
+            {
+                return Forbid("Bạn không có quyền gọi dịch vụ cho phòng này.");
+            }
+        }
 
         var serviceIds = dto.Items.Select(i => i.ServiceId).Distinct().ToList();
         var services = await _context.Services.Where(s => serviceIds.Contains(s.Id)).ToListAsync();
@@ -96,7 +110,9 @@ public class OrderServicesController : ControllerBase
         return Ok(MapToDto(reloaded));
     }
 
-    [HttpPut("{id}/status")]
+    [HttpPut("{id:int}/status")]
+    [Authorize]
+    [RequirePermission("MANAGE_ROOMS")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderServiceStatusDto dto)
     {
         var order = await _context.OrderServices
@@ -116,7 +132,9 @@ public class OrderServicesController : ControllerBase
         return Ok(new { success = true });
     }
 
-    [HttpPost("room/{roomId}/minibar")]
+    [HttpPost("room/{roomId:int}/minibar")]
+    [Authorize]
+    [RequirePermission("MANAGE_ROOMS")]
     public async Task<IActionResult> ReportMinibar(int roomId, [FromBody] List<CreateOrderServiceItemDto> items)
     {
         if (items == null || items.Count == 0)

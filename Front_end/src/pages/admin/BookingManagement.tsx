@@ -25,6 +25,7 @@ import {
   Typography,
 } from 'antd';
 import {
+  ArrowLeftRight,
   BanknoteIcon,
   CalendarDays,
   CheckCircle2,
@@ -36,6 +37,7 @@ import {
   Plus,
   Printer,
   RefreshCw,
+  ScissorsIcon,
   Search,
   Ticket,
   XCircle,
@@ -44,8 +46,11 @@ import dayjs from 'dayjs';
 import {
   bookingApi,
   BookingResponseDto,
+  BookingDetailDto,
   BookingStatus,
   InvoiceResponseDto,
+  ReassignRoomDto,
+  SplitBookingDto,
 } from '../../services/bookingApi';
 import { adminApi, RoomDto, RoomTypeDto } from '../../services/adminApi';
 import { voucherApi, VoucherResponseDto } from '../../services/voucherApi';
@@ -98,32 +103,32 @@ const VIEW_CONFIG: Record<
     showCreate: true,
   },
   arrivals: {
-    title: 'Khách đến',
-    subtitle: 'Danh sách booking dự kiến check-in trong ngày được chọn để lễ tân xử lý nhanh.',
-    createLabel: 'Tạo booking mới',
+    title: 'Khách đến hôm nay',
+    subtitle: 'Danh sách booking check-in hôm nay — nhấn Nhận phòng để làm thủ tục nhanh.',
+    createLabel: '+ Booking walk-in',
     defaultStatus: 'all',
-    showCreate: false,
+    showCreate: true,
   },
   'in-house': {
     title: 'Khách đang lưu trú',
-    subtitle: 'Theo dõi khách đã nhận phòng và tình trạng lưu trú hiện tại.',
-    createLabel: 'Tạo booking mới',
+    subtitle: 'Theo dõi khách đã nhận phòng. Có thể tạo booking mới cho khách walk-in.',
+    createLabel: '+ Booking walk-in',
     defaultStatus: 'CheckedIn',
-    showCreate: false,
+    showCreate: true,
   },
   'check-out': {
     title: 'Thủ tục trả phòng',
-    subtitle: 'Lọc các booking cần check-out để thao tác nhanh tại quầy lễ tân.',
-    createLabel: 'Tạo booking mới',
+    subtitle: 'Xử lý trả phòng nhanh. Có thể tạo booking mới cho khách walk-in.',
+    createLabel: '+ Booking walk-in',
     defaultStatus: 'CheckedIn',
-    showCreate: false,
+    showCreate: true,
   },
   invoices: {
     title: 'Quản lý Hóa đơn',
     subtitle: 'Tạo hóa đơn, ghi nhận thanh toán và in chứng từ cho khách.',
-    createLabel: 'Tạo booking mới',
+    createLabel: '+ Booking mới',
     defaultStatus: 'all',
-    showCreate: false,
+    showCreate: true,
   },
 };
 
@@ -187,6 +192,17 @@ const BookingPage: React.FC = () => {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [checkOutOpen, setCheckOutOpen] = useState(false);
   const [selectedBookingForCheckOut, setSelectedBookingForCheckOut] = useState<BookingResponseDto | null>(null);
+
+  // ── Reassign Room Modal ──
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [reassignDetail, setReassignDetail] = useState<BookingDetailDto | null>(null);
+  const [reassignLoading, setReassignLoading] = useState(false);
+  const [reassignForm] = Form.useForm();
+
+  // ── Split Booking Modal ──
+  const [splitOpen, setSplitOpen] = useState(false);
+  const [splitLoading, setSplitLoading] = useState(false);
+  const [splitSelectedIds, setSplitSelectedIds] = useState<number[]>([]);
 
   const [selectedBooking, setSelectedBooking] = useState<BookingResponseDto | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponseDto | null>(null);
@@ -445,9 +461,9 @@ const BookingPage: React.FC = () => {
     try {
       const details = values.details.map((d: any) => ({
         roomId: d.roomId ?? null,
-        roomTypeId: rooms.find(r => r.id === d.roomId)?.roomTypeId ?? null,
-        checkInDate: d.dates[0].format('YYYY-MM-DDT14:00:00'), // Đặt nhận phòng 14:00 (chuẩn giờ địa phương)
-        checkOutDate: d.dates[1].format('YYYY-MM-DDT12:00:00'), // Trả phòng 12:00 (tránh lệch timezone)
+        roomTypeId: d.roomTypeId ?? null,
+        checkInDate: d.dates[0].format('YYYY-MM-DDT14:00:00'),
+        checkOutDate: d.dates[1].format('YYYY-MM-DDT12:00:00'),
         pricePerNight: Number(d.pricePerNight || 0),
       }));
       await bookingApi.create({
@@ -569,7 +585,7 @@ const BookingPage: React.FC = () => {
               Nhận phòng
             </Button>
           )}
-          {r.status === 'CheckedIn' && viewMode !== 'in-house' && (() => {
+          {r.status === 'CheckedIn' && (() => {
             const bookingRooms = r.details?.map(d => rooms.find(rm => rm.id === d.roomId)).filter(Boolean) || [];
             // Kiểm tra xem tất cả các phòng đã được dọn Sạch (Clean) hoặc Trống (Available) chưa
             const allClean = bookingRooms.length > 0 && bookingRooms.every(rm => 
@@ -598,11 +614,9 @@ const BookingPage: React.FC = () => {
           {(r.status === 'Pending' || r.status === 'Confirmed') && (
             <Button size="small" danger icon={<XCircle size={13} />} onClick={() => updateStatus(r, 'Cancelled')}>Hủy</Button>
           )}
-          {viewMode !== 'in-house' && (
-            <Button size="small" icon={<FileText size={13} />} onClick={() => openInvoice(r)}>
-              Hóa đơn
-            </Button>
-          )}
+          <Button size="small" icon={<FileText size={13} />} onClick={() => openInvoice(r)}>
+            Hóa đơn
+          </Button>
         </Space>
       ),
     },
@@ -709,15 +723,15 @@ const BookingPage: React.FC = () => {
         />
       </AntCard>
 
-      {/* ── Create Booking Modal ─────────────────────────────────────────────── */}
       <Modal
         open={createOpen}
         title="Tạo Booking Mới"
         onCancel={() => setCreateOpen(false)}
         footer={null}
-        width={720}
+        width={820}
       >
         <Form form={form} layout="vertical" onFinish={submitCreate}>
+          {/* ── Thông tin khách ───────────────────────────── */}
           <Divider orientation="left">Thông tin khách hàng</Divider>
           <Row gutter={16}>
             <Col span={12}>
@@ -731,21 +745,25 @@ const BookingPage: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
-          <Form.Item name="guestEmail" label="Email">
-            <Input placeholder="guest@example.com" />
-          </Form.Item>
-
-          <Form.Item name="depositAmount" label="Tiền đặt cọc (₫)" initialValue={0}>
-            <InputNumber 
-              className="w-full" 
-              style={{ width: '100%' }} 
-              placeholder="0" 
-              min={0}
-              formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={v => v!.replace(/,/g, '') as any}
-              addonAfter="₫"
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="guestEmail" label="Email">
+                <Input placeholder="guest@example.com" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="depositAmount" label="Tiền đặt cọc (₫)" initialValue={0}>
+                <InputNumber
+                  className="w-full"
+                  style={{ width: '100%' }}
+                  min={0}
+                  formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={v => v!.replace(/,/g, '') as any}
+                  addonAfter="₫"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="voucherId" label="Voucher áp dụng">
             <Select
@@ -755,55 +773,107 @@ const BookingPage: React.FC = () => {
               placeholder="Chọn voucher nếu có..."
               options={availableVouchers.map(voucher => ({
                 value: voucher.id,
-                label: `${voucher.code} - ${voucher.discountType === 'Percentage' ? `${voucher.discountValue}%` : formatMoney(voucher.discountValue)}`,
+                label: `${voucher.code} — ${voucher.discountType === 'Percentage' ? `${voucher.discountValue}%` : formatMoney(voucher.discountValue)} · Hạn: ${dayjs(voucher.endDate).format('DD/MM/YYYY')}`,
               }))}
             />
           </Form.Item>
 
-          <Divider orientation="left">Chi tiết phòng</Divider>
+          {/* ── Chi tiết phòng ───────────────────────────── */}
+          <Divider orientation="left">Chi tiết phòng đặt</Divider>
           <Form.List name="details" initialValue={[{}]}>
             {(fields, { add, remove }) => (
               <>
                 {fields.map(({ key, name, ...rest }) => {
-                  const watchedRoomId = form.getFieldValue(['details', name, 'roomId']);
-                  const roomType = roomTypes.find(rt => rt.id === rooms.find(r => r.id === watchedRoomId)?.roomTypeId);
+                  // Watch để tính tổng real-time
                   return (
                     <AntCard
                       key={key}
                       size="small"
-                      className="mb-4 border border-dashed"
-                      title={`Phòng ${name + 1}`}
+                      className="mb-4"
+                      style={{ border: '1.5px solid #e5e7eb', borderRadius: 10 }}
+                      title={
+                        <span style={{ fontWeight: 700, color: '#A6894B' }}>
+                          🛏 Phòng {name + 1}
+                        </span>
+                      }
                       extra={fields.length > 1 ? <Button danger size="small" onClick={() => remove(name)}>Xóa</Button> : null}
                     >
                       <Row gutter={16}>
+                        {/* Loại phòng */}
                         <Col span={12}>
-                          <Form.Item {...rest} name={[name, 'roomId']} label="Chọn phòng" rules={[{ required: true }]}>
+                          <Form.Item {...rest} name={[name, 'roomTypeId']} label="Loại phòng" rules={[{ required: true, message: 'Vui lòng chọn loại phòng' }]}>
                             <Select
                               showSearch
                               optionFilterProp="label"
-                              placeholder="Chọn phòng..."
-                              options={rooms.map(r => ({ value: r.id, label: `${r.roomNumber} – ${r.roomTypeName}` }))}
+                              placeholder="Chọn loại phòng..."
+                              options={roomTypes.map(rt => ({ value: rt.id, label: rt.name }))}
                               onChange={(val) => {
-                                const selectedRoom = rooms.find(r => r.id === val);
-                                if (selectedRoom) {
-                                  const rt = roomTypes.find(t => t.id === selectedRoom.roomTypeId);
-                                  if (rt) {
-                                    const details = form.getFieldValue('details') || [];
-                                    if (details[name]) {
-                                      details[name] = { ...details[name], pricePerNight: rt.basePrice };
-                                      form.setFieldsValue({ details });
-                                    }
+                                const rt = roomTypes.find(t => t.id === val);
+                                if (rt) {
+                                  const details = form.getFieldValue('details') || [];
+                                  if (details[name]) {
+                                    details[name] = { ...details[name], pricePerNight: rt.basePrice, roomId: undefined };
+                                    form.setFieldsValue({ details });
                                   }
                                 }
                               }}
                             />
                           </Form.Item>
                         </Col>
+                        {/* Phòng cụ thể (tuỳ chọn) */}
                         <Col span={12}>
-                          <Form.Item 
-                            {...rest} 
-                            name={[name, 'dates']} 
-                            label="Ngày nhận / trả" 
+                          <Form.Item
+                            shouldUpdate={(prev, curr) =>
+                              prev.details?.[name]?.roomTypeId !== curr.details?.[name]?.roomTypeId ||
+                              prev.details?.[name]?.dates !== curr.details?.[name]?.dates
+                            }
+                            noStyle
+                          >
+                            {({ getFieldValue }) => {
+                              const typeId = getFieldValue(['details', name, 'roomTypeId']);
+                              const filteredRooms = rooms.filter(r => r.roomTypeId === typeId && r.status === 'Available');
+                              return (
+                                <Form.Item {...rest} name={[name, 'roomId']} label={
+                                  <span>Phòng cụ thể <span style={{ color: '#9ca3af', fontSize: 11 }}>(để trống = tự chọn)</span></span>
+                                }>
+                                  <Select
+                                    allowClear
+                                    showSearch
+                                    optionFilterProp="label"
+                                    placeholder={typeId ? (filteredRooms.length > 0 ? `${filteredRooms.length} phòng sẵn sàng` : 'Không có phòng trống') : 'Chọn loại trước'}
+                                    disabled={!typeId}
+                                    options={filteredRooms.map(r => ({
+                                      value: r.id,
+                                      label: `Phòng ${r.roomNumber}${r.cleaningStatus === 'Clean' ? ' ✓' : ''}`,
+                                    }))}
+                                    onChange={(roomId) => {
+                                      if (roomId) {
+                                        const room = rooms.find(r => r.id === roomId);
+                                        const rt = roomTypes.find(t => t.id === room?.roomTypeId);
+                                        if (rt) {
+                                          const details = form.getFieldValue('details') || [];
+                                          if (details[name]) {
+                                            details[name] = { ...details[name], pricePerNight: rt.basePrice };
+                                            form.setFieldsValue({ details });
+                                          }
+                                        }
+                                      }
+                                    }}
+                                  />
+                                </Form.Item>
+                              );
+                            }}
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      {/* Ngày + Giá */}
+                      <Row gutter={16}>
+                        <Col span={14}>
+                          <Form.Item
+                            {...rest}
+                            name={[name, 'dates']}
+                            label="Ngày nhận phòng / Trả phòng"
                             rules={[
                               { required: true, message: 'Vui lòng chọn ngày' },
                               () => ({
@@ -823,30 +893,30 @@ const BookingPage: React.FC = () => {
                             />
                           </Form.Item>
                         </Col>
+                        <Col span={10}>
+                          <Form.Item {...rest} name={[name, 'pricePerNight']} label="Giá / đêm (₫)" rules={[{ required: true }]}>
+                            <InputNumber
+                              min={0}
+                              style={{ width: '100%' }}
+                              formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              parser={v => v!.replace(/,/g, '') as any}
+                              addonAfter="₫"
+                            />
+                          </Form.Item>
+                        </Col>
                       </Row>
-                      <Form.Item {...rest} name={[name, 'pricePerNight']} label="Giá / đêm (₫)" rules={[{ required: true }]} initialValue={roomType?.basePrice ?? 0}>
-                        <InputNumber
-                          min={0}
-                          style={{ width: '100%' }}
-                          formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                          parser={v => v!.replace(/,/g, '') as any}
-                          addonAfter="₫"
-                        />
-                      </Form.Item>
 
-                      <Form.Item shouldUpdate={(prev, curr) => 
-                        prev.details?.[name]?.dates !== curr.details?.[name]?.dates || 
-                        prev.details?.[name]?.pricePerNight !== curr.details?.[name]?.pricePerNight
-                      }>
+                      {/* Tạm tính phòng này */}
+                      <Form.Item shouldUpdate noStyle>
                         {({ getFieldValue }) => {
                           const dates = getFieldValue(['details', name, 'dates']);
                           const price = getFieldValue(['details', name, 'pricePerNight']) || 0;
                           if (!dates || !dates[0] || !dates[1]) return null;
                           const nights = nightsBetween(dates[0].toISOString(), dates[1].toISOString());
                           return (
-                            <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg mt-2 text-right">
-                              <span className="text-gray-500 text-sm mr-2">Tạm tính ({nights} đêm):</span>
-                              <strong className="text-primary text-lg">{formatMoney(nights * price)}</strong>
+                            <div style={{ background: '#faf7f2', border: '1px solid #e8d9bb', borderRadius: 6, padding: '6px 12px', textAlign: 'right' }}>
+                              <span style={{ color: '#9ca3af', fontSize: 13 }}>{nights} đêm × {formatMoney(price)} = </span>
+                              <strong style={{ color: '#A6894B', fontSize: 15 }}>{formatMoney(nights * price)}</strong>
                             </div>
                           );
                         }}
@@ -854,14 +924,53 @@ const BookingPage: React.FC = () => {
                     </AntCard>
                   );
                 })}
-                <Button block icon={<Plus size={14} />} onClick={() => add({})}>Thêm phòng</Button>
+                <Button
+                  block
+                  icon={<Plus size={14} />}
+                  onClick={() => add({})}
+                  style={{ borderStyle: 'dashed', marginBottom: 12 }}
+                >
+                  + Thêm phòng
+                </Button>
               </>
             )}
           </Form.List>
 
-          <div className="flex justify-end gap-3 mt-6">
+          {/* ── Tổng kết booking ─────────────────────────── */}
+          <Form.Item shouldUpdate noStyle>
+            {({ getFieldValue }) => {
+              const details: any[] = getFieldValue('details') || [];
+              const deposit = Number(getFieldValue('depositAmount') || 0);
+              let totalRoom = 0;
+              details.forEach(d => {
+                if (d?.dates?.[0] && d?.dates?.[1] && d?.pricePerNight) {
+                  const nights = nightsBetween(d.dates[0].toISOString(), d.dates[1].toISOString());
+                  totalRoom += nights * Number(d.pricePerNight || 0);
+                }
+              });
+              if (totalRoom === 0) return null;
+              return (
+                <div style={{ background: '#1e3a5f', borderRadius: 10, padding: '16px 20px', color: '#fff', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ opacity: 0.7, fontSize: 13 }}>Tổng tiền phòng ({details.length} phòng)</span>
+                    <span style={{ fontWeight: 600 }}>{formatMoney(totalRoom)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ opacity: 0.7, fontSize: 13 }}>Đặt cọc</span>
+                    <span style={{ color: '#fbbf24', fontWeight: 600 }}>-{formatMoney(deposit)}</span>
+                  </div>
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 700 }}>Còn lại cần thanh toán</span>
+                    <span style={{ fontWeight: 700, fontSize: 18, color: '#fbbf24' }}>{formatMoney(Math.max(0, totalRoom - deposit))}</span>
+                  </div>
+                </div>
+              );
+            }}
+          </Form.Item>
+
+          <div className="flex justify-end gap-3 mt-2">
             <Button onClick={() => setCreateOpen(false)}>Hủy</Button>
-            <Button type="primary" htmlType="submit" className="btn-gold">Tạo booking</Button>
+            <Button type="primary" htmlType="submit" className="btn-gold" icon={<Plus size={14} />}>Tạo booking</Button>
           </div>
         </Form>
       </Modal>
@@ -910,7 +1019,7 @@ const BookingPage: React.FC = () => {
               rowKey="id"
               dataSource={selectedBooking.details}
               columns={[
-                { title: 'Phòng', render: (_: any, d: any) => rooms.find(r => r.id === d.roomId)?.roomNumber ?? `#${d.roomId}` },
+                { title: 'Phòng', render: (_: any, d: any) => rooms.find(r => r.id === d.roomId)?.roomNumber ? `Phòng ${rooms.find(r => r.id === d.roomId)?.roomNumber}` : (d.roomId ? `#${d.roomId}` : `Loại #${d.roomTypeId}`) },
                 { title: 'Nhận phòng', dataIndex: 'checkInDate', render: (v: string) => dayjs(v).format('DD/MM/YYYY') },
                 { title: 'Trả phòng', dataIndex: 'checkOutDate', render: (v: string) => dayjs(v).format('DD/MM/YYYY') },
                 { title: 'Số đêm', render: (_: any, d: any) => nightsBetween(d.checkInDate, d.checkOutDate) },
@@ -937,6 +1046,37 @@ const BookingPage: React.FC = () => {
                 <Button style={{ background: '#7c3aed', color: '#fff', border: 'none' }} icon={<LogOut size={14} />} onClick={() => { updateStatus(selectedBooking, 'CheckedOut'); setDetailOpen(false); }}>Check-out</Button>
               )}
             </Space>
+
+            {/* ── Reassign + Split buttons (chỉ hiện khi đang hoạt động) */}
+            {(selectedBooking.status === 'Confirmed' || selectedBooking.status === 'CheckedIn') && (
+              <>
+                <Divider orientation="left" style={{ fontSize: 13, color: '#6b7280' }}>Nghiệp vụ đặc biệt</Divider>
+                <Space wrap>
+                  <Button
+                    icon={<ArrowLeftRight size={14} />}
+                    onClick={() => {
+                      setReassignDetail(selectedBooking.details[0] ?? null);
+                      reassignForm.resetFields();
+                      setReassignOpen(true);
+                    }}
+                  >
+                    Đổi / Gán lại phòng
+                  </Button>
+                  {selectedBooking.details.length >= 2 && (
+                    <Button
+                      icon={<ScissorsIcon size={14} />}
+                      style={{ borderColor: '#d97706', color: '#d97706' }}
+                      onClick={() => {
+                        setSplitSelectedIds([]);
+                        setSplitOpen(true);
+                      }}
+                    >
+                      Tách hóa đơn (Split)
+                    </Button>
+                  )}
+                </Space>
+              </>
+            )}
           </>
         )}
       </Modal>
@@ -1314,6 +1454,196 @@ const BookingPage: React.FC = () => {
             </Button>
           </div>
         </Form>
+      </Modal>
+
+      {/* ── Reassign Room Modal ─────────────────────────────────────────────────── */}
+      <Modal
+        open={reassignOpen}
+        title={<Space><ArrowLeftRight size={16} /><span>Đổi / Gán lại phòng</span></Space>}
+        onCancel={() => { setReassignOpen(false); reassignForm.resetFields(); }}
+        footer={null}
+        width={520}
+      >
+        {selectedBooking && (
+          <Form
+            form={reassignForm}
+            layout="vertical"
+            onFinish={async (vals) => {
+              if (!selectedBooking) return;
+              setReassignLoading(true);
+              try {
+                const dto: ReassignRoomDto = {
+                  bookingDetailId: vals.bookingDetailId,
+                  newRoomId: vals.newRoomId || null,
+                  roomTypeId: vals.roomTypeId || null,
+                  reason: vals.reason || null,
+                };
+                await bookingApi.reassignRoom(selectedBooking.id, dto);
+                antdMessage.success('Đã đổi phòng thành công!');
+                setReassignOpen(false);
+                reassignForm.resetFields();
+                await loadData();
+              } catch (err: any) {
+                antdMessage.error(err?.response?.data?.message || 'Đổi phòng thất bại');
+              } finally {
+                setReassignLoading(false);
+              }
+            }}
+          >
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400e' }}>
+              ⚠️ Dùng khi: phòng chưa dọn xong, khách trước chưa trả, phòng bảo trì, hoặc nâng hạng phòng.
+            </div>
+
+            <Form.Item name="bookingDetailId" label="Chọn phòng cần đổi" rules={[{ required: true, message: 'Vui lòng chọn' }]}>
+              <Select placeholder="Chọn booking detail...">
+                {selectedBooking.details.map(d => (
+                  <Select.Option key={d.id} value={d.id}>
+                    {rooms.find(r => r.id === d.roomId)?.roomNumber
+                      ? `Phòng ${rooms.find(r => r.id === d.roomId)?.roomNumber}`
+                      : `Loại #${d.roomTypeId}`}
+                    {' '}· {dayjs(d.checkInDate).format('DD/MM')} → {dayjs(d.checkOutDate).format('DD/MM')}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item label="Phòng mới (để trống → tự động tìm)" name="newRoomId">
+              <Select allowClear placeholder="Chọn phòng cụ thể hoặc để trống">
+                {rooms.filter(r => r.status === 'Available').map(r => (
+                  <Select.Option key={r.id} value={r.id}>
+                    Phòng {r.roomNumber} · {roomTypes.find(rt => rt.id === r.roomTypeId)?.name ?? `Loại #${r.roomTypeId}`}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item label="Loại phòng (nếu tự tìm)" name="roomTypeId">
+              <Select allowClear placeholder="Tìm theo loại phòng">
+                {roomTypes.map(rt => (
+                  <Select.Option key={rt.id} value={rt.id}>{rt.name}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item name="reason" label="Lý do đổi phòng">
+              <Input.TextArea rows={2} placeholder="Vd: Phòng 301 chưa dọn xong, khách đã đến..." />
+            </Form.Item>
+
+            <div className="flex justify-end gap-3">
+              <Button onClick={() => { setReassignOpen(false); reassignForm.resetFields(); }}>Hủy</Button>
+              <Button type="primary" htmlType="submit" loading={reassignLoading} style={{ background: '#2563eb' }}>
+                Xác nhận đổi phòng
+              </Button>
+            </div>
+          </Form>
+        )}
+      </Modal>
+
+      {/* ── Split Booking Modal ──────────────────────────────────────────────────── */}
+      <Modal
+        open={splitOpen}
+        title={<Space><ScissorsIcon size={16} /><span>Tách hóa đơn (Split Booking)</span></Space>}
+        onCancel={() => setSplitOpen(false)}
+        footer={null}
+        width={560}
+      >
+        {selectedBooking && (
+          <>
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#1e40af' }}>
+              💡 Chọn phòng muốn <strong>tách ra</strong> thanh toán riêng. Booking gốc sẽ giữ lại các phòng còn lại.
+            </div>
+
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Chọn phòng cần tách:</div>
+            {selectedBooking.details.map(d => {
+              const room = rooms.find(r => r.id === d.roomId);
+              const nights = nightsBetween(d.checkInDate, d.checkOutDate);
+              const checked = splitSelectedIds.includes(d.id);
+              return (
+                <div
+                  key={d.id}
+                  onClick={() => setSplitSelectedIds(prev =>
+                    prev.includes(d.id) ? prev.filter(x => x !== d.id) : [...prev, d.id]
+                  )}
+                  style={{
+                    border: `2px solid ${checked ? '#2563eb' : '#e5e7eb'}`,
+                    borderRadius: 8, padding: '10px 14px', marginBottom: 8,
+                    cursor: 'pointer', background: checked ? '#eff6ff' : '#fff',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <Row justify="space-between" align="middle">
+                    <Col>
+                      <div style={{ fontWeight: 600 }}>
+                        {room ? `Phòng ${room.roomNumber}` : `Loại #${d.roomTypeId}`}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#6b7280' }}>
+                        {dayjs(d.checkInDate).format('DD/MM')} → {dayjs(d.checkOutDate).format('DD/MM')} · {nights} đêm
+                      </div>
+                    </Col>
+                    <Col>
+                      <div style={{ fontWeight: 700, color: '#2563eb' }}>
+                        {formatMoney(d.pricePerNight * nights)}
+                      </div>
+                      {checked && <Tag color="blue" style={{ marginTop: 4 }}>✓ Đã chọn</Tag>}
+                    </Col>
+                  </Row>
+                </div>
+              );
+            })}
+
+            <Divider />
+
+            <Row gutter={12}>
+              <Col span={16}>
+                <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 4 }}>Tổng phòng được tách:</div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#1d4ed8' }}>
+                  {formatMoney(
+                    selectedBooking.details
+                      .filter(d => splitSelectedIds.includes(d.id))
+                      .reduce((sum, d) => sum + d.pricePerNight * nightsBetween(d.checkInDate, d.checkOutDate), 0)
+                  )}
+                </div>
+              </Col>
+              <Col span={8}>
+                <Button
+                  type="primary"
+                  block
+                  loading={splitLoading}
+                  disabled={splitSelectedIds.length === 0 || splitSelectedIds.length >= selectedBooking.details.length}
+                  style={{ background: '#d97706', borderColor: '#d97706' }}
+                  onClick={async () => {
+                    if (!selectedBooking) return;
+                    setSplitLoading(true);
+                    try {
+                      const dto: SplitBookingDto = {
+                        bookingDetailIds: splitSelectedIds,
+                        newBookingDepositAmount: 0,
+                        checkOutImmediately: true,
+                      };
+                      const result = await bookingApi.splitBooking(selectedBooking.id, dto);
+                      antdMessage.success(result.message);
+                      setSplitOpen(false);
+                      setSplitSelectedIds([]);
+                      setDetailOpen(false);
+                      await loadData();
+                    } catch (err: any) {
+                      antdMessage.error(err?.response?.data?.message || 'Tách hóa đơn thất bại');
+                    } finally {
+                      setSplitLoading(false);
+                    }
+                  }}
+                >
+                  Tách & Trả phòng
+                </Button>
+              </Col>
+            </Row>
+            {splitSelectedIds.length >= selectedBooking.details.length && (
+              <div style={{ color: '#dc2626', fontSize: 12, marginTop: 8 }}>
+                ⚠️ Phải giữ lại ít nhất 1 phòng trong booking gốc.
+              </div>
+            )}
+          </>
+        )}
       </Modal>
     </div>
   );

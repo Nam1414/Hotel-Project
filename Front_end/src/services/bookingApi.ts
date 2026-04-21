@@ -93,6 +93,9 @@ export const bookingApi = {
   getAll: async (): Promise<BookingResponseDto[]> =>
     (await axiosClient.get('/api/Booking')) as unknown as BookingResponseDto[],
 
+  getMyBookings: async (): Promise<BookingResponseDto[]> =>
+    (await axiosClient.get('/api/Booking/my-bookings')) as unknown as BookingResponseDto[],
+
   getById: async (id: number): Promise<BookingResponseDto> =>
     (await axiosClient.get(`/api/Booking/${id}`)) as unknown as BookingResponseDto,
 
@@ -112,4 +115,32 @@ export const bookingApi = {
 
   addPayment: async (invoiceId: number, dto: AddPaymentDto): Promise<PaymentResponseDto> =>
     (await axiosClient.post(`/api/Invoice/${invoiceId}/payment`, dto)) as unknown as PaymentResponseDto,
+
+  /** Đổi phòng — phòng chưa sẵn sàng / khách trước chưa trả / nâng hạng */
+  reassignRoom: async (bookingId: number, dto: ReassignRoomDto): Promise<BookingResponseDto> =>
+    (await axiosClient.put(`/api/Booking/${bookingId}/reassign-room`, dto)) as unknown as BookingResponseDto,
+
+  /** Tách phòng — tạo booking mới + hóa đơn riêng cho phòng được tách */
+  splitBooking: async (bookingId: number, dto: SplitBookingDto): Promise<SplitBookingResultDto> =>
+    (await axiosClient.post(`/api/Booking/${bookingId}/split`, dto)) as unknown as SplitBookingResultDto,
 };
+
+// ─── Extra DTOs ─────────────────────────────────────────────────────────────
+export interface ReassignRoomDto {
+  bookingDetailId: number;
+  newRoomId?: number | null;
+  roomTypeId?: number | null;
+  reason?: string | null;
+}
+
+export interface SplitBookingDto {
+  bookingDetailIds: number[];
+  newBookingDepositAmount?: number;
+  checkOutImmediately?: boolean;
+}
+
+export interface SplitBookingResultDto {
+  originalBooking: BookingResponseDto;
+  newBooking: BookingResponseDto;
+  message: string;
+}

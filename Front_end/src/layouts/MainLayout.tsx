@@ -44,6 +44,7 @@ const MainLayout: React.FC = () => {
               <Link to="/rooms" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">ROOMS</Link>
               <Link to="/services" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">SERVICES</Link>
               <Link to="/news" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">NEWS</Link>
+              <Link to="/attractions" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">EXPLORE</Link>
               <Link to="/about" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">ABOUT</Link>
               <Link to="/contact" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">CONTACT</Link>
             </nav>
@@ -109,6 +110,7 @@ const MainLayout: React.FC = () => {
                 <Link to="/rooms" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ROOMS</Link>
                 <Link to="/services" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">SERVICES</Link>
                 <Link to="/news" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">NEWS</Link>
+                <Link to="/attractions" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">EXPLORE</Link>
                 <Link to="/about" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ABOUT</Link>
                 <Link to="/contact" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">CONTACT</Link>
                 {isAuthenticated && (

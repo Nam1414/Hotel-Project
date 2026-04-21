@@ -6,6 +6,9 @@ import {
   Loader2, Maximize, Shield, Star, Users,
 } from 'lucide-react';
 import { publicHotelApi, type PublicRoomType } from '../../services/publicHotelApi';
+import { reviewApi, type ReviewDto } from '../../services/reviewApi';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 const FALLBACK =
   'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=1600&auto=format&fit=crop';
@@ -13,19 +16,64 @@ const FALLBACK =
 const RoomDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useSelector((state: RootState) => state.auth);
   const [room, setRoom] = useState<PublicRoomType | null>(null);
+  const [reviews, setReviews] = useState<ReviewDto[]>([]);
+  const [avgRating, setAvgRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImg, setActiveImg] = useState(0);
 
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '', guestName: user?.fullName || user?.name || '' });
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewMsg, setReviewMsg] = useState({ type: '', text: '' });
+
   useEffect(() => {
     const roomId = Number(id);
     if (!roomId) { setError('Loại phòng không hợp lệ'); setLoading(false); return; }
-    publicHotelApi.getRoomTypeById(roomId)
-      .then(data => { setRoom(data); setActiveImg(0); })
-      .catch((err: any) => setError(err.response?.data?.message || 'Không tìm thấy thông tin phòng'))
-      .finally(() => setLoading(false));
+    
+    const loadAll = async () => {
+      try {
+        const [roomData, reviewData] = await Promise.all([
+          publicHotelApi.getRoomTypeById(roomId),
+          reviewApi.getReviews('RoomType', roomId).catch(() => ({ reviews: [], averageRating: 0, totalReviews: 0 }))
+        ]);
+        setRoom(roomData);
+        setReviews(reviewData.reviews);
+        setAvgRating(reviewData.averageRating);
+        setTotalReviews(reviewData.totalReviews);
+        setActiveImg(0);
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Không tìm thấy thông tin phòng');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadAll();
   }, [id]);
+
+  const submitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewSubmitting(true);
+    setReviewMsg({ type: '', text: '' });
+    try {
+      await reviewApi.createReview({
+        targetType: 'RoomType',
+        targetId: Number(id),
+        rating: reviewForm.rating,
+        comment: reviewForm.comment,
+        guestName: reviewForm.guestName
+      });
+      setReviewMsg({ type: 'success', text: 'Cảm ơn bạn! Đánh giá đã được gửi và đang chờ duyệt.' });
+      setReviewForm({ ...reviewForm, comment: '', rating: 5 });
+    } catch (err: any) {
+      setReviewMsg({ type: 'error', text: err.response?.data?.message || 'Có lỗi xảy ra khi gửi đánh giá.' });
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
 
   const images = useMemo(() => {
     if (!room) return [FALLBACK];
@@ -157,10 +205,13 @@ const RoomDetail: React.FC = () => {
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
               <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                 <h1 className="text-4xl md:text-5xl font-display font-bold text-[var(--text-title)]">{room.name}</h1>
-                <div className="flex items-center text-primary">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={18} fill={i < 5 ? 'currentColor' : 'none'} />
-                  ))}
+                <div className="flex items-center text-primary gap-2">
+                  <div className="flex">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={18} fill={i < Math.round(avgRating) ? 'currentColor' : 'none'} />
+                    ))}
+                  </div>
+                  {totalReviews > 0 && <span className="text-sm font-semibold text-[var(--text-muted)]">({avgRating} / {totalReviews} đánh giá)</span>}
                 </div>
               </div>
               <p className="text-[var(--text-body)] text-lg leading-relaxed">
@@ -221,6 +272,84 @@ const RoomDetail: React.FC = () => {
                 <div className="prose text-sm" dangerouslySetInnerHTML={{ __html: room.content }} />
               </motion.div>
             )}
+
+            {/* Reviews Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+              className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-2xl p-7"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-display font-bold text-[var(--text-title)]">Đánh giá từ khách hàng</h3>
+                {totalReviews > 0 && (
+                  <div className="flex items-center gap-2 bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-sm font-bold border border-amber-200">
+                    <Star size={16} fill="currentColor" /> {avgRating} ({totalReviews} đánh giá)
+                  </div>
+                )}
+              </div>
+
+              {/* Form */}
+              <div className="mb-8 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                <h4 className="font-display font-bold text-lg mb-5 text-[var(--text-title)]">Gửi đánh giá của bạn</h4>
+                <form onSubmit={submitReview} className="space-y-5">
+                  <div className="flex items-center gap-4">
+                    <label className="text-sm font-semibold text-[var(--text-body)]">Điểm số:</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button 
+                          key={star} type="button" 
+                          onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                          className={`hover:scale-110 transition-transform ${star <= reviewForm.rating ? 'text-amber-400' : 'text-slate-300'}`}
+                        >
+                          <Star size={24} fill={star <= reviewForm.rating ? 'currentColor' : 'none'} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {!user && (
+                    <input 
+                      required type="text" placeholder="Tên của bạn..." 
+                      className="input-luxury w-full bg-white dark:bg-slate-900"
+                      value={reviewForm.guestName} onChange={e => setReviewForm({ ...reviewForm, guestName: e.target.value })}
+                    />
+                  )}
+                  <textarea 
+                    required placeholder="Chia sẻ trải nghiệm của bạn về phòng này..." 
+                    className="input-luxury w-full min-h-[100px] bg-white dark:bg-slate-900 resize-y"
+                    value={reviewForm.comment} onChange={e => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                  />
+                  {reviewMsg.text && (
+                    <div className={`p-3 rounded-lg text-sm ${reviewMsg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                      {reviewMsg.text}
+                    </div>
+                  )}
+                  <button type="submit" disabled={reviewSubmitting} className="btn-gold px-6 py-2">
+                    {reviewSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Review List */}
+              <div className="space-y-4">
+                {reviews.length === 0 ? (
+                  <p className="text-[var(--text-muted)] text-center py-4 italic">Chưa có đánh giá nào cho phòng này. Hãy là người đầu tiên!</p>
+                ) : (
+                  reviews.map(review => (
+                    <div key={review.id} className="pb-4 border-b border-[var(--border-color)] last:border-0 last:pb-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-display font-bold text-lg text-[var(--text-title)]">{review.authorName}</div>
+                        <div className="text-sm font-medium text-[var(--text-muted)]">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</div>
+                      </div>
+                      <div className="flex text-amber-400 mb-3">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={16} fill={i < review.rating ? 'currentColor' : 'none'} />
+                        ))}
+                      </div>
+                      <p className="text-[var(--text-body)] text-base leading-relaxed whitespace-pre-line">{review.comment}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
           </div>
 
           {/* Right: Booking card */}

@@ -35,6 +35,8 @@ public class AttractionService : IAttractionService
             Name = dto.Name,
             DistanceKm = dto.DistanceKm,
             Description = dto.Description,
+            Address = dto.Address,
+            Category = dto.Category,
             MapEmbedLink = dto.MapEmbedLink,
             Latitude = dto.Latitude,
             Longitude = dto.Longitude,
@@ -57,6 +59,8 @@ public class AttractionService : IAttractionService
         attraction.Name = dto.Name;
         attraction.DistanceKm = dto.DistanceKm;
         attraction.Description = dto.Description;
+        attraction.Address = dto.Address;
+        attraction.Category = dto.Category;
         attraction.MapEmbedLink = dto.MapEmbedLink;
         attraction.Latitude = dto.Latitude;
         attraction.Longitude = dto.Longitude;
@@ -83,6 +87,8 @@ public class AttractionService : IAttractionService
         a.Name,
         a.DistanceKm,
         a.Description,
+        a.Address,
+        a.Category,
         a.MapEmbedLink,
         a.Latitude,
         a.Longitude,

@@ -57,7 +57,7 @@ public class ReviewsController : ControllerBase
         if (dto.Rating < 1 || dto.Rating > 5)
             return BadRequest(new { message = "Điểm đánh giá phải từ 1 đến 5." });
 
-        if (dto.TargetType != "Article" && dto.TargetType != "Attraction")
+        if (dto.TargetType != "Article" && dto.TargetType != "Attraction" && dto.TargetType != "RoomType")
             return BadRequest(new { message = "Loại đối tượng không hợp lệ." });
 
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

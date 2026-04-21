@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  App, Button, Form, Input, InputNumber, Modal, Popconfirm, Switch, Tag,
+  App, Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Switch, Tag,
 } from 'antd';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Edit, Eye, EyeOff, MapPin, Plus, Search, Trash2 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { usePermission } from '../../hooks/useAppStore';
 type AttractionForm = {
   name: string;
   address?: string;
+  category?: string;
   description?: string;
   mapEmbedLink?: string;
   latitude?: number;
@@ -90,7 +91,8 @@ const AttractionsPage: React.FC = () => {
     setEditing(item);
     form.setFieldsValue({
       name: item.name,
-      address: (item as any).address ?? '',
+      address: item.address ?? '',
+      category: item.category ?? '',
       description: item.description ?? '',
       mapEmbedLink: item.mapEmbedLink ?? '',
       latitude: item.latitude ?? undefined,
@@ -107,6 +109,7 @@ const AttractionsPage: React.FC = () => {
         await adminApi.updateAttraction(editing.id, {
           name: values.name,
           address: values.address,
+          category: values.category,
           description: values.description,
           mapEmbedLink: values.mapEmbedLink,
           latitude: values.latitude,
@@ -118,6 +121,7 @@ const AttractionsPage: React.FC = () => {
         await adminApi.createAttraction({
           name: values.name,
           address: values.address,
+          category: values.category,
           description: values.description,
           mapEmbedLink: values.mapEmbedLink,
           latitude: values.latitude,
@@ -157,7 +161,8 @@ const AttractionsPage: React.FC = () => {
     try {
       await adminApi.updateAttraction(item.id, {
         name: item.name,
-        address: (item as any).address,
+        address: item.address ?? undefined,
+        category: item.category ?? undefined,
         description: item.description ?? undefined,
         mapEmbedLink: item.mapEmbedLink ?? undefined,
         latitude: item.latitude ?? undefined,
@@ -415,6 +420,21 @@ const AttractionsPage: React.FC = () => {
 
           <Form.Item name="address" label="Địa chỉ">
             <Input placeholder="VD: 132 Trần Phú, Hội An, Quảng Nam" className="h-11 rounded-xl" />
+          </Form.Item>
+
+          <Form.Item name="category" label="Danh mục">
+            <Select
+              className="h-11"
+              placeholder="Chọn danh mục địa điểm"
+              allowClear
+              options={[
+                { value: 'Lịch sử - Văn hóa', label: '🏛️ Lịch sử - Văn hóa' },
+                { value: 'Thiên nhiên', label: '🌿 Thiên nhiên' },
+                { value: 'Ẩm thực - Trải nghiệm', label: '🍜 Ẩm thực - Trải nghiệm' },
+                { value: 'Tâm linh', label: '🛕 Tâm linh' },
+                { value: 'Giải trí', label: '🎡 Giải trí' },
+              ]}
+            />
           </Form.Item>
 
           <Form.Item name="description" label="Mô tả ngắn">

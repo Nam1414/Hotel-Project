@@ -18,6 +18,7 @@ const About = lazy(() => import('../pages/public/About'));
 const Contact = lazy(() => import('../pages/public/Contact'));
 const Articles = lazy(() => import('../pages/public/Articles'));
 const ArticleDetail = lazy(() => import('../pages/public/ArticleDetail'));
+const Attractions = lazy(() => import('../pages/public/Attractions'));
 const ProfilePage = lazy(() => import('../pages/admin/Profile'));
 
 const Login = lazy(() => import('../pages/auth/Login'));
@@ -64,6 +65,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/contact" element={<Contact />} />
           <Route path="/news" element={<Articles />} />
           <Route path="/news/:slug" element={<ArticleDetail />} />
+          <Route path="/attractions" element={<Attractions />} />
           <Route
             path="/profile"
             element={
@@ -288,6 +290,7 @@ const AppRoutes: React.FC = () => {
             }
           />
           <Route path="bookings">
+            <Route index element={<Navigate to="manage" replace />} />
             <Route
               path="manage"
               element={

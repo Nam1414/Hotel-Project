@@ -12,14 +12,17 @@ import {
   Save,
   LogOut,
   Loader2,
+  Calendar
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Form, Input, Button, Switch, Tabs, message, Avatar, Badge } from 'antd';
+import { Form, Input, Button, Switch, Tabs, message, Avatar, Badge, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/themeStore';
 import { userProfileApi, UserProfileDto } from '../../services/userProfileApi';
 import { useAppDispatch } from '../../hooks/useAppStore';
 import { logout, updateUser } from '../../store/slices/authSlice';
+import { bookingApi, type BookingResponseDto, type BookingDetailDto } from '../../services/bookingApi';
+import { serviceOrderApi, type ServiceDto, type ServiceCategoryDto } from '../../services/serviceOrderApi';
 
 type GeneralFormValues = {
   fullName: string;
@@ -32,6 +35,208 @@ type PasswordFormValues = {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+};
+
+const MyBookingsTab = () => {
+  const [bookings, setBookings] = useState<BookingResponseDto[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Service Order Modal State
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<BookingResponseDto | null>(null);
+  const [selectedBookingDetailId, setSelectedBookingDetailId] = useState<number | null>(null);
+  
+  const [services, setServices] = useState<ServiceDto[]>([]);
+  const [categories, setCategories] = useState<ServiceCategoryDto[]>([]);
+  const [cart, setCart] = useState<Record<number, number>>({});
+  const [orderingService, setOrderingService] = useState(false);
+
+  useEffect(() => {
+    bookingApi.getMyBookings()
+      .then(setBookings)
+      .catch(err => message.error('Không thể tải danh sách đặt phòng'))
+      .finally(() => setLoading(false));
+
+    // Load services quietly for potential use
+    serviceOrderApi.getCategories().then(setCategories).catch(console.error);
+    serviceOrderApi.getServices().then(setServices).catch(console.error);
+  }, []);
+
+  const handleOpenServiceModal = (booking: BookingResponseDto) => {
+    setSelectedBooking(booking);
+    setSelectedBookingDetailId(booking.details[0]?.id || null);
+    setCart({});
+    setIsServiceModalOpen(true);
+  };
+
+  const handleAddToCart = (serviceId: number, change: number) => {
+    setCart(prev => {
+      const newVal = (prev[serviceId] || 0) + change;
+      if (newVal <= 0) {
+        const next = { ...prev };
+        delete next[serviceId];
+        return next;
+      }
+      return { ...prev, [serviceId]: newVal };
+    });
+  };
+
+  const handleOrderService = async () => {
+    if (!selectedBookingDetailId || Object.keys(cart).length === 0) {
+      return message.warning('Vui lòng chọn phòng và ít nhất một dịch vụ');
+    }
+
+    setOrderingService(true);
+    try {
+      await serviceOrderApi.createOrder({
+        bookingDetailId: selectedBookingDetailId,
+        items: Object.entries(cart).map(([serviceId, qty]) => ({
+          serviceId: Number(serviceId),
+          quantity: qty,
+        })),
+      });
+      message.success('Đã gửi yêu cầu dịch vụ thành công!');
+      setIsServiceModalOpen(false);
+      setCart({});
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Có lỗi xảy ra khi gọi dịch vụ');
+    } finally {
+      setOrderingService(false);
+    }
+  };
+
+  const cartTotal = Object.entries(cart).reduce((total, [serviceId, qty]) => {
+    const s = services.find(x => x.id === Number(serviceId));
+    return total + (s?.price || 0) * qty;
+  }, 0);
+
+  const getStatusTag = (status: number | string) => {
+    const s = String(status);
+    switch (s) {
+      case '0': case 'Pending': return <Tag color="orange">Chờ xác nhận</Tag>;
+      case '1': case 'Confirmed': return <Tag color="blue">Đã xác nhận</Tag>;
+      case '2': case 'CheckedIn': return <Tag color="green">Đang lưu trú</Tag>;
+      case '3': case 'CheckedOut': return <Tag color="default">Đã trả phòng</Tag>;
+      case '4': case 'Cancelled': return <Tag color="red">Đã hủy</Tag>;
+      default: return <Tag>{s}</Tag>;
+    }
+  };
+
+  if (loading) return <div className="py-10 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" /></div>;
+
+  if (bookings.length === 0) {
+    return (
+      <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 mt-10">
+        <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+        <p className="text-[var(--text-muted)]">Bạn chưa có đặt phòng nào.</p>
+        <Button onClick={() => window.location.href = '/rooms'} type="primary" className="btn-gold mt-4 px-6 h-10">
+          Khám phá phòng ngay
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-10 space-y-4">
+      {bookings.map(b => (
+        <div key={b.id} className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <span className="font-display font-bold text-lg text-[var(--text-title)]">{b.bookingCode}</span>
+              {getStatusTag(b.status)}
+            </div>
+            <div className="text-sm text-[var(--text-muted)]">
+              {b.details.length} phòng • {b.details[0]?.checkInDate.split('T')[0]} đến {b.details[b.details.length-1]?.checkOutDate.split('T')[0]}
+            </div>
+            <div className="text-sm">
+              <span className="text-[var(--text-muted)]">Tiền cọc: </span><span className="font-semibold text-amber-600">{b.depositAmount?.toLocaleString('vi-VN')}đ</span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {(b.status === 'CheckedIn' || String(b.status) === '2') && ( // CheckedIn
+              <Button type="primary" className="rounded-xl font-medium btn-gold" onClick={() => handleOpenServiceModal(b)}>
+                Gọi Dịch Vụ
+              </Button>
+            )}
+            <Button type="default" className="rounded-xl font-medium" onClick={() => window.location.href = `/profile`}>
+              Chi tiết
+            </Button>
+          </div>
+        </div>
+      ))}
+
+      {/* Service Modal */}
+      {selectedBooking && (
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-all ${isServiceModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-display font-bold text-title">Gọi Dịch Vụ Tại Phòng</h3>
+                <p className="text-sm text-muted">Booking {selectedBooking.bookingCode}</p>
+              </div>
+              <button onClick={() => setIsServiceModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+                &times;
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/50">
+              {selectedBooking.details.length > 1 && (
+                <div className="mb-6">
+                  <label className="block text-sm font-bold text-title mb-2">Chọn phòng nhận dịch vụ:</label>
+                  <select 
+                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-title"
+                    value={selectedBookingDetailId || ''}
+                    onChange={e => setSelectedBookingDetailId(Number(e.target.value))}
+                  >
+                    {selectedBooking.details.map(d => (
+                      <option key={d.id} value={d.id}>Phòng {d.roomId || '(Chưa xếp phòng)'} (Từ {d.checkInDate.split('T')[0]} đến {d.checkOutDate.split('T')[0]})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-8">
+                {categories.map(cat => {
+                  const catServices = services.filter(s => s.categoryId === cat.id);
+                  if (catServices.length === 0) return null;
+                  return (
+                    <div key={cat.id}>
+                      <h4 className="font-bold text-primary mb-4 pb-2 border-b border-slate-200 dark:border-slate-800">{cat.name}</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {catServices.map(service => (
+                          <div key={service.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                            <div>
+                              <div className="font-bold text-title text-sm">{service.name}</div>
+                              <div className="text-primary font-semibold text-sm">{service.price.toLocaleString('vi-VN')}đ {service.unit ? `/ ${service.unit}` : ''}</div>
+                            </div>
+                            <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-100 dark:border-slate-700">
+                              <button type="button" onClick={() => handleAddToCart(service.id, -1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 shadow-sm">-</button>
+                              <span className="w-6 text-center font-bold text-sm text-title">{cart[service.id] || 0}</span>
+                              <button type="button" onClick={() => handleAddToCart(service.id, 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 shadow-sm">+</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted">Tổng tạm tính</p>
+                <p className="text-xl font-bold text-primary">{cartTotal.toLocaleString('vi-VN')}đ</p>
+              </div>
+              <Button type="primary" className="btn-gold h-12 px-8 rounded-xl text-sm" loading={orderingService} onClick={handleOrderService} disabled={cartTotal === 0}>
+                Xác nhận đặt ({Object.values(cart).reduce((a, b) => a + b, 0)} món)
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const Profile: React.FC = () => {
@@ -362,6 +567,18 @@ const Profile: React.FC = () => {
                         </div>
                       </div>
                     </div>
+                  ),
+                },
+                {
+                  key: '4',
+                  label: (
+                    <span className="flex items-center space-x-2 px-2 py-1">
+                      <Calendar size={18} />
+                      <span>My Bookings</span>
+                    </span>
+                  ),
+                  children: (
+                    <MyBookingsTab />
                   ),
                 },
               ]}
