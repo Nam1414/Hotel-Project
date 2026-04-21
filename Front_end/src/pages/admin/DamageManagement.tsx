@@ -12,7 +12,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Table, Tag, Button, Input, Select, Modal, Form, Upload, message } from 'antd';
+import { Table, Tag, Button, Input, Select, Modal, Form, Upload, message, InputNumber } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 
 interface DamageRecord {
@@ -205,7 +205,7 @@ const DamageManagement: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-6">
             <Form.Item label="Compensation Price" name="price">
-              <Input prefix="$" type="number" />
+              <InputNumber prefix="$" min={0} step={0.01} className="w-full" />
             </Form.Item>
             <Form.Item label="Date" name="date">
               <Input type="date" />

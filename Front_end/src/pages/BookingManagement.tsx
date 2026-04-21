@@ -182,6 +182,10 @@ const BookingManagement: React.FC = () => {
               <Ticket className="w-5 h-5 text-amber-600" />
               Active Vouchers
             </h3>
+            <div className="flex gap-2 mb-6">
+              <Input placeholder="Enter discount code..." className="bg-white flex-1" />
+              <Button className="bg-amber-600 hover:bg-amber-700 text-white border-none shrink-0">Apply</Button>
+            </div>
             <div className="space-y-4">
               {[
                 { code: 'SUMMER20', discount: '20% OFF', expiry: 'Ends in 2 days' },

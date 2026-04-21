@@ -237,10 +237,10 @@ const VoucherManagement: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-6">
             <Form.Item label="Discount Value" name="value" required>
-              <InputNumber className="w-full" min={1} />
+              <InputNumber className="w-full" min={1} step={1} />
             </Form.Item>
             <Form.Item label="Min Spend ($)" name="minSpend">
-              <InputNumber className="w-full" min={0} />
+              <InputNumber className="w-full" min={0} step={1000} />
             </Form.Item>
           </div>
           <div className="grid grid-cols-2 gap-6">
@@ -248,7 +248,7 @@ const VoucherManagement: React.FC = () => {
               <DatePicker className="w-full" />
             </Form.Item>
             <Form.Item label="Max Usage" name="maxUsage" required>
-              <InputNumber className="w-full" min={1} />
+              <InputNumber className="w-full" min={1} step={1} />
             </Form.Item>
           </div>
           <Form.Item label="Description" name="description">

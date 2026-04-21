@@ -4,6 +4,7 @@ import { Badge, Card, Col, List, Row, Statistic, Table, Tag, Typography } from '
 import { BellRing, BedDouble, Boxes, CircleAlert } from 'lucide-react';
 import { adminApi, NotificationDto, RoomDto } from '../../services/adminApi';
 import { formatVietnamTime } from '../../utils/dateFormatter';
+import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts';
 
 const Dashboard: React.FC = () => {
   const [rooms, setRooms] = useState<RoomDto[]>([]);
@@ -57,6 +58,24 @@ const Dashboard: React.FC = () => {
     [rooms]
   );
 
+  const roomChartData = useMemo(() => {
+    return [
+      { name: 'Trống', value: summary.totalRooms - summary.occupied - summary.maintenance, color: '#10B981' },
+      { name: 'Có khách', value: summary.occupied, color: '#3B82F6' },
+      { name: 'Đang dọn', value: summary.dirty, color: '#F59E0B' },
+      { name: 'Bảo trì', value: summary.maintenance, color: '#EF4444' },
+    ].filter(item => item.value > 0);
+  }, [summary]);
+
+  const equipmentChartData = useMemo(() => {
+    if (!stockSummary.byCategory) return [];
+    return stockSummary.byCategory.map(cat => ({
+      name: cat.category,
+      inStock: cat.inStockQuantity,
+      inUse: cat.inUseQuantity,
+    }));
+  }, [stockSummary]);
+
   return (
     <div className="space-y-6">
       <Typography.Title level={2} style={{ color: '#fff', marginBottom: 0 }}>
@@ -85,6 +104,53 @@ const Dashboard: React.FC = () => {
         <Col xs={24} md={12} xl={6}>
           <Card className="glass-card" loading={loading}>
             <Statistic title="Vật tư trong kho" value={stockSummary.overall.inStock} prefix={<Boxes size={18} />} />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={12}>
+          <Card className="glass-card" title={<span style={{ color: '#fff' }}>Trạng thái phòng</span>}>
+            <div style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={roomChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
+                    label
+                  >
+                    {roomChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </Col>
+
+        <Col xs={24} xl={12}>
+          <Card className="glass-card" title={<span style={{ color: '#fff' }}>Tình trạng vật tư theo danh mục</span>}>
+            <div style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={equipmentChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" />
+                  <XAxis dataKey="name" tick={{ fill: '#9ca3af' }} />
+                  <YAxis tick={{ fill: '#9ca3af' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', color: '#fff' }} />
+                  <Legend />
+                  <Bar dataKey="inStock" name="Tồn kho" fill="#10B981" />
+                  <Bar dataKey="inUse" name="Đang sử dụng" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
         </Col>
       </Row>
