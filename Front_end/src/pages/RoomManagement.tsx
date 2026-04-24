@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, Badge, cn } from '../components/ui';
 import { mockRooms } from '../data/mockData';
-import { Room, RoomStatus, RoomType } from '../types';
+import { Room, RoomStatus, RoomType } from '../types/index';
 
 const RoomManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');

@@ -1,4 +1,4 @@
-import { Room, InventoryItem, Booking, CleaningTask, Post } from '../types';
+import { Room, InventoryItem, Booking, CleaningTask, Post } from '../types/index';
 
 export const mockRooms: Room[] = [
   {

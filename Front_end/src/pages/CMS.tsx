@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, Badge, cn } from '../components/ui';
 import { mockPosts } from '../data/mockData';
-import { Post } from '../types';
+import { Post } from '../types/index';
 
 const CMS: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');

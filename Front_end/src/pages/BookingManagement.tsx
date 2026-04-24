@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, Badge, cn } from '../components/ui';
 import { mockBookings } from '../data/mockData';
-import { Booking } from '../types';
+import { Booking } from '../types/index';
 
 const BookingManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');

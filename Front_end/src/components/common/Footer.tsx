@@ -41,11 +41,11 @@ const Footer: React.FC = () => {
             </h3>
             <ul className="space-y-2">
               {[
-                { name: 'Dashboard', path: '/admin/dashboard' },
-                { name: 'Rooms', path: '/admin/rooms' },
-                { name: 'Inventory', path: '/admin/inventory' },
-                { name: 'Booking', path: '/admin/vouchers' },
-                { name: 'CMS', path: '/admin/cms' },
+                { name: 'Our Rooms', path: '/rooms' },
+                { name: 'Special Offers', path: '/vouchers' },
+                { name: 'FAQ', path: '/faq' },
+                { name: 'Gallery', path: '/gallery' },
+                { name: 'Services', path: '/services' },
               ].map((link) => (
                 <li key={link.name}>
                   <Link 
@@ -124,8 +124,8 @@ const Footer: React.FC = () => {
             © 2026 KANT HOTEL ERP. ALL RIGHTS RESERVED.
           </p>
           <div className="flex flex-wrap justify-center md:justify-end gap-x-4 gap-y-1 text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em]">
-            <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
+            <Link to="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+            <Link to="/terms-of-service" className="hover:text-primary transition-colors">Terms of Service</Link>
             <a href="#" className="hover:text-primary transition-colors">Cookies</a>
           </div>
         </div>

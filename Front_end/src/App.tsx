@@ -72,12 +72,10 @@ const AppContent = () => {
         algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
           colorPrimary: '#C6A96B',
-          borderRadius: 12,
           colorBgContainer: isDarkMode ? '#1E293B' : '#FFFFFF',
           colorBgElevated: isDarkMode ? '#334155' : '#FFFFFF',
           colorText: isDarkMode ? '#F1F5F9' : '#1E293B',
           colorTextSecondary: isDarkMode ? '#9CA3AF' : '#64748B',
-          fontFamily: 'Outfit, sans-serif',
         },
       }}
     >

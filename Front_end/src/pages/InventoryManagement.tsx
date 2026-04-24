@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, Badge, cn } from '../components/ui';
 import { mockInventory } from '../data/mockData';
-import { InventoryItem } from '../types';
+import { InventoryItem } from '../types/index';
 
 const InventoryManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');

@@ -144,7 +144,7 @@ const Profile: React.FC = () => {
                   key: '2',
                   label: <span className="flex items-center space-x-2 px-2 py-1"><Lock size={18} /><span>Security</span></span>,
                   children: (
-                    <Form passwordForm={passwordForm} layout="vertical" className="mt-10 space-y-6">
+                    <Form form={passwordForm} layout="vertical" className="mt-10 space-y-6">
                       <Form.Item label="Current Password" name="currentPassword" required>
                         <Input.Password className="h-14 rounded-xl" />
                       </Form.Item>

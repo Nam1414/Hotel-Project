@@ -17,6 +17,11 @@ const Services = lazy(() => import('../pages/public/Services'));
 const About = lazy(() => import('../pages/public/About'));
 const Contact = lazy(() => import('../pages/public/Contact'));
 const Rooms = lazy(() => import('../pages/public/Rooms'));
+const VouchersPublic = lazy(() => import('../pages/public/Vouchers'));
+const Gallery = lazy(() => import('../pages/public/Gallery'));
+const FAQ = lazy(() => import('../pages/public/FAQ'));
+const PrivacyPolicy = lazy(() => import('../pages/public/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('../pages/public/TermsOfService'));
 
 const AdminDashboard = lazy(() => import('../pages/admin/Dashboard'));
 const UserManagement = lazy(() => import('../pages/admin/UserManagement'));
@@ -44,6 +49,11 @@ const AppRoutes: React.FC = () => {
           <Route path="/services" element={<Services />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/vouchers" element={<VouchersPublic />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-of-service" element={<TermsOfService />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route 

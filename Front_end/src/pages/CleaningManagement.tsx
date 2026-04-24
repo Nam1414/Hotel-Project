@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Input, Badge, cn } from '../components/ui';
 import { mockCleaningTasks, mockRooms } from '../data/mockData';
-import { CleaningTask } from '../types';
+import { CleaningTask } from '../types/index';
 
 const CleaningManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
