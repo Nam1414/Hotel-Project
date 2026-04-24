@@ -432,6 +432,51 @@ namespace HotelManagementAPI.Migrations
                     b.ToTable("Invoices", (string)null);
                 });
 
+            modelBuilder.Entity("HotelManagementAPI.Models.Invoice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookingId")
+                        .HasColumnType("int")
+                        .HasColumnName("bookingid");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("discountamount");
+
+                    b.Property<decimal>("FinalTotal")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("finaltotal");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("status");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("taxamount");
+
+                    b.Property<decimal>("TotalRoomAmount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("totalroomamount");
+
+                    b.Property<decimal>("TotalServiceAmount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("totalserviceamount");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.ToTable("Invoices", (string)null);
+                });
+
             modelBuilder.Entity("HotelManagementAPI.Models.MinibarItem", b =>
                 {
                     b.Property<int>("Id")
@@ -896,6 +941,42 @@ namespace HotelManagementAPI.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Vouchers", (string)null);
+                });
+
+            modelBuilder.Entity("HotelManagementAPI.Models.Voucher", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DiscountType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("DiscountValue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("MinBookingValue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("UsageLimit")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Vouchers");
                 });
 
             modelBuilder.Entity("Membership", b =>
