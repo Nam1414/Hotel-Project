@@ -12,4 +12,8 @@ public interface IUserManagementService
     Task<bool> ChangeUserRoleAsync(int id, int roleId);
     Task<IEnumerable<UserResponseDto>> FilterUsersAsync(string? phone, string? email, bool? status);
     Task<(IEnumerable<UserResponseDto> Data, int Total)> FilterUsersPagedAsync(string? phone, string? email, bool? status, int page, int pageSize);
+    // ← [MỚI] Đổi mật khẩu
+    Task<bool> ChangePasswordAsync(int userId, ChangePasswordDto dto);
+    // ← [MỚI] Toggle khóa/mở tài khoản nhanh
+    Task<UserResponseDto?> ToggleStatusAsync(int id);
 }

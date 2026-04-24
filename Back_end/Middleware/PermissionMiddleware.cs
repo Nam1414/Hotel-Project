@@ -8,11 +8,14 @@ namespace HotelManagementAPI.Middleware;
 // ATTRIBUTE — Đánh dấu permission trực tiếp trên Action/Controller
 // ══════════════════════════════════════════════════════════════
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
-public class RequirePermissionAttribute : Attribute
+// public class RequirePermissionAttribute : Attribute
+// {
+//     public string Permission { get; }
+//     public RequirePermissionAttribute(string permission)=> Permission = permission;
+// }
+public class RequirePermissionAttribute(string permission) : Attribute
 {
-    public string Permission { get; }
-    public RequirePermissionAttribute(string permission)
-        => Permission = permission;
+    public string Permission { get; } = permission;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -66,7 +69,7 @@ public class PermissionMiddleware
         }
 
         // ── Bước 2: Kiểm tra đã đăng nhập chưa → 401 ────────────────────
-        if (context.User.Identity?.IsAuthenticated != true)
+        if (context.User.Identity?.IsAuthenticated is not true)
         {
             context.Response.StatusCode    = 401;
             context.Response.ContentType   = "application/json";

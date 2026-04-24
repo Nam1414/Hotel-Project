@@ -1,4 +1,12 @@
 namespace HotelManagementAPI.DTOs;
 
-public record CreateArticleCategoryDto(string Name);
-public record UpdateArticleCategoryDto(string Name);
+// DTOs/ArticleCategoryDto.cs
+public class CreateArticleCategoryDto
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+public class UpdateArticleCategoryDto
+{
+    public string Name { get; set; } = string.Empty;
+}

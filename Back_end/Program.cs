@@ -76,7 +76,29 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+// =============================================
+// AUTHORIZATION POLICIES (Permission-based)
+// =============================================
+builder.Services.AddAuthorization(options =>
+{
+    // Mỗi policy map với 1 permission claim được thêm vào JWT lúc login
+    var permissions = new[]
+    {
+        "MANAGE_CONTENT",
+        "MANAGE_ROOMS",
+        "MANAGE_USERS",
+        "MANAGE_BOOKINGS",
+        "MANAGE_INVENTORY",
+        "MANAGE_REPORTS",
+        "MANAGE_SETTINGS",
+    };
+
+    foreach (var permission in permissions)
+    {
+        options.AddPolicy(permission, policy =>
+            policy.RequireClaim("permission", permission));
+    }
+});
 
 // =============================================
 // 3. CLOUDINARY — SINGLETON
@@ -92,6 +114,7 @@ builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 // 4. SERVICES
 // =============================================
 builder.Services.AddSignalR(); // Bổ sung SignalR
+builder.Services.AddHttpContextAccessor(); // ← [MỚI] Để UserManagementService lấy userId admin từ token khi đổi mật khẩu
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ISlugService, SlugService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
@@ -101,12 +124,21 @@ builder.Services.AddScoped<IAttractionService, AttractionService>();
 builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<INotificationService, NotificationService>(); // Đăng ký NotificationService
-
+builder.Services.AddScoped<IAuditLogService, AuditLogService>(); // Đăng ký AuditLogService
+builder.Services.AddHostedService<AuditLogCleanupService>(); // Đăng ký Background Service tự xóa log cũ trong mỗi 24h
+builder.Services.AddHttpContextAccessor(); // ← THÊM — để UserManagementService lấy được userName
 
 // =============================================
 // 5. CONTROLLERS
 // =============================================
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+.AddJsonOptions(options =>
+{
+    // Bỏ qua vòng lặp circular thay vì crash
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.WriteIndented = true;
+});
 builder.Services.AddEndpointsApiExplorer();
 
 // =============================================

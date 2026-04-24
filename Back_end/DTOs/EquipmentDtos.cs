@@ -25,14 +25,6 @@ public record UpdatePriceDto(
     decimal DefaultPriceIfLost
 );
 
-public record BulkCreateRoomDto(
-    int RoomTypeId,
-    int Floor,
-    int StartNumber,   // Số phòng bắt đầu, VD: 101
-    int Count,         // Tạo bao nhiêu phòng
-    int? TemplateRoomId // Clone vật tư từ phòng mẫu nào (optional)
-);
-
 public record UpdateCompensationDto(
     decimal DefaultPriceIfLost
 );
@@ -40,3 +32,4 @@ public record UpdateCompensationDto(
 public record SyncInventoryDto(
     int DamagedQuantity
 );
+

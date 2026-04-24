@@ -16,7 +16,7 @@ public class Attraction
     [Column("name")]
     public string Name { get; set; } = string.Empty;
 
-    [Column("distance_km", TypeName = "decimal(5,2)")]
+    [Column("distance_km")]
     public decimal? DistanceKm { get; set; }
 
     [Column("description")]
@@ -25,24 +25,24 @@ public class Attraction
     [Column("map_embed_link")]
     public string? MapEmbedLink { get; set; }
 
-    // Cho Google Maps Marker
-    [Column("latitude", TypeName = "decimal(18, 10)")]
+    [Column("latitude")]
     public decimal? Latitude { get; set; }
 
-    [Column("longitude", TypeName = "decimal(18, 10)")]
+    [Column("longitude")]
     public decimal? Longitude { get; set; }
 
-    // Ảnh đại diện
+    [Column("address")]
+    public string? Address { get; set; }
+
+    [Column("is_active")]
+    public bool? IsActive { get; set; } = true;
+
     [Column("image_url")]
     public string? ImageUrl { get; set; }
 
-    // Soft delete — ẩn điểm đã xóa (is_active = false)
-    [Column("is_active")]
-    public bool IsActive { get; set; } = true;
-
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
 
     [Column("updated_at")]
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; } = DateTime.UtcNow;
 }

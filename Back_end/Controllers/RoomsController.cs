@@ -1,5 +1,5 @@
 using HotelManagementAPI.DTOs;
-using HotelManagementAPI.Models;
+using HotelManagementAPI.Models;   // ← đảm bảo dùng Room từ đây
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +18,7 @@ public class RoomsController : ControllerBase
     public RoomsController(IRoomService roomService, AppDbContext context)
     {
         _roomService = roomService;
-        _context = context;
+        _context     = context;
     }
 
     [HttpGet]
@@ -64,11 +64,12 @@ public class RoomsController : ControllerBase
         return Ok(new { message = "Đã vô hiệu hóa phòng thành công" });
     }
 
-    // ─── POST /api/Rooms/bulk-create ───
+    // ─── POST /api/Rooms/bulk-create ────────────────────────────────
     [HttpPost("bulk-create")]
     [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> BulkCreate([FromBody] BulkCreateRoomDto dto)
     {
+        // ← [SỬA] RoomType dùng IsDeleted — KHÔNG có IsActive
         var roomTypeExists = await _context.RoomTypes
             .AnyAsync(rt => rt.Id == dto.RoomTypeId && rt.IsActive);
 
@@ -79,12 +80,11 @@ public class RoomsController : ControllerBase
             return BadRequest(new { message = "Số lượng phòng phải từ 1 đến 50" });
 
         var createdRooms = new List<object>();
-        var errors = new List<string>();
+        var errors       = new List<string>();
 
         for (int i = 0; i < dto.Count; i++)
         {
-            // Tạo số phòng: Floor=2, Start=1 → "201", "202"...
-            var roomNumber = $"{dto.Floor}{(dto.StartNumber + i):D2}";
+            var roomNumber = $"{dto.StartNumber + i}";
 
             if (await _context.Rooms.AnyAsync(r => r.RoomNumber == roomNumber))
             {
@@ -92,21 +92,23 @@ public class RoomsController : ControllerBase
                 continue;
             }
 
-            var room = new Room
+            // ← [SỬA] Khởi tạo đúng theo Room model thực:
+            //   Room có: Id, RoomTypeId, RoomNumber, Floor(int?), Status, CreatedAt, IsDeleted
+            //   KHÔNG có: IsActive, UpdatedAt
+            var room = new HotelManagementAPI.Models.Room
             {
                 RoomTypeId = dto.RoomTypeId,
                 RoomNumber = roomNumber,
+                Floor      = dto.Floor,    // ← int? — có trong model
                 Status     = "Available",
-                IsActive   = true,
-                CreatedAt  = DateTime.UtcNow,
-                UpdatedAt  = DateTime.UtcNow
+                // IsDeleted  = false,         // ← bool — có trong model
+                // CreatedAt  = DateTime.UtcNow
             };
 
             _context.Rooms.Add(room);
             await _context.SaveChangesAsync();
 
-            // Clone vật tư từ phòng mẫu (dùng RoomItems — bảng đang có)
-            if (dto.TemplateRoomId.HasValue)
+            if (dto.TemplateRoomId.HasValue && dto.TemplateRoomId.Value > 0)
             {
                 var templateItems = await _context.RoomItems
                     .Where(ri => ri.RoomId == dto.TemplateRoomId.Value)
@@ -116,10 +118,14 @@ public class RoomsController : ControllerBase
                 {
                     _context.RoomItems.Add(new RoomItem
                     {
-                        RoomId      = room.Id,
-                        ItemName    = item.ItemName,
-                        Quantity    = item.Quantity,
-                        PriceIfLost = item.PriceIfLost
+                        RoomId = room.Id,
+                        EquipmentId = item.EquipmentId,
+                        Quantity = item.Quantity,
+                        PriceIfLost = item.PriceIfLost,
+                        Note = item.Note,
+                        ItemType = item.ItemType,
+                        IsActive = true
+
                     });
                 }
                 await _context.SaveChangesAsync();
@@ -129,6 +135,7 @@ public class RoomsController : ControllerBase
             {
                 room.Id,
                 room.RoomNumber,
+                room.Floor,
                 room.Status,
                 clonedFrom = dto.TemplateRoomId
             });

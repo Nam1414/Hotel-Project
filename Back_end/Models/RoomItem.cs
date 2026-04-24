@@ -1,30 +1,33 @@
-using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
-namespace HotelManagementAPI.Models;
-
+using HotelManagementAPI.Models;
 [Table("Room_Items")]
 public class RoomItem
 {
-    [Key]
     [Column("id")]
     public int Id { get; set; }
 
     [Column("room_id")]
-    public int? RoomId { get; set; }
-
-    [Required]
-    [MaxLength(255)]
-    [Column("item_name")]
-    public string ItemName { get; set; } = string.Empty;
+    public int RoomId { get; set; }
 
     [Column("quantity")]
-    public int Quantity { get; set; } = 1;
+    public int Quantity { get; set; }
 
     [Column("price_if_lost")]
-    public decimal PriceIfLost { get; set; } = 0;
+    public decimal? PriceIfLost { get; set; }
 
-    // Navigation
-    [ForeignKey("RoomId")]
+    [Column("note")]
+    public string? Note { get; set; }
+
+    [Column("is_active")]
+    public bool IsActive { get; set; }
+
+    [Column("item_type")]
+    public string? ItemType { get; set; }
+
+    [Column("EquipmentId")]        // ← giữ nguyên viết hoa như trong DB
+    public int? EquipmentId { get; set; }
+
+    // Navigation properties
     public Room? Room { get; set; }
+    public Equipment? Equipment { get; set; }
 }

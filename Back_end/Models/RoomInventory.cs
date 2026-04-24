@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace HotelManagementAPI.Models;
 
-[Table("RoomInventory")]
+[Table("Room_Inventory")]
 public class RoomInventory
 {
     [Column("id")]

@@ -24,7 +24,6 @@ public class UserManagementController : ControllerBase
         return Ok(result);
     }
 
-    // GET /api/UserManagement/filter?phone=...&email=...&status=true/false
     [HttpGet("filter")]
     public async Task<IActionResult> Filter(
         [FromQuery] string? phone,
@@ -72,7 +71,43 @@ public class UserManagementController : ControllerBase
     public async Task<IActionResult> ChangeRole(int id, [FromBody] ChangeRoleDto dto)
     {
         var result = await _userService.ChangeUserRoleAsync(id, dto.RoleId);
-        if (!result) return BadRequest(new { message = "Không thể thay đổi quyền (có thể ID người dùng hoặc ID quyền không đúng)" });
+        if (!result)
+            return BadRequest(new { message = "Không thể thay đổi quyền (ID người dùng hoặc quyền không đúng)" });
         return Ok(new { message = "Đã thay đổi quyền thành công" });
+    }
+
+    // ← [MỚI] Đổi mật khẩu — Admin reset hoặc user tự đổi
+    // POST /api/UserManagement/{id}/change-password
+    [HttpPost("{id}/change-password")]
+    public async Task<IActionResult> ChangePassword(int id, [FromBody] ChangePasswordDto dto)
+    {
+        try
+        {
+            var result = await _userService.ChangePasswordAsync(id, dto);
+            if (!result) return NotFound(new { message = "Người dùng không tồn tại" });
+            return Ok(new { message = "Đổi mật khẩu thành công" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // ← [MỚI] Toggle khóa/mở tài khoản nhanh — không cần truyền body
+    // PATCH /api/UserManagement/{id}/toggle-status
+    [HttpPatch("{id}/toggle-status")]
+    public async Task<IActionResult> ToggleStatus(int id)
+    {
+        var result = await _userService.ToggleStatusAsync(id);
+        if (result == null) return NotFound(new { message = "Người dùng không tồn tại" });
+        return Ok(new
+        {
+            message = result.Status ? "Đã mở khóa tài khoản" : "Đã khóa tài khoản",
+            user    = result
+        });
     }
 }

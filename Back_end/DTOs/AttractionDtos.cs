@@ -10,10 +10,11 @@ public record AttractionDto(
     string? MapEmbedLink,
     decimal? Latitude,
     decimal? Longitude,
+    string? Address,
     string? ImageUrl,
     bool IsActive,
-    DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime? CreatedAt,
+    DateTime? UpdatedAt
 );
 
 public record CreateAttractionDto(
@@ -24,6 +25,7 @@ public record CreateAttractionDto(
     string? MapEmbedLink,
     decimal? Latitude,
     decimal? Longitude,
+    string? Address,
     string? ImageUrl
 );
 
@@ -35,6 +37,7 @@ public record UpdateAttractionDto(
     string? MapEmbedLink,
     decimal? Latitude,
     decimal? Longitude,
+    string? Address,
     string? ImageUrl,
     bool IsActive
 );

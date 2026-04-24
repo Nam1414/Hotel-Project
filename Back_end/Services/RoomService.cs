@@ -5,14 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HotelManagementAPI.Services;
 
-public class RoomService : IRoomService
+public class RoomService(AppDbContext context) : IRoomService
 {
-    private readonly AppDbContext _context;
-
-    public RoomService(AppDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AppDbContext _context = context;
 
     // =============================================
     // 1. ROOM TYPES
@@ -23,7 +18,7 @@ public class RoomService : IRoomService
         return await _context.RoomTypes
             .Include(rt => rt.Images)
             .Include(rt => rt.Amenities)
-            .OrderByDescending(rt => rt.CreatedAt)
+            .OrderBy(rt => rt.Id)
             .Select(rt => MapToDto(rt))
             .ToListAsync();
     }
@@ -42,13 +37,19 @@ public class RoomService : IRoomService
     {
         var rt = new RoomType
         {
-            Name = dto.Name,
+            Name        = dto.Name,
             Description = dto.Description,
-            BasePrice = dto.BasePrice,
-            MaxCapacity = dto.MaxCapacity,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            BasePrice   = dto.BasePrice,
+            CapacityAdults = dto.CapacityAdults,
+            CapacityChildren = dto.CapacityChildren,
+            SizeSqm = dto.SizeSqm,
+            BedType = dto.BedType,
+            ViewType = dto.ViewType,
+            Slug = dto.Slug,
+            Content = dto.Content,
+            IsActive    = true,
+            // CreatedAt   = DateTime.UtcNow,
+            // UpdatedAt   = DateTime.UtcNow
         };
 
         _context.RoomTypes.Add(rt);
@@ -62,12 +63,17 @@ public class RoomService : IRoomService
         var rt = await _context.RoomTypes.FindAsync(id);
         if (rt == null) return null;
 
-        rt.Name = dto.Name;
+        rt.Name        = dto.Name;
         rt.Description = dto.Description;
-        rt.BasePrice = dto.BasePrice;
-        rt.MaxCapacity = dto.MaxCapacity;
-        rt.IsActive = dto.IsActive;
-        rt.UpdatedAt = DateTime.UtcNow;
+        rt.BasePrice   = dto.BasePrice;
+        rt.CapacityAdults = dto.CapacityAdults;
+        rt.CapacityChildren = dto.CapacityChildren;
+        rt.SizeSqm = dto.SizeSqm;
+        rt.BedType = dto.BedType;
+        rt.ViewType = dto.ViewType;
+        rt.Slug = dto.Slug;
+        rt.Content = dto.Content;
+        // rt.UpdatedAt   = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return MapToDto(rt);
@@ -78,9 +84,9 @@ public class RoomService : IRoomService
         var rt = await _context.RoomTypes.FindAsync(id);
         if (rt == null) return false;
 
-        rt.IsActive = false; // Soft delete
-        rt.UpdatedAt = DateTime.UtcNow;
-        
+        rt.IsActive  = false;
+        // rt.UpdatedAt = DateTime.UtcNow;
+
         await _context.SaveChangesAsync();
         return true;
     }
@@ -94,24 +100,43 @@ public class RoomService : IRoomService
         var query = _context.Rooms.Include(r => r.RoomType).AsQueryable();
 
         if (roomTypeId.HasValue)
-        {
             query = query.Where(r => r.RoomTypeId == roomTypeId.Value);
-        }
 
         return await query
             .OrderBy(r => r.RoomNumber)
             .Select(r => new RoomResponseDto(
-                r.Id, r.RoomNumber, r.RoomType!.Name, r.RoomTypeId, r.Status, r.IsActive))
+                r.Id,
+                r.RoomNumber,
+                r.RoomType!.Name,
+                r.RoomTypeId,
+                r.Floor,
+                r.Status,
+                r.CleaningStatus,
+                r.ExtensionNumber,
+                r.IsActive
+            ))
             .ToListAsync();
     }
 
     public async Task<RoomResponseDto?> GetRoomByIdAsync(int id)
     {
-        var room = await _context.Rooms.Include(r => r.RoomType)
+        var room = await _context.Rooms
+            .Include(r => r.RoomType)
             .FirstOrDefaultAsync(r => r.Id == id);
-            
-        return room == null ? null : new RoomResponseDto(
-            room.Id, room.RoomNumber, room.RoomType?.Name ?? "N/A", room.RoomTypeId, room.Status, room.IsActive);
+
+        if (room == null) return null;
+
+        return new RoomResponseDto(
+            room.Id,
+            room.RoomNumber,
+            room.RoomType?.Name ?? "",
+            room.RoomTypeId,
+            room.Floor,
+            room.Status,
+            room.CleaningStatus,
+            room.ExtensionNumber,
+            room.IsActive
+        );
     }
 
     public async Task<RoomResponseDto> CreateRoomAsync(CreateRoomDto dto)
@@ -120,8 +145,11 @@ public class RoomService : IRoomService
         {
             RoomNumber = dto.RoomNumber,
             RoomTypeId = dto.RoomTypeId,
-            Status = dto.Status,
-            IsActive = true
+            Status = dto.Status ?? "Available",
+            Floor = dto.Floor,
+            CleaningStatus = dto.CleaningStatus,
+            IsActive = true // mặc định active khi tạo mới
+            // ← [SỬA] Bỏ IsActive — Room không có field này
         };
 
         _context.Rooms.Add(room);
@@ -137,8 +165,8 @@ public class RoomService : IRoomService
 
         room.RoomNumber = dto.RoomNumber;
         room.RoomTypeId = dto.RoomTypeId;
-        room.Status = dto.Status;
-        room.IsActive = dto.IsActive;
+        room.Status     = dto.Status;
+        // ← [SỬA] Bỏ IsActive — dùng Status để quản lý trạng thái
 
         await _context.SaveChangesAsync();
         return await GetRoomByIdAsync(id);
@@ -149,7 +177,8 @@ public class RoomService : IRoomService
         var room = await _context.Rooms.FindAsync(id);
         if (room == null) return false;
 
-        room.IsActive = false; // Soft delete
+        // ← [SỬA] Soft delete bằng Status thay vì IsActive
+        room.Status = "Inactive";
         await _context.SaveChangesAsync();
         return true;
     }
@@ -160,9 +189,24 @@ public class RoomService : IRoomService
         rt.Name,
         rt.Description,
         rt.BasePrice,
-        rt.MaxCapacity,
+        rt.CapacityAdults,
+        rt.CapacityChildren,
+        rt.SizeSqm,
+        rt.BedType,
+        rt.ViewType,
+        rt.Slug,
+        rt.Content,
         rt.IsActive,
-        rt.Images?.Select(i => new RoomImageResponseDto(i.Id, i.ImageUrl, i.IsPrimary)).ToList(),
-        rt.Amenities?.Select(a => new AmenityDto(a.Id, a.Name, a.IconUrl)).ToList()
+        rt.Images?.Select(i => new RoomImageResponseDto(
+            i.Id,
+            i.PublicId,
+            i.ImageUrl,
+            i.IsPrimary
+        )).ToList(),
+        rt.Amenities?.Select(a => new AmenityDto(
+            a.Id,
+            a.Name,
+            a.IconUrl
+        )).ToList()
     );
 }

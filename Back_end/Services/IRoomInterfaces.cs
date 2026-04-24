@@ -19,11 +19,11 @@ public interface IRoomService
     Task<bool> DeleteRoomAsync(int id);
 }
 
-public interface IInventoryService
-{
-    Task<IEnumerable<InventoryResponseDto>> GetInventoryAsync(DateTime startDate, DateTime endDate, int? roomTypeId = null);
-    Task<InventoryResponseDto?> GetByIdAsync(int id);
-    Task<InventoryResponseDto?> UpdateByIdAsync(int id, InventoryUpdateDto dto);
-    Task<bool> DeleteByIdAsync(int id);
-    Task<InventoryResponseDto?> CloneAsync(int id);
-}
+// public interface IInventoryService
+// {
+//     Task<IEnumerable<InventoryResponseDto>> GetInventoryAsync(DateTime startDate, DateTime endDate, int? roomTypeId = null);
+//     Task<InventoryResponseDto?> GetByIdAsync(int id);
+//     Task<InventoryResponseDto?> UpdateByIdAsync(int id, InventoryUpdateDto dto);
+//     Task<bool> DeleteByIdAsync(int id);
+//     Task<InventoryResponseDto?> CloneAsync(int id);
+// }

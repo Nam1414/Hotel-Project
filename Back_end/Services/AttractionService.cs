@@ -17,14 +17,22 @@ public class AttractionService : IAttractionService
     public async Task<IEnumerable<AttractionDto>> GetAllAsync()
     {
         return await _context.Attractions
-            .OrderByDescending(a => a.CreatedAt)
-            .Select(a => MapToDto(a))
+            .Where(a => a.IsActive == true || a.IsActive == null)
+            .OrderByDescending(a => a.Id)   // ← đổi sort theo Id thay vì CreatedAt
+            .Select(a => new AttractionDto(
+                a.Id, a.Name, a.DistanceKm, a.Description,
+                a.MapEmbedLink, a.Latitude, a.Longitude,
+                a.Address, a.ImageUrl,
+                a.IsActive ?? true,
+                a.CreatedAt,
+                a.UpdatedAt))
             .ToListAsync();
     }
 
     public async Task<AttractionDto?> GetByIdAsync(int id)
     {
-        var attraction = await _context.Attractions.FindAsync(id);
+        var attraction = await _context.Attractions
+            .FirstOrDefaultAsync(a => a.Id == id && (a.IsActive == true || a.IsActive == null));
         return attraction == null ? null : MapToDto(attraction);
     }
 
@@ -38,6 +46,7 @@ public class AttractionService : IAttractionService
             MapEmbedLink = dto.MapEmbedLink,
             Latitude = dto.Latitude,
             Longitude = dto.Longitude,
+            Address = dto.Address,
             ImageUrl = dto.ImageUrl,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -60,6 +69,7 @@ public class AttractionService : IAttractionService
         attraction.MapEmbedLink = dto.MapEmbedLink;
         attraction.Latitude = dto.Latitude;
         attraction.Longitude = dto.Longitude;
+        attraction.Address = dto.Address;
         attraction.ImageUrl = dto.ImageUrl;
         attraction.IsActive = dto.IsActive;
         attraction.UpdatedAt = DateTime.UtcNow;
@@ -73,7 +83,8 @@ public class AttractionService : IAttractionService
         var attraction = await _context.Attractions.FindAsync(id);
         if (attraction == null) return false;
 
-        _context.Attractions.Remove(attraction);
+        attraction.IsActive  = false;
+        attraction.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return true;
     }
@@ -86,8 +97,9 @@ public class AttractionService : IAttractionService
         a.MapEmbedLink,
         a.Latitude,
         a.Longitude,
+        a.Address,
         a.ImageUrl,
-        a.IsActive,
+        a.IsActive ?? true,
         a.CreatedAt,
         a.UpdatedAt
     );

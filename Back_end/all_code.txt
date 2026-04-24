@@ -1,0 +1,3282 @@
+﻿=== Program.cs ===
+using System.Text;
+using CloudinaryDotNet;
+using HotelManagementAPI.Data;
+using HotelManagementAPI.Middleware;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+
+var builder = WebApplication.CreateBuilder(args);
+
+
+// =============================================
+// 1. DATABASE
+// =============================================
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// =============================================
+// 2. JWT AUTHENTICATION
+// =============================================
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["Secret"]
+    ?? throw new InvalidOperationException("JWT Secret khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng!");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(secretKey)),
+        ClockSkew = TimeSpan.Zero
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = ctx =>
+        {
+            if (ctx.Exception is SecurityTokenExpiredException)
+                ctx.Response.Headers.Append("Token-Expired", "true");
+            return Task.CompletedTask;
+        },
+        OnChallenge = async ctx =>
+        {
+            // Táº¯t response máº·c Ä‘á»‹nh cá»§a JWT Bearer
+            ctx.HandleResponse();
+            ctx.Response.StatusCode = 401;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(new { 
+                statusCode = 401, 
+                message = "Báº¡n chÆ°a Ä‘Äƒng nháº­p hoáº·c Token khÃ´ng há»£p lá»‡!" 
+            });
+        },
+        OnForbidden = async ctx =>
+        {
+            ctx.Response.StatusCode = 403;
+            ctx.Response.ContentType = "application/json";
+            await ctx.Response.WriteAsJsonAsync(new { 
+                statusCode = 403, 
+                message = "Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p vÃ o chá»©c nÄƒng nÃ y!" 
+            });
+        }
+    };
+});
+
+// =============================================
+// AUTHORIZATION POLICIES (Permission-based)
+// =============================================
+builder.Services.AddAuthorization(options =>
+{
+    // Má»—i policy map vá»›i 1 permission claim Ä‘Æ°á»£c thÃªm vÃ o JWT lÃºc login
+    var permissions = new[]
+    {
+        "MANAGE_CONTENT",
+        "MANAGE_ROOMS",
+        "MANAGE_USERS",
+        "MANAGE_BOOKINGS",
+        "MANAGE_INVENTORY",
+        "MANAGE_REPORTS",
+        "MANAGE_SETTINGS",
+    };
+
+    foreach (var permission in permissions)
+    {
+        options.AddPolicy(permission, policy =>
+            policy.RequireClaim("permission", permission));
+    }
+});
+
+// =============================================
+// 3. CLOUDINARY â€” SINGLETON
+// =============================================
+var cloudinarySection = builder.Configuration.GetSection("Cloudinary");
+var cloudinaryAccount = new Account(
+    cloudinarySection["CloudName"],
+    cloudinarySection["ApiKey"],
+    cloudinarySection["ApiSecret"]);
+builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
+
+// =============================================
+// 4. SERVICES
+// =============================================
+builder.Services.AddSignalR(); // Bá»• sung SignalR
+builder.Services.AddHttpContextAccessor(); // â† [Má»šI] Äá»ƒ UserManagementService láº¥y userId admin tá»« token khi Ä‘á»•i máº­t kháº©u
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ISlugService, SlugService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+builder.Services.AddScoped<IAttractionService, AttractionService>();
+builder.Services.AddScoped<IAmenityService, AmenityService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<INotificationService, NotificationService>(); // ÄÄƒng kÃ½ NotificationService
+builder.Services.AddScoped<IAuditLogService, AuditLogService>(); // ÄÄƒng kÃ½ AuditLogService
+builder.Services.AddHostedService<AuditLogCleanupService>(); // ÄÄƒng kÃ½ Background Service tá»± xÃ³a log cÅ© trong má»—i 24h
+builder.Services.AddHttpContextAccessor(); // â† THÃŠM â€” Ä‘á»ƒ UserManagementService láº¥y Ä‘Æ°á»£c userName
+
+// =============================================
+// 5. CONTROLLERS
+// =============================================
+builder.Services.AddControllers()
+.AddJsonOptions(options =>
+{
+    // Bá» qua vÃ²ng láº·p circular thay vÃ¬ crash
+        options.JsonSerializerOptions.ReferenceHandler =
+            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.WriteIndented = true;
+});
+builder.Services.AddEndpointsApiExplorer();
+
+// =============================================
+// 6. SWAGGER + JWT BUTTON
+// =============================================
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Hotel Management API",
+        Version = "v1",
+        Description = "ERP System cho KhÃ¡ch Sáº¡n â€” Kant"
+    });
+
+    // ThÃªm nÃºt Authorize ðŸ”’ trÃªn Swagger UI
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "Nháº­p: Bearer {token}",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Reference = new OpenApiReference
+        {
+            Type = ReferenceType.SecurityScheme,
+            Id = "Bearer"
+        }
+    };
+
+    options.AddSecurityDefinition("Bearer", securityScheme);
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { securityScheme, Array.Empty<string>() }
+    });
+});
+
+// =============================================
+// 7. CORS
+// =============================================
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+        policy
+            .SetIsOriginAllowed(_ => true) // Cho phÃ©p SignalR tá»« báº¥t ká»³ origin nÃ o (hoáº·c cáº¥u chá»‰ Ä‘á»‹nh origin cá»¥ thá»ƒ)
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials() // Báº®T BUá»˜C cho SignalR
+            .WithExposedHeaders("Token-Expired"));
+});
+
+// =============================================
+// BUILD APP
+// =============================================
+var app = builder.Build();
+
+// =============================================
+// MIDDLEWARE PIPELINE
+// =============================================
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hotel Management API v1");
+        c.RoutePrefix = string.Empty; // Swagger táº¡i localhost:PORT/
+        c.DisplayRequestDuration();
+        c.EnableDeepLinking();
+    });
+}
+
+app.UseCors("AllowAll");
+// app.UseHttpsRedirection(); // Táº¯t khi dev local trÃ¡nh warning
+
+app.UseRefreshTokenMiddleware();
+
+app.UseAuthentication();
+app.UsePermissionMiddleware();
+app.UseAuthorization();
+
+app.MapControllers();
+app.MapHub<HotelManagementAPI.Hubs.NotificationHub>("/notificationHub"); // Map SignalR Hub
+
+app.Run();
+
+=== Controllers/AmenitiesController.cs ===
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AmenitiesController : ControllerBase
+{
+    private readonly IAmenityService _amenityService;
+
+    public AmenitiesController(IAmenityService amenityService)
+    {
+        _amenityService = amenityService;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _amenityService.GetAllAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _amenityService.GetByIdAsync(id);
+        if (result == null) return NotFound(new { message = "Tiá»‡n nghi khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] CreateAmenityDto dto)
+    {
+        var result = await _amenityService.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateAmenityDto dto)
+    {
+        var result = await _amenityService.UpdateAsync(id, dto);
+        if (result == null) return NotFound(new { message = "Tiá»‡n nghi khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _amenityService.DeleteAsync(id);
+        if (!result) return NotFound(new { message = "Tiá»‡n nghi khÃ´ng tá»“n táº¡i" });
+        return Ok(new { message = "ÄÃ£ xÃ³a tiá»‡n nghi thÃ nh cÃ´ng" });
+    }
+
+    // LINKING
+    [HttpPost("link/{roomTypeId}/{amenityId}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AddToRoomType(int roomTypeId, int amenityId)
+    {
+        var result = await _amenityService.AddToRoomTypeAsync(roomTypeId, amenityId);
+        if (!result) return BadRequest(new { message = "KhÃ´ng thá»ƒ liÃªn káº¿t tiá»‡n nghi (cÃ³ thá»ƒ ID khÃ´ng Ä‘Ãºng)" });
+        return Ok(new { message = "ÄÃ£ liÃªn káº¿t tiá»‡n nghi thÃ nh cÃ´ng" });
+    }
+
+    [HttpDelete("link/{roomTypeId}/{amenityId}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RemoveFromRoomType(int roomTypeId, int amenityId)
+    {
+        var result = await _amenityService.RemoveFromRoomTypeAsync(roomTypeId, amenityId);
+        if (!result) return BadRequest(new { message = "KhÃ´ng thá»ƒ gá»¡ bá» liÃªn káº¿t" });
+        return Ok(new { message = "ÄÃ£ gá»¡ bá» liÃªn káº¿t tiá»‡n nghi thÃ nh cÃ´ng" });
+    }
+}
+
+=== Controllers/ArticleCategoriesController.cs ===
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ArticleCategoriesController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public ArticleCategoriesController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // GET /api/ArticleCategories â† Public
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll()
+    {
+        var categories = await _context.ArticleCategories
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.Name)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.Slug,
+                c.CreatedAt,
+                ArticleCount = c.Articles.Count(a => a.IsActive)
+            })
+            .ToListAsync();
+
+        return Ok(categories);
+    }
+
+    // GET /api/ArticleCategories/{id} â† Public
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var category = await _context.ArticleCategories
+            .Where(c => c.Id == id && c.IsActive)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.Slug,
+                c.CreatedAt,
+                ArticleCount = c.Articles.Count(a => a.IsActive)
+            })
+            .FirstOrDefaultAsync();
+
+        if (category == null)
+            return NotFound(new { message = "Danh má»¥c khÃ´ng tá»“n táº¡i" });
+
+        return Ok(category);
+    }
+
+    // POST /api/ArticleCategories â† Admin
+    [HttpPost]
+    [Authorize(Policy = "MANAGE_CONTENT")]
+    public async Task<IActionResult> Create([FromBody] CreateArticleCategoryDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name))
+            return BadRequest(new { message = "TÃªn danh má»¥c khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng" });
+
+        var slug = GenerateSlug(dto.Name);
+
+        // Kiá»ƒm tra slug trÃ¹ng
+        bool slugExists = await _context.ArticleCategories
+            .AnyAsync(c => c.Slug == slug && c.IsActive);
+        if (slugExists)
+            return BadRequest(new { message = "Danh má»¥c nÃ y Ä‘Ã£ tá»“n táº¡i" });
+
+        var category = new ArticleCategory
+        {
+            Name = dto.Name,
+            Slug = slug,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.ArticleCategories.Add(category);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
+    }
+
+    // PUT /api/ArticleCategories/{id} â† Admin
+    [HttpPut("{id}")]
+    [Authorize(Policy = "MANAGE_CONTENT")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateArticleCategoryDto dto)
+    {
+        var category = await _context.ArticleCategories
+            .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
+
+        if (category == null)
+            return NotFound(new { message = "Danh má»¥c khÃ´ng tá»“n táº¡i" });
+
+        category.Name = dto.Name;
+        category.Slug = GenerateSlug(dto.Name);
+        await _context.SaveChangesAsync();
+
+        return Ok(category);
+    }
+
+    // DELETE /api/ArticleCategories/{id} â† SOFT DELETE
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "MANAGE_CONTENT")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var category = await _context.ArticleCategories
+            .Include(c => c.Articles)
+            .FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
+
+        if (category == null)
+            return NotFound(new { message = "Danh má»¥c khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ bá»‹ xÃ³a" });
+
+        int activeArticles = category.Articles.Count(a => a.IsActive);
+        if (activeArticles > 0)
+            return BadRequest(new { 
+                message = $"Danh má»¥c Ä‘ang cÃ³ {activeArticles} bÃ i viáº¿t, khÃ´ng thá»ƒ xÃ³a" 
+            });
+
+        // SOFT DELETE
+        category.IsActive = false;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "ÄÃ£ vÃ´ hiá»‡u hÃ³a danh má»¥c thÃ nh cÃ´ng" });
+    }
+
+    // Helper
+    private static string GenerateSlug(string name)
+    {
+        return name.ToLower()
+            .Replace("Ä‘", "d").Replace("Ä", "d")
+            .Replace("Ã ", "a").Replace("Ã¡", "a").Replace("Ã£", "a")
+            .Replace("Ã¢", "a").Replace("Äƒ", "a")
+            .Replace("Ã¨", "e").Replace("Ã©", "e").Replace("Ãª", "e")
+            .Replace("Ã¬", "i").Replace("Ã­", "i")
+            .Replace("Ã²", "o").Replace("Ã³", "o").Replace("Ã´", "o").Replace("Æ¡", "o")
+            .Replace("Ã¹", "u").Replace("Ãº", "u").Replace("Æ°", "u")
+            .Replace("Ã½", "y")
+            .Replace(" ", "-")
+            .Trim();
+    }
+}
+
+=== Controllers/ArticlesController.cs ===
+using System.Security.Claims;
+using System.Text.Json;
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Models;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class ArticlesController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly ISlugService _slugService;
+    private readonly ICloudinaryService _cloudinaryService;
+    private readonly IAuditLogService _auditLogService;
+
+    public ArticlesController(
+        AppDbContext context,
+        ISlugService slugService,
+        ICloudinaryService cloudinaryService,
+        IAuditLogService auditLogService)
+    {
+        _context = context;
+        _slugService = slugService;
+        _cloudinaryService = cloudinaryService;
+        _auditLogService = auditLogService;
+    }
+
+    // GET /api/Articles â† Public, cÃ³ filter theo category + phÃ¢n trang
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll([FromQuery] int? categoryId, [FromQuery] int page = 1)
+    {
+        var query = _context.Articles
+            .Where(a => a.IsActive == true);
+
+        if (categoryId.HasValue)
+            query = query.Where(a => a.CategoryId == categoryId.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var articles = await query
+            .OrderByDescending(a => a.PublishedAt)
+            .Skip((page - 1) * 10)
+            .Take(10)
+            .Select(a => new
+            {
+                a.Id,
+                a.Title,
+                a.Slug,
+                a.ThumbnailUrl,
+                a.PublishedAt,
+                Author = a.Author != null ? a.Author.FullName : null,
+                Category = a.Category != null ? a.Category.Name : null
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            data       = articles,
+            page       = page,
+            totalCount = totalCount,
+            totalPages = (int)Math.Ceiling(totalCount / 10.0)
+        });
+    }
+
+    // GET /api/Articles/{slug} â† Public, láº¥y bÃ i viáº¿t theo slug
+    [HttpGet("{slug}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetBySlug(string slug)
+    {
+        var article = await _context.Articles
+            .Where(a => a.Slug == slug && a.IsActive == true)
+            .Select(a => new
+            {
+                a.Id,
+                a.Title,
+                a.Slug,
+                a.Content,
+                a.ThumbnailUrl,
+                a.PublishedAt,
+                a.UpdatedAt,
+                Author   = a.Author != null ? a.Author.FullName : null,
+                Category = a.Category != null
+                    ? new { a.Category.Id, a.Category.Name }
+                    : null
+            })
+            .FirstOrDefaultAsync();
+
+        if (article == null)
+            return NotFound(new { message = "BÃ i viáº¿t khÃ´ng tá»“n táº¡i" });
+
+        return Ok(article);
+    }
+
+    // GET /api/Articles/{id:int} â† Admin/Editor, láº¥y chi tiáº¿t theo ID
+    [HttpGet("{id:int}")]
+    [Authorize(Policy = "MANAGE_CONTENT")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var article = await _context.Articles
+            .Where(a => a.Id == id)
+            .Select(a => new
+            {
+                a.Id,
+                a.Title,
+                a.Slug,
+                a.Content,
+                a.ThumbnailUrl,
+                a.ThumbnailPublicId,
+                a.PublishedAt,
+                a.UpdatedAt,
+                a.IsActive,
+                a.CategoryId,
+                a.AuthorId,
+                Author   = a.Author != null
+                    ? new { a.Author.Id, a.Author.FullName, a.Author.Email }
+                    : null,
+                Category = a.Category != null
+                    ? new { a.Category.Id, a.Category.Name, a.Category.Slug }
+                    : null
+                // â† KHÃ”NG include Category.Articles â†’ ngáº¯t circular
+            })
+            .FirstOrDefaultAsync();
+
+        if (article == null)
+            return NotFound(new { message = "BÃ i viáº¿t khÃ´ng tá»“n táº¡i" });
+
+        return Ok(article);
+    }
+
+    // POST /api/Articles â† Táº¡o bÃ i viáº¿t má»›i
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> Create([FromBody] CreateArticleDto dto)
+    {
+        var authorIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (authorIdClaim == null) return Unauthorized();
+
+        var categoryExists = await _context.ArticleCategories
+            .AnyAsync(c => c.Id == dto.CategoryId && c.IsActive);
+        if (!categoryExists)
+            return BadRequest(new { message = "Danh má»¥c khÃ´ng tá»“n táº¡i" });
+
+        var slug = await _slugService.GenerateUniqueSlugAsync(dto.Title);
+
+        var article = new Article
+        {
+            Title       = dto.Title,
+            Slug        = slug,
+            Content     = dto.Content,
+            CategoryId  = dto.CategoryId,
+            AuthorId    = int.Parse(authorIdClaim),
+            PublishedAt = DateTime.UtcNow,
+            UpdatedAt   = DateTime.UtcNow,
+            IsActive    = true
+        };
+
+        _context.Articles.Add(article);
+        await _context.SaveChangesAsync();
+
+        await _auditLogService.LogAsync(
+            tableName: "Articles",
+            action:    "CREATE",
+            recordId:  article.Id,
+            oldValues: null,
+            newValues: JsonSerializer.Serialize(new
+            {
+                article.Id,
+                article.Title,
+                article.CategoryId,
+                article.AuthorId
+            }),
+            userId:   int.Parse(authorIdClaim),
+            userName: User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown"
+        );
+
+        return CreatedAtAction(nameof(GetById), new { id = article.Id }, new
+        {
+            article.Id,
+            article.Title,
+            article.Slug
+        });
+    }
+
+    // PUT /api/Articles/{id} â† Cáº­p nháº­t bÃ i viáº¿t
+    [HttpPut("{id}")]
+    [Authorize]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateArticleDto dto)
+    {
+        var article = await _context.Articles
+            .FirstOrDefaultAsync(a => a.Id == id && a.IsActive == true);
+
+        if (article == null)
+            return NotFound(new { message = "BÃ i viáº¿t khÃ´ng tá»“n táº¡i" });
+
+        var oldValues = JsonSerializer.Serialize(new
+        {
+            article.Title,
+            article.Content,
+            article.CategoryId
+        });
+
+        if (article.Title != dto.Title)
+        {
+            article.Slug  = await _slugService.GenerateUniqueSlugAsync(dto.Title, id);
+            article.Title = dto.Title;
+        }
+
+        article.Content    = dto.Content;
+        article.CategoryId = dto.CategoryId;
+        article.UpdatedAt  = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        await _auditLogService.LogAsync(
+            tableName: "Articles",
+            action:    "UPDATE",
+            recordId:  id,
+            oldValues: oldValues,
+            newValues: JsonSerializer.Serialize(new
+            {
+                article.Title,
+                article.Content,
+                article.CategoryId
+            }),
+            userId:   userId,
+            userName: User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown"
+        );
+
+        // â† Tráº£ vá» DTO thay vÃ¬ raw entity trÃ¡nh circular
+        return Ok(new
+        {
+            article.Id,
+            article.Title,
+            article.Slug,
+            article.Content,
+            article.CategoryId,
+            article.UpdatedAt,
+            article.IsActive
+        });
+    }
+
+    // DELETE /api/Articles/{id} â† Soft delete
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var article = await _context.Articles
+            .FirstOrDefaultAsync(a => a.Id == id && a.IsActive == true);
+
+        if (article == null)
+            return NotFound(new { message = "BÃ i viáº¿t khÃ´ng tá»“n táº¡i" });
+
+        var deletedInfo = JsonSerializer.Serialize(new
+        {
+            article.Id,
+            article.Title,
+            article.CategoryId,
+            article.AuthorId
+        });
+
+        article.IsActive  = false;
+        article.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        await _auditLogService.LogAsync(
+            tableName: "Articles",
+            action:    "DELETE",
+            recordId:  article.Id,
+            oldValues: deletedInfo,
+            newValues: null,
+            userId:   int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0"),
+            userName: User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown"
+        );
+
+        return Ok(new { message = "ÄÃ£ vÃ´ hiá»‡u hÃ³a bÃ i viáº¿t" });
+    }
+
+    // POST /api/Articles/{id}/thumbnail â† Upload áº£nh bÃ¬a
+    [HttpPost("{id}/thumbnail")]
+    [Authorize]
+    public async Task<IActionResult> UploadThumbnail(int id, IFormFile file)
+    {
+        var article = await _context.Articles
+            .FirstOrDefaultAsync(a => a.Id == id && a.IsActive == true);
+
+        if (article == null)
+            return NotFound(new { message = "BÃ i viáº¿t khÃ´ng tá»“n táº¡i" });
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { message = "File khÃ´ng há»£p lá»‡" });
+
+        if (!string.IsNullOrEmpty(article.ThumbnailPublicId))
+            await _cloudinaryService.DeleteImageAsync(article.ThumbnailPublicId);
+
+        var (url, publicId) = await _cloudinaryService.UploadImageAsync(file, "HotelManagement/Articles");
+
+        article.ThumbnailUrl      = url;
+        article.ThumbnailPublicId = publicId;
+        article.UpdatedAt         = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message      = "Upload áº£nh bÃ¬a thÃ nh cÃ´ng",
+            thumbnailUrl = article.ThumbnailUrl
+        });
+    }
+
+    // PATCH /api/Articles/{id}/toggle-status â† Báº­t/táº¯t hiá»ƒn thá»‹
+    [HttpPatch("{id}/toggle-status")]
+    [Authorize(Policy = "MANAGE_CONTENT")]
+    public async Task<IActionResult> ToggleStatus(int id)
+    {
+        var article = await _context.Articles.FindAsync(id);
+        if (article == null)
+            return NotFound(new { message = "BÃ i viáº¿t khÃ´ng tá»“n táº¡i" });
+
+        article.IsActive  = !article.IsActive;
+        article.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message  = article.IsActive ? "ÄÃ£ hiá»‡n bÃ i viáº¿t" : "ÄÃ£ áº©n bÃ i viáº¿t",
+            isActive = article.IsActive
+        });
+    }
+}
+
+=== Controllers/AttractionsController.cs ===
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AttractionsController : ControllerBase
+{
+    private readonly IAttractionService _attractionService;
+
+    public AttractionsController(IAttractionService attractionService)
+    {
+        _attractionService = attractionService;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _attractionService.GetAllAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _attractionService.GetByIdAsync(id);
+        if (result == null) return NotFound(new { message = "Äiá»ƒm tham quan khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] CreateAttractionDto dto)
+    {
+        var result = await _attractionService.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateAttractionDto dto)
+    {
+        var result = await _attractionService.UpdateAsync(id, dto);
+        if (result == null) return NotFound(new { message = "Äiá»ƒm tham quan khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _attractionService.DeleteAsync(id);
+        if (!result) return NotFound(new { message = "Äiá»ƒm tham quan khÃ´ng tá»“n táº¡i" });
+        return Ok(new { message = "ÄÃ£ xÃ³a Ä‘iá»ƒm tham quan thÃ nh cÃ´ng" });
+    }
+}
+
+=== Controllers/AuditLogsController.cs ===
+using HotelManagementAPI.Data;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "Admin")]  // Chá»‰ Admin má»›i xem Ä‘Æ°á»£c
+public class AuditLogsController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public AuditLogsController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // â”€â”€â”€ GET /api/AuditLogs â”€â”€â”€ Xem danh sÃ¡ch log
+    // Filter theo báº£ng, hÃ nh Ä‘á»™ng, user, ngÃ y
+    [HttpGet]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? tableName,
+        [FromQuery] string? action,
+        [FromQuery] int? userId,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var query = _context.AuditLogs.AsQueryable();
+
+        if (!string.IsNullOrEmpty(tableName))
+            query = query.Where(l => l.TableName == tableName);
+
+        if (!string.IsNullOrEmpty(action))
+            query = query.Where(l => l.Action == action);
+
+        if (userId.HasValue)
+            query = query.Where(l => l.UserId == userId);
+
+        if (from.HasValue)
+            query = query.Where(l => l.CreatedAt >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(l => l.CreatedAt <= to.Value);
+
+        var total = await query.CountAsync();
+        var logs  = await query
+            .OrderByDescending(l => l.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(new { total, page, data = logs });
+    }
+
+    // â”€â”€â”€ GET /api/AuditLogs/{id} â”€â”€â”€ Xem chi tiáº¿t 1 log
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var log = await _context.AuditLogs.FindAsync(id);
+        if (log == null) return NotFound();
+        return Ok(log);
+    }
+
+    // GET /api/AuditLogs/stats â€” Thá»‘ng kÃª nhanh cho demo
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var today = DateTime.UtcNow.Date;
+
+        var stats = new
+        {
+            totalLogs       = await _context.AuditLogs.CountAsync(),
+            todayLogs       = await _context.AuditLogs
+                                .CountAsync(l => l.CreatedAt >= today),
+            byAction        = await _context.AuditLogs
+                                .GroupBy(l => l.Action)
+                                .Select(g => new { action = g.Key, count = g.Count() })
+                                .ToListAsync(),
+            byTable         = await _context.AuditLogs
+                                .GroupBy(l => l.TableName)
+                                .Select(g => new { table = g.Key, count = g.Count() })
+                                .OrderByDescending(x => x.count)
+                                .Take(10)
+                                .ToListAsync(),
+            oldestLog       = await _context.AuditLogs
+                                .OrderBy(l => l.CreatedAt)
+                                .Select(l => l.CreatedAt)
+                                .FirstOrDefaultAsync(),
+            retentionPolicy = "90 ngÃ y (tá»‘i thiá»ƒu 30 ngÃ y)"
+        };
+
+        return Ok(stats);
+    }
+
+    // âŒ KHÃ”NG CÃ“ DELETE endpoint â€” Audit log khÃ´ng Ä‘Æ°á»£c xÃ³a thá»§ cÃ´ng
+}
+
+=== Controllers/AuthController.cs ===
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly ITokenService _tokenService;
+    private readonly IConfiguration _config;
+
+    public AuthController(AppDbContext context, ITokenService tokenService, IConfiguration config)
+    {
+        _context = context;
+        _tokenService = tokenService;
+        _config = config;
+    }
+
+    // POST /api/Auth/login
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    {
+        // Query Ä‘Æ¡n giáº£n trÆ°á»›c â€” khÃ´ng Include phá»©c táº¡p
+        var user = await _context.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+        if (user == null)
+            return Unauthorized(new { message = "Email hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng" });
+
+        if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            return Unauthorized(new { message = "Email hoáº·c máº­t kháº©u khÃ´ng Ä‘Ãºng" });
+
+        if (!user.Status)
+            return Unauthorized(new { message = "TÃ i khoáº£n Ä‘Ã£ bá»‹ khÃ³a" });
+
+        // Query permissions riÃªng â€” trÃ¡nh null chain
+        var permissions = await _context.RolePermissions
+            .Where(rp => rp.RoleId == user.RoleId)
+            .Include(rp => rp.Permission)
+            .Select(rp => rp.Permission!.Name)
+            .ToListAsync();
+
+        var accessToken = _tokenService.GenerateAccessToken(user, permissions);
+        var refreshToken = _tokenService.GenerateRefreshToken();
+
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+        await _context.SaveChangesAsync();
+
+        SetRefreshTokenCookie(refreshToken);
+
+        return Ok(new
+        {
+            accessToken,
+            fullName = user.FullName,
+            email = user.Email,
+            role = user.Role?.Name ?? "",
+            permissions
+        });
+    }
+
+    // âš ï¸ CHá»ˆ DÃ™NG Äá»‚ Láº¤Y HASH â€” XÃ“A SAU KHI DÃ™NG
+    [HttpGet("generate-hash")]
+    [AllowAnonymous]
+    public IActionResult GenerateHash([FromQuery] string password)
+    {
+        var hash = BCrypt.Net.BCrypt.HashPassword(password);
+        return Ok(new { password, hash });
+    }
+
+
+    // POST /api/Auth/refresh-token
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto dto)
+    {
+        // Láº¥y refresh token tá»« cookie
+        var refreshToken = Request.Cookies["refreshToken"];
+        
+        if (string.IsNullOrEmpty(refreshToken))
+            return Unauthorized(new { message = "KhÃ´ng tÃ¬m tháº¥y Refresh token trong cookie" });
+
+        // Giáº£i mÃ£ access token cÅ© (Ä‘Ã£ expired)
+        var principal = _tokenService.GetPrincipalFromExpiredToken(dto.AccessToken);
+        if (principal == null)
+            return BadRequest(new { message = "Access token khÃ´ng há»£p lá»‡" });
+
+        var userIdClaim = principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null)
+            return BadRequest(new { message = "Token khÃ´ng cÃ³ UserId" });
+
+        var user = await _context.Users
+            .Include(u => u.Role)
+                .ThenInclude(r => r!.RolePermissions)
+                    .ThenInclude(rp => rp.Permission)
+            .FirstOrDefaultAsync(u => u.Id == int.Parse(userIdClaim.Value));
+
+        if (user == null || 
+            user.RefreshToken != refreshToken ||
+            user.RefreshTokenExpiry < DateTime.UtcNow)
+        {
+            return Unauthorized(new { message = "Refresh token khÃ´ng há»£p lá»‡ hoáº·c Ä‘Ã£ háº¿t háº¡n" });
+        }
+
+        var permissions = user.Role?.RolePermissions
+            .Select(rp => rp.Permission!.Name)
+            .ToList() ?? new List<string>();
+
+        // Cáº¥p token má»›i
+        var newAccessToken = _tokenService.GenerateAccessToken(user, permissions);
+        var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+        user.RefreshToken = newRefreshToken;
+        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+        await _context.SaveChangesAsync();
+
+        SetRefreshTokenCookie(newRefreshToken);
+
+        return Ok(new RefreshTokenDto(newAccessToken));
+    }
+
+    // POST /api/Auth/logout  
+    [HttpPost("logout")]
+    [Microsoft.AspNetCore.Authorization.Authorize]
+    public async Task<IActionResult> Logout()
+    {
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim != null)
+        {
+            var user = await _context.Users.FindAsync(int.Parse(userIdClaim.Value));
+            if (user != null)
+            {
+                user.RefreshToken = null;
+                user.RefreshTokenExpiry = null;
+                await _context.SaveChangesAsync();
+
+                Response.Cookies.Delete("refreshToken");
+            }
+        }
+        return Ok(new { message = "ÄÄƒng xuáº¥t thÃ nh cÃ´ng" });
+    }
+
+    private void SetRefreshTokenCookie(string refreshToken)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps, // Tá»± Ä‘á»™ng báº­t Secure náº¿u dÃ¹ng HTTPS
+            SameSite = SameSiteMode.Lax, // Lax sáº½ dá»… dÃ¹ng hÆ¡n cho FE local
+            Expires = DateTime.UtcNow.AddDays(7)
+        };
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+    }
+}
+
+=== Controllers/BookingController.cs ===
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Models;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class BookingController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly IAuditLogService _auditLogService;
+    private readonly INotificationService _notificationService;
+
+    public BookingController(
+        AppDbContext context,
+        IAuditLogService auditLogService,
+        INotificationService notificationService)
+    {
+        _context              = context;
+        _auditLogService      = auditLogService;
+        _notificationService  = notificationService;
+    }
+
+    // â”€â”€â”€ GET /api/Booking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        var query = _context.Bookings.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status))
+            query = query.Where(b => b.Status == status);
+
+        var total = await query.CountAsync();
+
+        // â† [Sá»¬A] KhÃ´ng dÃ¹ng Include â€” query thá»§ cÃ´ng trÃ¡nh nullable mismatch
+        var bookings = await query
+            .OrderByDescending(b => b.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(b => new
+            {
+                b.Id,
+                b.BookingCode,
+                b.GuestName,
+                b.GuestPhone,
+                b.GuestEmail,
+                b.Status,
+                b.UserId,
+                b.VoucherId
+            })
+            .ToListAsync();
+
+        return Ok(new { data = bookings, total, page, pageSize });
+    }
+
+    // â”€â”€â”€ GET /api/Booking/{id} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    [HttpGet("{id}")]
+    [Authorize]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var booking = await _context.Bookings
+            .Include(b => b.User)
+            .Include(b => b.BookingDetails)
+            .Include(b => b.Invoice)
+            .FirstOrDefaultAsync(b => b.Id == id);
+
+        if (booking == null)
+            return NotFound(new { message = "Booking khÃ´ng tá»“n táº¡i" });
+
+        // â† [Sá»¬A] Tráº£ anonymous object â€” trÃ¡nh circular reference
+        return Ok(new
+        {
+            booking.Id,
+            booking.BookingCode,
+            booking.GuestName,
+            booking.GuestPhone,
+            booking.GuestEmail,
+            booking.Status,
+            // booking.CreatedAt,
+            booking.UserId,
+            booking.VoucherId,
+            BookingDetails = booking.BookingDetails.Select(bd => new
+            {
+                bd.Id,
+                bd.RoomId,
+                bd.RoomTypeId,
+                bd.CheckInDate,
+                bd.CheckOutDate,
+                bd.PricePerNight
+            }),
+            Invoice = booking.Invoice == null ? null : new
+            {
+                booking.Invoice.Id,
+                booking.Invoice.TotalRoomAmount,
+                booking.Invoice.TotalServiceAmount,
+                booking.Invoice.DiscountAmount,
+                booking.Invoice.TaxAmount,
+                booking.Invoice.FinalTotal,
+                booking.Invoice.Status
+            }
+        });
+    }
+
+    // â”€â”€â”€ POST /api/Booking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> Create([FromBody] CreateBookingDto dto)
+    {
+        foreach (var detail in dto.Details)
+        {
+            var room = await _context.Rooms.FindAsync(detail.RoomId);
+            if (room == null)
+                return BadRequest(new { message = $"PhÃ²ng ID={detail.RoomId} khÃ´ng tá»“n táº¡i" });
+
+            if (!await IsRoomAvailable(detail.RoomId, detail.CheckInDate, detail.CheckOutDate))
+                return BadRequest(new
+                {
+                    message = $"PhÃ²ng {room.RoomNumber} Ä‘Ã£ Ä‘Æ°á»£c Ä‘áº·t trong khoáº£ng " +
+                              $"{detail.CheckInDate:dd/MM/yyyy} â€“ {detail.CheckOutDate:dd/MM/yyyy}"
+                });
+        }
+
+        var bookingCode = $"BK{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(100, 999)}";
+
+        var booking = new Booking
+        {
+            UserId      = dto.UserId,
+            GuestName   = dto.GuestName,
+            GuestPhone  = dto.GuestPhone,
+            GuestEmail  = dto.GuestEmail,
+            BookingCode = bookingCode,
+            VoucherId   = dto.VoucherId,
+            Status      = "Pending",
+            // CreatedAt   = DateTime.UtcNow
+        };
+
+        _context.Bookings.Add(booking);
+        await _context.SaveChangesAsync();
+
+        decimal totalRoomAmount = 0m;
+
+        foreach (var detail in dto.Details)
+        {
+            var roomType = await _context.RoomTypes
+                .FirstOrDefaultAsync(rt => _context.Rooms
+                    .Any(r => r.Id == detail.RoomId && r.RoomTypeId == rt.Id));
+
+            var nights = (detail.CheckOutDate - detail.CheckInDate).Days;
+
+            // â† [Sá»¬A] BasePrice lÃ  decimal? â€” Ã©p (decimal) tÆ°á»ng minh trÃ¡nh nháº§m Dictionary
+            decimal pricePerNight = roomType != null ? roomType.BasePrice : 0m;
+
+            totalRoomAmount += pricePerNight * nights;
+
+            _context.BookingDetails.Add(new BookingDetail
+            {
+                BookingId     = booking.Id,
+                RoomId        = detail.RoomId,
+                RoomTypeId    = roomType?.Id,
+                CheckInDate   = detail.CheckInDate,
+                CheckOutDate  = detail.CheckOutDate,
+                PricePerNight = pricePerNight
+            });
+        }
+
+        await _context.SaveChangesAsync();
+
+        decimal discountAmount = 0m;
+        if (dto.VoucherId.HasValue)
+        {
+            var voucher = await _context.Vouchers.FindAsync(dto.VoucherId.Value);
+
+            if (voucher != null)
+            {
+                // â† [Sá»¬A] Voucher thá»±c dÃ¹ng ValidFrom/ValidTo, khÃ´ng cÃ³ IsActive/ExpiryDate
+                bool isValid =
+                    (voucher.ValidFrom == null || voucher.ValidFrom <= DateTime.UtcNow) &&
+                    (voucher.ValidTo   == null || voucher.ValidTo   >= DateTime.UtcNow);
+
+                // â† [Sá»¬A] MinBookingValue lÃ  decimal? â†’ dÃ¹ng ?? 0m an toÃ n
+                bool meetsMinimum = totalRoomAmount >= (voucher.MinBookingValue ?? 0m);
+
+                if (isValid && meetsMinimum)
+                {
+                    // â† [Sá»¬A] DiscountValue lÃ  decimal non-nullable â†’ dÃ¹ng trá»±c tiáº¿p
+                    discountAmount = voucher.DiscountType == "PERCENT"
+                        ? totalRoomAmount * voucher.DiscountValue / 100m
+                        : voucher.DiscountValue;
+                }
+            }
+}
+
+        var taxAmount  = (totalRoomAmount - discountAmount) * 0.1m;
+        var finalTotal = totalRoomAmount - discountAmount + taxAmount;
+
+        _context.Invoices.Add(new Invoice
+        {
+            BookingId          = booking.Id,
+            TotalRoomAmount    = totalRoomAmount,
+            TotalServiceAmount = 0m,
+            DiscountAmount     = discountAmount,
+            TaxAmount          = taxAmount,
+            FinalTotal         = finalTotal,
+            Status             = "Unpaid"
+        });
+
+        await _context.SaveChangesAsync();
+
+        await _auditLogService.LogAsync(
+            dto.GuestName ?? "Guest",
+            "CREATE_BOOKING",
+            booking.Id,
+            "Bookings",
+            null,
+            booking.Id,
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                booking.BookingCode,
+                booking.Status,
+                totalRoomAmount,
+                finalTotal
+            }),
+            $"Táº¡o booking má»›i: {booking.BookingCode}"
+        );
+
+        if (dto.UserId.HasValue)
+        {
+            await _notificationService.SendNotificationAsync(
+                dto.UserId.Value,
+                $"Äáº·t phÃ²ng {bookingCode} thÃ nh cÃ´ng! Tá»•ng tiá»n: {finalTotal:N0} VNÄ",
+                "Booking"
+            );
+        }
+
+        return CreatedAtAction(nameof(GetById), new { id = booking.Id }, new
+        {
+            booking.Id,
+            booking.BookingCode,
+            booking.Status,
+            totalRoomAmount,
+            discountAmount,
+            taxAmount,
+            finalTotal
+        });
+    }
+
+    // â”€â”€â”€ PATCH /api/Booking/{id}/status â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    [HttpPatch("{id}/status")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateBookingStatusDto dto)
+    {
+        var booking = await _context.Bookings
+            .Include(b => b.User)
+            .FirstOrDefaultAsync(b => b.Id == id);
+
+        if (booking == null)
+            return NotFound(new { message = "Booking khÃ´ng tá»“n táº¡i" });
+
+        var validStatuses = new[] { "Pending", "Confirmed", "CheckedIn", "CheckedOut", "Cancelled" };
+        if (!validStatuses.Contains(dto.Status))
+            return BadRequest(new
+            {
+                message = $"Tráº¡ng thÃ¡i khÃ´ng há»£p lá»‡. Cho phÃ©p: {string.Join(", ", validStatuses)}"
+            });
+
+        var oldStatus  = booking.Status;
+        booking.Status = dto.Status;
+        await _context.SaveChangesAsync();
+
+        await _auditLogService.LogAsync(
+            "Admin",
+            "UPDATE_BOOKING_STATUS",
+            id,
+            "Bookings",
+            System.Text.Json.JsonSerializer.Serialize(new { Status = oldStatus }),
+            id,
+            System.Text.Json.JsonSerializer.Serialize(new { dto.Status }),
+            $"Äá»•i status booking ID={id}: {oldStatus} â†’ {dto.Status}"
+        );
+
+        if (booking.UserId.HasValue)
+        {
+            await _notificationService.SendNotificationAsync(
+                booking.UserId.Value,
+                $"Booking {booking.BookingCode} Ä‘Ã£ Ä‘Æ°á»£c cáº­p nháº­t: {oldStatus} â†’ {dto.Status}",
+                "Booking"
+            );
+        }
+
+        return Ok(new { message = "Cáº­p nháº­t tráº¡ng thÃ¡i thÃ nh cÃ´ng", booking.BookingCode, booking.Status });
+    }
+
+    // â”€â”€â”€ DELETE /api/Booking/{id} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    [HttpDelete("{id}")]
+    [Authorize]
+    public async Task<IActionResult> Cancel(int id)
+    {
+        var booking = await _context.Bookings.FindAsync(id);
+        if (booking == null)
+            return NotFound(new { message = "Booking khÃ´ng tá»“n táº¡i" });
+
+        if (booking.Status == "CheckedIn" || booking.Status == "CheckedOut")
+            return BadRequest(new { message = "KhÃ´ng thá»ƒ há»§y booking Ä‘Ã£ check-in hoáº·c check-out" });
+
+        booking.Status = "Cancelled";
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "ÄÃ£ há»§y booking thÃ nh cÃ´ng", booking.BookingCode });
+    }
+
+    // â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    private async Task<bool> IsRoomAvailable(int roomId, DateTime checkIn, DateTime checkOut)
+    {
+        return !await _context.BookingDetails
+            .Include(bd => bd.Booking)
+            .AnyAsync(bd =>
+                bd.RoomId == roomId &&
+                bd.Booking!.Status != "Cancelled" &&
+                bd.CheckInDate < checkOut &&
+                bd.CheckOutDate > checkIn
+            );
+    }
+}
+
+=== Controllers/DashboardController.cs ===
+using HotelManagementAPI.Data;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "Admin,Manager")]
+public class DashboardController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public DashboardController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // GET /api/Dashboard/overview
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    [HttpGet("overview")]
+    public async Task<IActionResult> GetOverview()
+    {
+        var today      = DateTime.UtcNow.Date;
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+
+        // Doanh thu hÃ´m nay â€” dÃ¹ng Invoice.FinalTotal, lá»c theo CheckInDate
+        var revenueToday = await _context.Invoices
+            .Where(i => i.Booking!.Status == "Confirmed"
+                     && i.Booking.BookingDetails.Any(bd => bd.CheckInDate.Date == today))
+            .SumAsync(i => (decimal?)i.FinalTotal) ?? 0;
+
+        // Doanh thu thÃ¡ng nÃ y
+        var revenueThisMonth = await _context.Invoices
+            .Where(i => i.Booking!.Status == "Confirmed"
+                     && i.Booking.BookingDetails.Any(bd => bd.CheckInDate >= monthStart))
+            .SumAsync(i => (decimal?)i.FinalTotal) ?? 0;
+
+        // Tá»•ng booking thÃ¡ng nÃ y â€” lá»c theo CheckInDate cá»§a BookingDetails
+        var bookingsThisMonth = await _context.Bookings
+            .Where(b => b.BookingDetails.Any(bd => bd.CheckInDate >= monthStart))
+            .CountAsync();
+
+        // Booking Ä‘ang chá» xÃ¡c nháº­n
+        var pendingBookings = await _context.Bookings
+            .Where(b => b.Status == "Pending")
+            .CountAsync();
+
+        // Tá»•ng sá»‘ phÃ²ng / Ä‘ang cÃ³ khÃ¡ch (Rooms ko cÃ³ IsActive)
+        var totalRooms    = await _context.Rooms.CountAsync();
+        var occupiedRooms = await _context.Rooms
+            .CountAsync(r => r.Status == "Occupied");
+
+        var occupancyRate = totalRooms > 0
+            ? Math.Round((double)occupiedRooms / totalRooms * 100, 1)
+            : 0;
+
+        return Ok(new
+        {
+            revenueToday,
+            revenueThisMonth,
+            bookingsThisMonth,
+            pendingBookings,
+            totalRooms,
+            occupiedRooms,
+            occupancyRate
+        });
+    }
+
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // GET /api/Dashboard/revenue-chart?year=2026
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    [HttpGet("revenue-chart")]
+    public async Task<IActionResult> GetRevenueChart(
+        [FromQuery] int year = 0)
+    {
+        if (year == 0) year = DateTime.UtcNow.Year;
+
+        // Láº¥y invoice + thÃ¡ng check-in Ä‘áº§u tiÃªn cá»§a má»—i booking
+        var raw = await _context.Invoices
+            .Where(i => i.Booking!.Status == "Confirmed"
+                     && i.Booking.BookingDetails.Any(bd => bd.CheckInDate.Year == year))
+            .Select(i => new
+            {
+                Month   = i.Booking!.BookingDetails.Min(bd => bd.CheckInDate).Month,
+                Revenue = i.FinalTotal
+            })
+            .ToListAsync();
+
+        var grouped = raw
+            .GroupBy(x => x.Month)
+            .Select(g => new
+            {
+                Month   = g.Key,
+                Revenue = g.Sum(x => x.Revenue),
+                Count   = g.Count()
+            })
+            .ToList();
+
+        var result = Enumerable.Range(1, 12).Select(m => new
+        {
+            Month   = m,
+            Revenue = grouped.FirstOrDefault(d => d.Month == m)?.Revenue ?? 0,
+            Count   = grouped.FirstOrDefault(d => d.Month == m)?.Count   ?? 0
+        });
+
+        return Ok(new { year, data = result });
+    }
+
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // GET /api/Dashboard/booking-status
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    [HttpGet("booking-status")]
+    public async Task<IActionResult> GetBookingStatus()
+    {
+        var data = await _context.Bookings
+            .GroupBy(b => b.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        return Ok(data);
+    }
+
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // GET /api/Dashboard/top-rooms?top=5
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    [HttpGet("top-rooms")]
+    public async Task<IActionResult> GetTopRooms(
+        [FromQuery] int top = 5)
+    {
+        // Room náº±m trong BookingDetails, khÃ´ng pháº£i trá»±c tiáº¿p trÃªn Booking
+        var data = await _context.BookingDetails
+            .Where(bd => bd.Booking!.Status == "Confirmed" && bd.Room != null)
+            .GroupBy(bd => new { bd.RoomId, bd.Room!.RoomNumber })
+            .Select(g => new
+            {
+                RoomId     = g.Key.RoomId,
+                RoomNumber = g.Key.RoomNumber,
+                BookCount  = g.Count(),
+                // Doanh thu Æ°á»›c tÃ­nh = giÃ¡/Ä‘Ãªm Ã— sá»‘ Ä‘Ãªm
+                Revenue    = g.Sum(bd =>
+                    bd.PricePerNight *
+                    EF.Functions.DateDiffDay(bd.CheckInDate, bd.CheckOutDate))
+            })
+            .OrderByDescending(x => x.BookCount)
+            .Take(top)
+            .ToListAsync();
+
+        return Ok(data);
+    }
+
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // GET /api/Dashboard/recent-bookings?limit=10
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    [HttpGet("recent-bookings")]
+    public async Task<IActionResult> GetRecentBookings(
+        [FromQuery] int limit = 10)
+    {
+        var data = await _context.Bookings
+            .Include(b => b.User)
+            .Include(b => b.BookingDetails).ThenInclude(bd => bd.Room)
+            .Include(b => b.Invoice)
+            .OrderByDescending(b => b.Id)   // Bookings khÃ´ng cÃ³ CreatedAt â†’ dÃ¹ng Id
+            .Take(limit)
+            .Select(b => new
+            {
+                b.Id,
+                GuestName  = b.User != null ? b.User.FullName : b.GuestName,
+                RoomNumber = b.BookingDetails
+                               .Where(bd => bd.Room != null)
+                               .Select(bd => bd.Room!.RoomNumber)
+                               .FirstOrDefault() ?? "N/A",
+                CheckIn    = b.BookingDetails.Min(bd => (DateTime?)bd.CheckInDate),
+                CheckOut   = b.BookingDetails.Max(bd => (DateTime?)bd.CheckOutDate),
+                TotalPrice = b.Invoice != null ? b.Invoice.FinalTotal : 0,
+                b.Status
+            })
+            .ToListAsync();
+
+        return Ok(data);
+    }
+}
+
+=== Controllers/EquipmentsController.cs ===
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Models;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class EquipmentsController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
+    private readonly IAuditLogService _auditLogService;
+    public EquipmentsController(
+        AppDbContext context,
+        INotificationService notificationService,
+        IAuditLogService auditLogService)
+    {
+        _context = context;
+        _notificationService = notificationService;
+        _auditLogService = auditLogService;
+    }
+
+    // â”€â”€â”€ GET /api/Equipments â”€â”€â”€ Danh sÃ¡ch váº­t tÆ°
+    // VÃ­ dá»¥: GET /api/Equipments?search=TV&includeInactive=true "XEM Váº¬T TÆ¯ áº¨N"
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? search,
+        [FromQuery] bool includeInactive = false)   // â† thÃªm param nÃ y
+    {
+        var query = _context.Equipments.AsQueryable();
+
+        // Filter active/inactive
+        if (!includeInactive)
+            query = query.Where(e => e.IsActive);
+
+        // TÃ¬m kiáº¿m theo tÃªn
+        if (!string.IsNullOrEmpty(search))
+            query = query.Where(e => e.Name.Contains(search));
+
+        var result = await query
+            .OrderBy(e => e.Id)
+            .Select(e => new
+            {
+                e.Id,
+                e.ItemCode,
+                e.Name,
+                e.Category,
+                e.Unit,
+                e.TotalQuantity,
+                e.InUseQuantity,
+                e.DamagedQuantity,
+                e.LiquidatedQuantity,
+                e.InStockQuantity,
+                e.BasePrice,
+                e.DefaultPriceIfLost,
+                e.Supplier,
+                e.ImageUrl,
+                e.IsActive,
+                e.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(result);
+    }
+
+    // â”€â”€â”€ GET /api/Equipments/{id} â”€â”€â”€
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
+
+        if (equipment == null)
+            return NotFound(new { message = "Váº­t tÆ° khÃ´ng tá»“n táº¡i" });
+
+        return Ok(equipment);
+    }
+
+    // â”€â”€â”€ POST /api/Equipments â”€â”€â”€ ThÃªm váº­t tÆ° má»›i
+    [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> Create([FromBody] CreateEquipmentDto dto)
+    {
+        // Kiá»ƒm tra ItemCode trÃ¹ng
+        if (await _context.Equipments.AnyAsync(e => e.ItemCode == dto.ItemCode))
+            return BadRequest(new { message = "MÃ£ váº­t tÆ° Ä‘Ã£ tá»“n táº¡i" });
+
+        var equipment = new Equipment
+        {
+            ItemCode          = dto.ItemCode,
+            Name              = dto.Name,
+            Category          = dto.Category,
+            Unit              = dto.Unit,
+            TotalQuantity     = dto.TotalQuantity,
+            InUseQuantity     = 0,
+            DamagedQuantity   = 0,
+            LiquidatedQuantity= 0,
+            BasePrice         = dto.BasePrice,
+            DefaultPriceIfLost= dto.DefaultPriceIfLost,
+            Supplier          = dto.Supplier,
+            IsActive          = true,
+            CreatedAt         = DateTime.UtcNow,
+            UpdatedAt         = DateTime.UtcNow
+        };
+
+        _context.Equipments.Add(equipment);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetById),
+            new { id = equipment.Id }, equipment);
+    }
+
+    // â”€â”€â”€ PUT /api/Equipments/{id} â”€â”€â”€ Cáº­p nháº­t váº­t tÆ°
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> Update(
+        int id, [FromBody] UpdateEquipmentDto dto)
+    {
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
+
+        if (equipment == null)
+            return NotFound(new { message = "Váº­t tÆ° khÃ´ng tá»“n táº¡i" });
+
+        equipment.Name              = dto.Name;
+        equipment.Category          = dto.Category;
+        equipment.Unit              = dto.Unit;
+        equipment.TotalQuantity     = dto.TotalQuantity;
+        equipment.Supplier          = dto.Supplier;
+        equipment.UpdatedAt         = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return Ok(equipment);
+    }
+
+    // â”€â”€â”€ DELETE /api/Equipments/{id} â”€â”€â”€ Soft Delete + Audit Log
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
+
+        if (equipment == null)
+            return NotFound(new { message = "Váº­t tÆ° khÃ´ng tá»“n táº¡i" });
+
+        // Láº¥y thÃ´ng tin user tá»« token Ä‘á»ƒ ghi vÃ o audit log
+        // LÃ½ do: AuditLog cáº§n biáº¿t AI nÃ o Ä‘Ã£ thá»±c hiá»‡n hÃ nh Ä‘á»™ng Ä‘á»ƒ ghi láº¡i chÃ­nh xÃ¡c
+        var userId   = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userName   = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+
+        // Ghi láº¡i dá»¯ liá»‡u cÅ© trÆ°á»›c khi xÃ³a Ä‘á»ƒ phá»¥c vá»¥ audit log 
+        // LÃ½ do: Sau SaveChanges, dá»¯ liá»‡u cÅ© sáº½ bá»‹ ghi Ä‘Ã¨ â†’ pháº£i chá»¥p láº¡i trÆ°á»›c khi thay Ä‘á»•i
+        var oldJson = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            equipment.Id,
+            equipment.Name,
+            equipment.IsActive
+        });
+
+        equipment.IsActive  = false;
+        equipment.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+ 
+        // Ghi log vÃ o AuditLogs sau khi Ä‘Ã£ xÃ³a thÃ nh cÃ´ng
+        // LÃ½ do: Chá»‰ log khi thao tÃ¡c thá»±c sá»± thÃ nh cÃ´ng, trÃ¡nh log rÃ¡c khi váº­t tÆ° khÃ´ng tá»“n táº¡i hoáº·c Ä‘Ã£ bá»‹ áº©n trÆ°á»›c Ä‘Ã³
+        await _auditLogService.LogAsync(
+            tableName: "Equipments",
+            action: "DELETE",
+            recordId: equipment.Id,
+            oldValues: oldJson,
+            newValues: null,   // DELETE thÃ¬ newValues = null
+            userId: int.TryParse(userId, out var uid) ? uid : (int?)null,
+            userName: userName,
+            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString()
+        );
+
+        return Ok(new { message = "ÄÃ£ xÃ³a váº­t tÆ° thÃ nh cÃ´ng" });
+    }
+
+    // â”€â”€â”€ GET /api/Equipments/stock-summary â”€â”€â”€
+    [HttpGet("stock-summary")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> GetStockSummary()
+    {
+        var summary = await _context.Equipments
+            .Where(e => e.IsActive)
+            .GroupBy(e => e.Category) // NhÃ³m theo danh má»¥c
+            .Select(g => new
+            {
+                Category        = g.Key,
+                TotalItems      = g.Count(),
+                TotalQuantity   = g.Sum(e => e.TotalQuantity),
+                InUseQuantity   = g.Sum(e => e.InUseQuantity),
+                DamagedQuantity = g.Sum(e => e.DamagedQuantity),
+                InStockQuantity = g.Sum(e =>
+                    e.TotalQuantity - e.InUseQuantity
+                    - e.DamagedQuantity - e.LiquidatedQuantity)
+            })
+            .ToListAsync();
+
+        // Tá»•ng toÃ n bá»™
+        var total = await _context.Equipments
+            .Where(e => e.IsActive)
+            .SumAsync(e => e.TotalQuantity);
+
+        var inUse = await _context.Equipments
+            .Where(e => e.IsActive)
+            .SumAsync(e => e.InUseQuantity);
+
+        var damaged = await _context.Equipments
+            .Where(e => e.IsActive)
+            .SumAsync(e => e.DamagedQuantity);
+
+        return Ok(new
+        {
+            overall = new
+            {
+                total,
+                inUse,
+                damaged,
+                inStock = total - inUse - damaged
+            },
+            byCategory = summary
+        });
+    }
+
+    // â”€â”€â”€ PUT /api/Equipments/{id}/price â”€â”€â”€
+    [HttpPut("{id}/price")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdatePrice(
+        int id, [FromBody] UpdatePriceDto dto)
+    {
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
+
+        if (equipment == null)
+            return NotFound(new { message = "Váº­t tÆ° khÃ´ng tá»“n táº¡i" });
+
+        var oldBasePrice    = equipment.BasePrice;
+        var oldLostPrice    = equipment.DefaultPriceIfLost;
+
+        equipment.BasePrice          = dto.BasePrice;
+        equipment.DefaultPriceIfLost = dto.DefaultPriceIfLost;
+        equipment.UpdatedAt          = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // Gá»­i notification realtime cho Admin & Manager
+        await _notificationService.SendToRoleByNameAsync("Admin",
+            $"GiÃ¡ váº­t tÆ° [{equipment.Name}] Ä‘Ã£ cáº­p nháº­t: " +
+            $"{oldBasePrice:N0}Ä‘ â†’ {dto.BasePrice:N0}Ä‘",
+            "PriceUpdate");
+
+        return Ok(new
+        {
+            message  = "Cáº­p nháº­t giÃ¡ thÃ nh cÃ´ng",
+            id       = equipment.Id,
+            name     = equipment.Name,
+            oldBasePrice,
+            newBasePrice     = equipment.BasePrice,
+            oldPriceIfLost   = oldLostPrice,
+            newPriceIfLost   = equipment.DefaultPriceIfLost
+        });
+    }
+
+    // â”€â”€â”€ GET /api/Equipments/{id}/compensation â”€â”€â”€
+    // Xem giÃ¡ Ä‘á»n bÃ¹ máº·c Ä‘á»‹nh
+    [HttpGet("{id}/compensation")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> GetCompensation(int id)
+    {
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
+
+        if (equipment == null)
+            return NotFound(new { message = "Váº­t tÆ° khÃ´ng tá»“n táº¡i" });
+
+        return Ok(new
+        {
+            equipment.Id,
+            equipment.Name,
+            equipment.BasePrice,
+            equipment.DefaultPriceIfLost,
+            // Gá»£i Ã½: giÃ¡ Ä‘á»n bÃ¹ thÆ°á»ng = 150% giÃ¡ gá»‘c
+            suggestedCompensation = equipment.BasePrice * 1.5m
+        });
+    }
+
+    // â”€â”€â”€ PUT /api/Equipments/{id}/compensation â”€â”€â”€
+    // Cáº­p nháº­t giÃ¡ Ä‘á»n bÃ¹ riÃªng
+    [HttpPut("{id}/compensation")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateCompensation(
+        int id, [FromBody] UpdateCompensationDto dto)
+    {
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
+
+        if (equipment == null)
+            return NotFound(new { message = "Váº­t tÆ° khÃ´ng tá»“n táº¡i" });
+
+        equipment.DefaultPriceIfLost = dto.DefaultPriceIfLost;
+        equipment.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message            = "Cáº­p nháº­t giÃ¡ Ä‘á»n bÃ¹ thÃ nh cÃ´ng",
+            equipment.Id,
+            equipment.Name,
+            defaultPriceIfLost = equipment.DefaultPriceIfLost
+        });
+    }
+
+    // â”€â”€â”€ POST /api/Equipments/{id}/sync â”€â”€â”€
+    // Äá»“ng bá»™: khi váº­t tÆ° bá»‹ há»ng â†’ tá»± cáº­p nháº­t sá»‘ liá»‡u kho
+    [HttpPost("{id}/sync")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> SyncInventory(
+        int id, [FromBody] SyncInventoryDto dto)
+    {
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
+
+        if (equipment == null)
+            return NotFound(new { message = "Váº­t tÆ° khÃ´ng tá»“n táº¡i" });
+
+        // Validate: tá»•ng khÃ´ng vÆ°á»£t quÃ¡ TotalQuantity
+        var newTotal = equipment.InUseQuantity
+                    + dto.DamagedQuantity
+                    + equipment.LiquidatedQuantity;
+
+        if (newTotal > equipment.TotalQuantity)
+            return BadRequest(new
+            {
+                message = "Sá»‘ lÆ°á»£ng há»ng vÆ°á»£t quÃ¡ tá»•ng váº­t tÆ°"
+            });
+
+        var oldDamaged = equipment.DamagedQuantity;
+        equipment.DamagedQuantity = dto.DamagedQuantity;
+        equipment.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // Gá»­i SignalR notification náº¿u tÄƒng sá»‘ há»ng
+        if (dto.DamagedQuantity > oldDamaged)
+        {
+            await _notificationService.SendToRoleByNameAsync("Admin",
+                $"âš ï¸ Váº­t tÆ° [{equipment.Name}] cÃ³ thÃªm " +
+                $"{dto.DamagedQuantity - oldDamaged} cÃ¡i bá»‹ há»ng. " +
+                $"Tá»•ng há»ng: {dto.DamagedQuantity}/{equipment.TotalQuantity}",
+                "InventoryDamage");
+        }
+
+        return Ok(new
+        {
+            message            = "Äá»“ng bá»™ kho thÃ nh cÃ´ng",
+            equipment.Id,
+            equipment.Name,
+            equipment.TotalQuantity,
+            equipment.InUseQuantity,
+            damagedQuantity    = equipment.DamagedQuantity,
+            inStockQuantity    = equipment.InStockQuantity
+        });
+    }
+
+    // POST /api/Equipments/{id}/restore "KHÃ”I PHá»¤C Váº¬T TÆ¯ áº¨N"
+    [HttpPost("{id}/restore")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> Restore(int id)
+    {
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && !e.IsActive);
+
+        if (equipment == null)
+            return NotFound(new { message = "Váº­t tÆ° khÃ´ng tá»“n táº¡i hoáº·c Ä‘ang active" });
+
+        equipment.IsActive = true;
+        equipment.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        await _notificationService.SendToRoleByNameAsync(
+            "Admin", $"Váº­t tÆ° '{equipment.Name}' Ä‘Ã£ Ä‘Æ°á»£c khÃ´i phá»¥c.", "info");
+
+        return Ok(new { message = "KhÃ´i phá»¥c váº­t tÆ° thÃ nh cÃ´ng", equipment });
+    }
+}
+
+=== Controllers/InventoryController.cs ===
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class InventoryController : ControllerBase
+{
+    private readonly IInventoryService _inventoryService;
+
+    public InventoryController(IInventoryService inventoryService)
+    {
+        _inventoryService = inventoryService;
+    }
+
+    // GET /api/Inventory?startDate=2026-04-24&endDate=2026-04-30
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetInventory(
+        [FromQuery] DateTime startDate,
+        [FromQuery] DateTime endDate,
+        [FromQuery] int? roomTypeId)
+    {
+        if (startDate == default) startDate = DateTime.Today;
+        if (endDate   == default) endDate   = DateTime.Today.AddDays(30);
+
+        var result = await _inventoryService.GetInventoryAsync(startDate, endDate, roomTypeId);
+        return Ok(result);
+    }
+
+    // GET /api/Inventory/5
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _inventoryService.GetByIdAsync(id);
+        if (result == null)
+            return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u phÃ²ng trá»‘ng" });
+        return Ok(result);
+    }
+
+    // POST /api/Inventory â€” Táº¡o má»›i hoáº·c cáº­p nháº­t náº¿u Ä‘Ã£ tá»“n táº¡i (upsert)
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Upsert([FromBody] InventoryUpdateDto dto)
+    {
+        var result = await _inventoryService.UpsertInventoryAsync(dto);
+        return Ok(result);
+    }
+
+    // PUT /api/Inventory/5 â€” Cáº­p nháº­t theo id
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(int id, [FromBody] InventoryUpdateDto dto)
+    {
+        // Validate availableRooms khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ totalRooms
+        if (dto.AvailableRooms > dto.TotalRooms)
+            return BadRequest(new { message = "Sá»‘ phÃ²ng trá»‘ng khÃ´ng Ä‘Æ°á»£c lá»›n hÆ¡n tá»•ng sá»‘ phÃ²ng" });
+
+        var result = await _inventoryService.UpdateByIdAsync(id, dto);
+
+        if (result == null)
+        {
+            // Kiá»ƒm tra do not found hay duplicate
+            var exists = await _inventoryService.GetByIdAsync(id);
+            if (exists == null)
+                return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u phÃ²ng trá»‘ng" });
+
+            return Conflict(new { message = "ÄÃ£ tá»“n táº¡i dá»¯ liá»‡u phÃ²ng trá»‘ng cho loáº¡i phÃ²ng vÃ  ngÃ y nÃ y" });
+        }
+
+        return Ok(result);
+    }
+
+    // DELETE /api/Inventory/5
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _inventoryService.DeleteByIdAsync(id);
+        if (!result)
+            return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u phÃ²ng trá»‘ng" });
+        return Ok(new { message = "XÃ³a dá»¯ liá»‡u phÃ²ng trá»‘ng thÃ nh cÃ´ng" });
+    }
+
+    // POST /api/Inventory/5/clone â€” NhÃ¢n báº£n sang ngÃ y hÃ´m sau
+    [HttpPost("{id}/clone")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Clone(int id)
+    {
+        var result = await _inventoryService.CloneAsync(id);
+        if (result == null)
+            return BadRequest(new { message = "KhÃ´ng thá»ƒ nhÃ¢n báº£n: báº£n ghi khÃ´ng tá»“n táº¡i hoáº·c ngÃ y káº¿ tiáº¿p Ä‘Ã£ cÃ³ dá»¯ liá»‡u" });
+        return Ok(result);
+    }
+
+    // PUT /api/Inventory/bulk-price â€” Cáº­p nháº­t giÃ¡ hÃ ng loáº¡t
+    [HttpPut("bulk-price")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> BulkUpdatePrice([FromBody] BulkUpdatePriceDto dto)
+    {
+        var result = await _inventoryService.BulkUpdatePriceAsync(dto);
+        if (!result)
+            return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y báº£n ghi trong khoáº£ng thá»i gian nÃ y" });
+        return Ok(new { message = "Cáº­p nháº­t sá»‘ phÃ²ng trá»‘ng thÃ nh cÃ´ng" });
+    }
+}
+
+=== Controllers/MinibarController.cs ===
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "Admin,Manager")]
+public class MinibarController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public MinibarController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // GET /api/Minibar/items â€” Danh má»¥c Ä‘á»“ uá»‘ng/snack minibar tá»« báº£ng Equipments
+    [HttpGet("items")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAllItems()
+    {
+        var items = await _context.Equipments
+            .Where(e => e.Category == "Minibar" && e.IsActive)
+            .OrderBy(e => e.Name)
+            .Select(e => new
+            {
+                e.Id,
+                e.ItemCode,
+                e.Name,
+                e.Unit,
+                e.BasePrice,
+                e.DefaultPriceIfLost,
+                InStock = e.TotalQuantity - e.InUseQuantity - e.DamagedQuantity - e.LiquidatedQuantity,
+                e.ImageUrl,
+                e.IsActive
+            })
+            .ToListAsync();
+
+        return Ok(items);
+    }
+    
+    // POST /api/Minibar/items â€” Táº¡o má»›i máº·t hÃ ng minibar (thÃªm vÃ o Equipments vá»›i Category="Minibar")
+    [HttpPost("items")]
+    public async Task<IActionResult> CreateItem([FromBody] CreateMinibarItemDto dto)
+    {
+        // Kiá»ƒm tra trÃ¹ng tÃªn
+        var exists = await _context.Equipments
+            .AnyAsync(e => e.Name == dto.Name && e.Category == "Minibar");
+        if (exists)
+            return Conflict(new { message = "Máº·t hÃ ng minibar nÃ y Ä‘Ã£ tá»“n táº¡i" });
+
+        var item = new HotelManagementAPI.Models.Equipment
+        {
+            ItemCode           = $"MB-{Guid.NewGuid().ToString()[..6].ToUpper()}",  // tá»± sinh mÃ£
+            Name               = dto.Name,
+            Category           = "Minibar",     // â† cá»‘ Ä‘á»‹nh lÃ  Minibar
+            Unit               = dto.Unit ?? "CÃ¡i",
+            TotalQuantity      = dto.TotalQuantity,
+            InUseQuantity      = 0,
+            DamagedQuantity    = 0,
+            LiquidatedQuantity = 0,
+            BasePrice          = dto.Price,
+            DefaultPriceIfLost = dto.Price,
+            IsActive           = true,
+            CreatedAt          = DateTime.UtcNow
+        };
+
+        _context.Equipments.Add(item);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetAllItems), new { id = item.Id }, new
+        {
+            item.Id,
+            item.ItemCode,
+            item.Name,
+            item.Unit,
+            item.BasePrice,
+            item.TotalQuantity,
+            item.IsActive
+        });
+    }
+
+    // PUT /api/Minibar/items/{id} â€” Cáº­p nháº­t giÃ¡ minibar item
+    [HttpPut("items/{id}")]
+    public async Task<IActionResult> UpdateItem(int id, [FromBody] UpdateMinibarItemDto dto)
+    {
+        var item = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == id && e.Category == "Minibar");
+
+        if (item == null)
+            return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y máº·t hÃ ng minibar" });
+
+        item.Name      = dto.Name;
+        item.BasePrice = dto.Price;
+        item.IsActive  = dto.IsActive;
+
+        await _context.SaveChangesAsync();
+        return Ok(new { item.Id, item.Name, item.BasePrice, item.IsActive });
+    }
+
+    // GET /api/Minibar/stock/{roomId} â€” Xem minibar trong phÃ²ng cá»¥ thá»ƒ
+    [HttpGet("stock/{roomId}")]
+    public async Task<IActionResult> GetRoomStock(int roomId)
+    {
+        var roomExists = await _context.Rooms.AnyAsync(r => r.Id == roomId);
+        if (!roomExists)
+            return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y phÃ²ng" });
+
+        var stock = await _context.RoomItems
+            .Include(ri => ri.Equipment)
+            .Where(ri => ri.RoomId == roomId
+                      && ri.Equipment != null
+                      && ri.Equipment.Category == "Minibar"
+                      && ri.IsActive)
+            .Select(ri => new
+            {
+                ri.Id,
+                ri.RoomId,
+                EquipmentId   = ri.EquipmentId,
+                ItemName      = ri.Equipment!.Name,
+                Unit          = ri.Equipment.Unit,
+                Price         = ri.Equipment.BasePrice,
+                ri.Quantity,
+                ri.PriceIfLost,
+                ri.Note
+            })
+            .ToListAsync();
+
+        return Ok(stock);
+    }
+
+    // POST /api/Minibar/stock â€” ThÃªm/cáº­p nháº­t sá»‘ lÆ°á»£ng minibar trong phÃ²ng (upsert)
+    [HttpPost("stock")]
+    public async Task<IActionResult> UpdateStock([FromBody] UpdateMinibarStockDto dto)
+    {
+        // Kiá»ƒm tra Equipment lÃ  minibar
+        var equipment = await _context.Equipments
+            .FirstOrDefaultAsync(e => e.Id == dto.MinibarItemId && e.Category == "Minibar");
+
+        if (equipment == null)
+            return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y máº·t hÃ ng minibar" });
+
+        // Upsert vÃ o RoomInventory (RoomItems)
+        var stock = await _context.RoomItems
+            .FirstOrDefaultAsync(ri => ri.RoomId == dto.RoomId
+                                    && ri.EquipmentId == dto.MinibarItemId);
+
+        if (stock == null)
+        {
+            stock = new RoomItem
+            {
+                RoomId      = dto.RoomId,
+                EquipmentId = dto.MinibarItemId,
+                Quantity    = dto.Quantity,
+                PriceIfLost = equipment.DefaultPriceIfLost,
+                Note        = "Trong Minibar",
+                ItemType    = "Asset",
+                IsActive    = true
+            };
+            _context.RoomItems.Add(stock);
+        }
+        else
+        {
+            stock.Quantity = dto.Quantity;
+            stock.IsActive = true;
+        }
+
+        await _context.SaveChangesAsync();
+        return Ok(new { stock.Id, stock.RoomId, stock.EquipmentId, stock.Quantity, ItemName = equipment.Name });
+    }
+}
+
+=== Controllers/NotificationsController.cs ===
+using HotelManagementAPI.Data;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class NotificationsController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public NotificationsController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // GET /api/Notifications
+    [HttpGet]
+    public async Task<IActionResult> GetMyNotifications()
+    {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdString == null) return Unauthorized();
+        var userId = int.Parse(userIdString);
+
+        var notifications = await _context.Notifications
+            .Where(n => n.UserId == userId)
+            .OrderByDescending(n => n.CreatedAt)
+            .Take(50)
+            .Select(n => new
+            {
+                n.Id,
+                n.Title,
+                n.Content,
+                n.Type,
+                n.IsRead,
+                n.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(notifications);
+    }
+
+    // PUT /api/Notifications/{id}/read
+    [HttpPut("{id}/read")]
+    public async Task<IActionResult> MarkAsRead(int id)
+    {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdString == null) return Unauthorized();
+        var userId = int.Parse(userIdString);
+
+        var notification = await _context.Notifications
+            .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+
+        if (notification == null) return NotFound();
+
+        notification.IsRead = true;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "ÄÃ£ Ä‘Ã¡nh dáº¥u lÃ  Ä‘Ã£ Ä‘á»c" });
+    }
+
+    // PUT /api/Notifications/read-all
+    [HttpPut("read-all")]
+    public async Task<IActionResult> MarkAllAsRead()
+    {
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdString == null) return Unauthorized();
+        var userId = int.Parse(userIdString);
+
+        var unreadNotifications = await _context.Notifications
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .ToListAsync();
+
+        foreach (var n in unreadNotifications)
+        {
+            n.IsRead = true;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "ÄÃ£ Ä‘Ã¡nh dáº¥u táº¥t cáº£ lÃ  Ä‘Ã£ Ä‘á»c" });
+    }
+}
+
+=== Controllers/RolesController.cs ===
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Models;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize] // Táº¥t cáº£ endpoint cáº§n Ä‘Äƒng nháº­p
+public class RolesController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
+
+    public RolesController(AppDbContext context, INotificationService notificationService)
+    {
+        _context = context;
+        _notificationService = notificationService;
+    }
+
+    // --- QUáº¢N LÃ ROLE ---
+
+    // GET /api/Roles (Admin Only)
+    [HttpGet]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAll()
+    {
+        var roles = await _context.Roles
+            .Include(r => r.RolePermissions)
+                .ThenInclude(rp => rp.Permission)
+            .ToListAsync();
+
+        var result = roles.Select(r => new RoleResponseDto(
+            r.Id,
+            r.Name,
+            r.Description,
+            r.RolePermissions.Select(rp => rp.Permission!.Name).ToList()
+        ));
+
+        return Ok(result);
+    }
+
+    // GET /api/Roles/{id} (Admin Only)
+    [HttpGet("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var role = await _context.Roles
+            .Include(r => r.RolePermissions)
+                .ThenInclude(rp => rp.Permission)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (role == null) return NotFound(new { message = "Role khÃ´ng tá»“n táº¡i" });
+
+        var result = new RoleResponseDto(
+            role.Id,
+            role.Name,
+            role.Description,
+            role.RolePermissions.Select(rp => rp.Permission!.Name).ToList()
+        );
+
+        return Ok(result);
+    }
+
+    // POST /api/Roles (Admin Only)
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] CreateRoleDto dto)
+    {
+        if (await _context.Roles.AnyAsync(r => r.Name == dto.Name))
+            return BadRequest(new { message = "TÃªn Role Ä‘Ã£ tá»“n táº¡i" });
+
+        var role = new Role
+        {
+            Name = dto.Name,
+            Description = dto.Description
+        };
+
+        _context.Roles.Add(role);
+        await _context.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(GetById), new { id = role.Id }, role);
+    }
+
+    // PUT /api/Roles/{id} (Admin Only)
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateRoleDto dto)
+    {
+        var role = await _context.Roles.FindAsync(id);
+        if (role == null) return NotFound(new { message = "Role khÃ´ng tá»“n táº¡i" });
+
+        // KhÃ´ng cho sá»­a tÃªn Role "Admin" há»‡ thá»‘ng (náº¿u muá»‘n báº£o máº­t)
+        if (role.Name == "Admin" && dto.Name != "Admin")
+            return BadRequest(new { message = "KhÃ´ng thá»ƒ Ä‘á»•i tÃªn Role há»‡ thá»‘ng Admin" });
+
+        role.Name = dto.Name;
+        role.Description = dto.Description;
+
+        await _context.SaveChangesAsync();
+        return Ok(role);
+    }
+
+    // DELETE /api/Roles/{id} (Admin Only)
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var role = await _context.Roles.Include(r => r.Users).FirstOrDefaultAsync(r => r.Id == id);
+        if (role == null) return NotFound(new { message = "Role khÃ´ng tá»“n táº¡i" });
+
+        if (role.Name == "Admin")
+            return BadRequest(new { message = "KhÃ´ng thá»ƒ xÃ³a Role quáº£n trá»‹ há»‡ thá»‘ng" });
+
+        if (role.Users.Any())
+            return BadRequest(new { message = "KhÃ´ng thá»ƒ xÃ³a Role Ä‘ang cÃ³ ngÆ°á»i dÃ¹ng sá»­ dá»¥ng" });
+
+        _context.Roles.Remove(role);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "ÄÃ£ xÃ³a Role thÃ nh cÃ´ng" });
+    }
+
+    // --- QUáº¢N LÃ PERMISSION ---
+
+    // GET /api/Roles/permissions (Admin Only)
+    [HttpGet("permissions")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllPermissions()
+    {
+        var permissions = await _context.Permissions
+            .Select(p => new PermissionResponseDto(p.Id, p.Name))
+            .ToListAsync();
+        return Ok(permissions);
+    }
+
+    // POST /api/Roles/assign-permission  â† (Admin Only)
+    [HttpPost("assign-permission")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AssignPermission([FromBody] AssignPermissionDto dto)
+    {
+        var role = await _context.Roles.AnyAsync(r => r.Id == dto.RoleId);
+        if (!role) return NotFound(new { message = "Role khÃ´ng tá»“n táº¡i" });
+
+        var permission = await _context.Permissions.AnyAsync(p => p.Id == dto.PermissionId);
+        if (!permission) return NotFound(new { message = "Permission khÃ´ng tá»“n táº¡i" });
+
+        var existing = await _context.RolePermissions
+            .FirstOrDefaultAsync(rp => rp.RoleId == dto.RoleId && rp.PermissionId == dto.PermissionId);
+
+        if (existing != null)
+            return BadRequest(new { message = "Role Ä‘Ã£ cÃ³ quyá»n nÃ y rá»“i" });
+
+        var rolePermission = new RolePermission
+        {
+            RoleId = dto.RoleId,
+            PermissionId = dto.PermissionId
+        };
+
+        _context.RolePermissions.Add(rolePermission);
+        await _context.SaveChangesAsync();
+
+        // Notify users
+        var roleName = await _context.Roles.Where(r => r.Id == dto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
+        var permissionName = await _context.Permissions.Where(p => p.Id == dto.PermissionId).Select(p => p.Name).FirstOrDefaultAsync();
+        await _notificationService.SendToRoleAsync(dto.RoleId, $"Quyá»n [{permissionName}] Ä‘Ã£ Ä‘Æ°á»£c thÃªm vÃ o nhÃ³m [{roleName}]", "PermissionUpdate");
+
+        return Ok(new { message = "GÃ¡n quyá»n thÃ nh cÃ´ng" });
+    }
+
+    // DELETE /api/Roles/remove-permission (Admin Only)
+    [HttpDelete("remove-permission")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RemovePermission([FromBody] RemovePermissionDto dto)
+    {
+        var rolePermission = await _context.RolePermissions
+            .FirstOrDefaultAsync(rp => rp.RoleId == dto.RoleId && rp.PermissionId == dto.PermissionId);
+
+        if (rolePermission == null)
+            return NotFound(new { message = "Quyá»n nÃ y chÆ°a Ä‘Æ°á»£c gÃ¡n cho Role" });
+
+        _context.RolePermissions.Remove(rolePermission);
+        await _context.SaveChangesAsync();
+
+        // Notify users
+        var roleName = await _context.Roles.Where(r => r.Id == dto.RoleId).Select(r => r.Name).FirstOrDefaultAsync();
+        var permissionName = await _context.Permissions.Where(p => p.Id == dto.PermissionId).Select(p => p.Name).FirstOrDefaultAsync();
+        await _notificationService.SendToRoleAsync(dto.RoleId, $"Quyá»n [{permissionName}] Ä‘Ã£ bá»‹ gá»¡ khá»i nhÃ³m [{roleName}]", "PermissionUpdate");
+
+        return Ok(new { message = "Gá»¡ quyá»n thÃ nh cÃ´ng" });
+    }
+
+    // GET /api/Roles/my-permissions  â† Báº¥t ká»³ user Ä‘Ã£ Ä‘Äƒng nháº­p
+    [HttpGet("my-permissions")]
+    public IActionResult GetMyPermissions()
+    {
+        var permissions = User.Claims
+            .Where(c => c.Type == "permission")
+            .Select(c => c.Value)
+            .ToList();
+
+        var role = User.FindFirst(ClaimTypes.Role)?.Value;
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        return Ok(new
+        {
+            userId = int.Parse(userIdString ?? "0"),
+            role,
+            permissions
+        });
+    }
+}
+
+=== Controllers/RoomItemsController.cs ===
+using HotelManagementAPI.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using HotelManagementAPI.Models;
+using HotelManagementAPI.DTOs;
+using Microsoft.AspNetCore.Authorization;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class RoomItemsController : ControllerBase
+{
+    private readonly AppDbContext _context;
+
+    public RoomItemsController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var items = await _context.RoomItems
+            .Include(ri => ri.Room)
+            .Include(ri => ri.Equipment)
+            .Select(ri => new RoomItemResponseDto(
+                ri.Id,
+                ri.RoomId,
+                ri.Room != null ? ri.Room.RoomNumber : null,
+                ri.EquipmentId,
+                ri.Equipment != null ? ri.Equipment.Name : null,
+                ri.ItemType,
+                ri.Quantity,
+                ri.PriceIfLost,
+                ri.Note,
+                ri.IsActive))
+            .ToListAsync();
+        return Ok(items);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var ri = await _context.RoomItems
+            .Include(ri => ri.Room)
+            .Include(ri => ri.Equipment)
+            .FirstOrDefaultAsync(ri => ri.Id == id);
+
+        if (ri == null) return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y váº­t tÆ°" });
+
+        return Ok(new RoomItemResponseDto(
+            ri.Id, ri.RoomId,
+            ri.Room?.RoomNumber,
+            ri.EquipmentId,
+            ri.Equipment?.Name,
+            ri.ItemType,
+            ri.Quantity, ri.PriceIfLost, ri.Note, ri.IsActive));
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> Create([FromBody] CreateRoomItemDto dto)
+    {
+        // Validate báº¯t buá»™c cÃ³ EquipmentId
+        if (dto.EquipmentId == null)
+            return BadRequest(new { message = "Vui lÃ²ng chá»n thiáº¿t bá»‹, dá»¥ng cá»¥, Ä‘á»“ dÃ¹ng cáº§n thiáº¿t tá»« kho (EquipmentId khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng)" });
+
+        // Kiá»ƒm tra Equipment tá»“n táº¡i
+        var equipmentExists = await _context.Equipments.AnyAsync(e => e.Id == dto.EquipmentId);
+        if (!equipmentExists)
+            return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y thiáº¿t bá»‹, dá»¥ng cá»¥, Ä‘á»“ dÃ¹ng cáº§n thiáº¿t nÃ y trong kho" });
+
+        var item = new RoomItem
+        {
+            RoomId      = dto.RoomId,
+            EquipmentId = dto.EquipmentId,
+            Quantity    = dto.Quantity,
+            PriceIfLost = dto.PriceIfLost,
+            Note        = dto.Note,
+            ItemType    = dto.ItemType,
+            IsActive    = true
+        };
+
+        _context.RoomItems.Add(item);
+        await _context.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomItemDto dto)
+    {
+        var item = await _context.RoomItems.FindAsync(id);
+        if (item == null) return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y váº­t tÆ°" });
+
+        item.EquipmentId = dto.EquipmentId;
+        item.Quantity    = dto.Quantity;
+        item.PriceIfLost = dto.PriceIfLost;
+        item.Note        = dto.Note;
+        item.ItemType = dto.ItemType;
+        item.IsActive = dto.IsActive;
+
+        await _context.SaveChangesAsync();
+        return Ok(item);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var item = await _context.RoomItems.FindAsync(id);
+        if (item == null) return NotFound(new { message = "KhÃ´ng tÃ¬m tháº¥y váº­t tÆ°" });
+
+        item.IsActive = false; // Soft delete
+        //_context.RoomItems.Remove(item);
+        await _context.SaveChangesAsync();
+        return Ok(new { message = "ÄÃ£ xÃ³a váº­t tÆ° thÃ nh cÃ´ng" });
+    }
+}
+
+=== Controllers/RoomsController.cs ===
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Models;   // â† Ä‘áº£m báº£o dÃ¹ng Room tá»« Ä‘Ã¢y
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using HotelManagementAPI.Data;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class RoomsController : ControllerBase
+{
+    private readonly IRoomService _roomService;
+    private readonly AppDbContext _context;
+
+    public RoomsController(IRoomService roomService, AppDbContext context)
+    {
+        _roomService = roomService;
+        _context     = context;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll([FromQuery] int? roomTypeId)
+    {
+        var result = await _roomService.GetAllRoomsAsync(roomTypeId);
+        return Ok(result);
+    }
+
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _roomService.GetRoomByIdAsync(id);
+        if (result == null) return NotFound(new { message = "PhÃ²ng khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] CreateRoomDto dto)
+    {
+        var result = await _roomService.CreateRoomAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomDto dto)
+    {
+        var result = await _roomService.UpdateRoomAsync(id, dto);
+        if (result == null) return NotFound(new { message = "PhÃ²ng khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _roomService.DeleteRoomAsync(id);
+        if (!result) return NotFound(new { message = "PhÃ²ng khÃ´ng tá»“n táº¡i" });
+        return Ok(new { message = "ÄÃ£ vÃ´ hiá»‡u hÃ³a phÃ²ng thÃ nh cÃ´ng" });
+    }
+
+    // â”€â”€â”€ POST /api/Rooms/bulk-create â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    [HttpPost("bulk-create")]
+    [Authorize(Roles = "Admin,Manager")]
+    public async Task<IActionResult> BulkCreate([FromBody] BulkCreateRoomDto dto)
+    {
+        // â† [Sá»¬A] RoomType dÃ¹ng IsDeleted â€” KHÃ”NG cÃ³ IsActive
+        var roomTypeExists = await _context.RoomTypes
+            .AnyAsync(rt => rt.Id == dto.RoomTypeId && rt.IsActive);
+
+        if (!roomTypeExists)
+            return BadRequest(new { message = "Háº¡ng phÃ²ng khÃ´ng tá»“n táº¡i" });
+
+        if (dto.Count <= 0 || dto.Count > 50)
+            return BadRequest(new { message = "Sá»‘ lÆ°á»£ng phÃ²ng pháº£i tá»« 1 Ä‘áº¿n 50" });
+
+        var createdRooms = new List<object>();
+        var errors       = new List<string>();
+
+        for (int i = 0; i < dto.Count; i++)
+        {
+            var roomNumber = $"{dto.StartNumber + i}";
+
+            if (await _context.Rooms.AnyAsync(r => r.RoomNumber == roomNumber))
+            {
+                errors.Add($"PhÃ²ng {roomNumber} Ä‘Ã£ tá»“n táº¡i, bá» qua");
+                continue;
+            }
+
+            // â† [Sá»¬A] Khá»Ÿi táº¡o Ä‘Ãºng theo Room model thá»±c:
+            //   Room cÃ³: Id, RoomTypeId, RoomNumber, Floor(int?), Status, CreatedAt, IsDeleted
+            //   KHÃ”NG cÃ³: IsActive, UpdatedAt
+            var room = new HotelManagementAPI.Models.Room
+            {
+                RoomTypeId = dto.RoomTypeId,
+                RoomNumber = roomNumber,
+                Floor      = dto.Floor,    // â† int? â€” cÃ³ trong model
+                Status     = "Available",
+                // IsDeleted  = false,         // â† bool â€” cÃ³ trong model
+                // CreatedAt  = DateTime.UtcNow
+            };
+
+            _context.Rooms.Add(room);
+            await _context.SaveChangesAsync();
+
+            if (dto.TemplateRoomId.HasValue && dto.TemplateRoomId.Value > 0)
+            {
+                var templateItems = await _context.RoomItems
+                    .Where(ri => ri.RoomId == dto.TemplateRoomId.Value)
+                    .ToListAsync();
+
+                foreach (var item in templateItems)
+                {
+                    _context.RoomItems.Add(new RoomItem
+                    {
+                        RoomId = room.Id,
+                        EquipmentId = item.EquipmentId,
+                        Quantity = item.Quantity,
+                        PriceIfLost = item.PriceIfLost,
+                        Note = item.Note,
+                        ItemType = item.ItemType,
+                        IsActive = true
+
+                    });
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            createdRooms.Add(new
+            {
+                room.Id,
+                room.RoomNumber,
+                room.Floor,
+                room.Status,
+                clonedFrom = dto.TemplateRoomId
+            });
+        }
+
+        return Ok(new
+        {
+            message  = $"ÄÃ£ táº¡o {createdRooms.Count} phÃ²ng thÃ nh cÃ´ng",
+            created  = createdRooms,
+            skipped  = errors
+        });
+    }
+}
+
+=== Controllers/RoomTypesController.cs ===
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Models;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class RoomTypesController : ControllerBase
+{
+    private readonly IRoomService _roomService;
+    private readonly ICloudinaryService _cloudinaryService;
+    private readonly AppDbContext _context;
+
+    public RoomTypesController(IRoomService roomService, ICloudinaryService cloudinaryService, AppDbContext context)
+    {
+        _roomService = roomService;
+        _cloudinaryService = cloudinaryService;
+        _context = context;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _roomService.GetAllRoomTypesAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _roomService.GetRoomTypeByIdAsync(id);
+        if (result == null) return NotFound(new { message = "Loáº¡i phÃ²ng khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Create([FromBody] CreateRoomTypeDto dto)
+    {
+        var result = await _roomService.CreateRoomTypeAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomTypeDto dto)
+    {
+        var result = await _roomService.UpdateRoomTypeAsync(id, dto);
+        if (result == null) return NotFound(new { message = "Loáº¡i phÃ²ng khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _roomService.DeleteRoomTypeAsync(id);
+        if (!result) return NotFound(new { message = "Loáº¡i phÃ²ng khÃ´ng tá»“n táº¡i" });
+        return Ok(new { message = "ÄÃ£ vÃ´ hiá»‡u hÃ³a loáº¡i phÃ²ng thÃ nh cÃ´ng" });
+    }
+
+    // GALLERY MANAGEMENT
+    [HttpPost("{id}/images")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UploadImage(int id, IFormFile file, [FromQuery] bool isPrimary = false)
+    {
+        var rt = await _context.RoomTypes.FindAsync(id);
+        if (rt == null) return NotFound();
+
+        var (url, publicId) = await _cloudinaryService.UploadImageAsync(file, $"HotelManagement/RoomTypes/{id}");
+
+        var roomImage = new RoomImage
+        {
+            RoomTypeId = id,
+            ImageUrl = url,
+            PublicId = publicId,
+            IsPrimary = isPrimary
+        };
+
+        if (isPrimary)
+        {
+            // Reset other primary images
+            var primaries = await _context.RoomImages.Where(img => img.RoomTypeId == id && img.IsPrimary).ToListAsync();
+            foreach (var p in primaries) p.IsPrimary = false;
+        }
+
+        _context.RoomImages.Add(roomImage);
+        await _context.SaveChangesAsync();
+
+        return Ok(roomImage);
+    }
+
+    [HttpDelete("images/{imageId}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteImage(int imageId)
+    {
+        var img = await _context.RoomImages.FindAsync(imageId);
+        if (img == null) return NotFound();
+
+        await _cloudinaryService.DeleteImageAsync(img.PublicId!);
+
+        _context.RoomImages.Remove(img);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "ÄÃ£ xÃ³a áº£nh thÃ nh cÃ´ng" });
+    }
+
+    [HttpPatch("images/{imageId}/set-primary")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SetPrimary(int imageId)
+    {
+        var img = await _context.RoomImages.FindAsync(imageId);
+        if (img == null) return NotFound();
+
+        // Reset all primary for this RoomType
+        var primaries = await _context.RoomImages.Where(i => i.RoomTypeId == img.RoomTypeId && i.IsPrimary).ToListAsync();
+        foreach (var p in primaries) p.IsPrimary = false;
+
+        img.IsPrimary = true;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "ÄÃ£ Ä‘áº·t áº£nh lÃ m áº£nh chÃ­nh" });
+    }
+}
+
+=== Controllers/UserManagementController.cs ===
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Roles = "Admin")]
+public class UserManagementController : ControllerBase
+{
+    private readonly IUserManagementService _userService;
+
+    public UserManagementController(IUserManagementService userService)
+    {
+        _userService = userService;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _userService.GetAllUsersAsync();
+        return Ok(result);
+    }
+
+    [HttpGet("filter")]
+    public async Task<IActionResult> Filter(
+        [FromQuery] string? phone,
+        [FromQuery] string? email,
+        [FromQuery] bool? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        var (data, total) = await _userService.FilterUsersPagedAsync(phone, email, status, page, pageSize);
+        return Ok(new FilterUsersResponseDto(data, total, page, pageSize));
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var result = await _userService.GetUserByIdAsync(id);
+        if (result == null) return NotFound(new { message = "NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
+    {
+        var result = await _userService.CreateUserAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] UpdateUserDto dto)
+    {
+        var result = await _userService.UpdateUserAsync(id, dto);
+        if (result == null) return NotFound(new { message = "NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i" });
+        return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var result = await _userService.DeleteUserAsync(id);
+        if (!result) return NotFound(new { message = "NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i" });
+        return Ok(new { message = "ÄÃ£ xÃ³a ngÆ°á»i dÃ¹ng thÃ nh cÃ´ng" });
+    }
+
+    [HttpPut("{id}/change-role")]
+    public async Task<IActionResult> ChangeRole(int id, [FromBody] ChangeRoleDto dto)
+    {
+        var result = await _userService.ChangeUserRoleAsync(id, dto.RoleId);
+        if (!result)
+            return BadRequest(new { message = "KhÃ´ng thá»ƒ thay Ä‘á»•i quyá»n (ID ngÆ°á»i dÃ¹ng hoáº·c quyá»n khÃ´ng Ä‘Ãºng)" });
+        return Ok(new { message = "ÄÃ£ thay Ä‘á»•i quyá»n thÃ nh cÃ´ng" });
+    }
+
+    // â† [Má»šI] Äá»•i máº­t kháº©u â€” Admin reset hoáº·c user tá»± Ä‘á»•i
+    // POST /api/UserManagement/{id}/change-password
+    [HttpPost("{id}/change-password")]
+    public async Task<IActionResult> ChangePassword(int id, [FromBody] ChangePasswordDto dto)
+    {
+        try
+        {
+            var result = await _userService.ChangePasswordAsync(id, dto);
+            if (!result) return NotFound(new { message = "NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i" });
+            return Ok(new { message = "Äá»•i máº­t kháº©u thÃ nh cÃ´ng" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // â† [Má»šI] Toggle khÃ³a/má»Ÿ tÃ i khoáº£n nhanh â€” khÃ´ng cáº§n truyá»n body
+    // PATCH /api/UserManagement/{id}/toggle-status
+    [HttpPatch("{id}/toggle-status")]
+    public async Task<IActionResult> ToggleStatus(int id)
+    {
+        var result = await _userService.ToggleStatusAsync(id);
+        if (result == null) return NotFound(new { message = "NgÆ°á»i dÃ¹ng khÃ´ng tá»“n táº¡i" });
+        return Ok(new
+        {
+            message = result.Status ? "ÄÃ£ má»Ÿ khÃ³a tÃ i khoáº£n" : "ÄÃ£ khÃ³a tÃ i khoáº£n",
+            user    = result
+        });
+    }
+}
+
+=== Controllers/UserProfileController.cs ===
+using System.Security.Claims;
+using HotelManagementAPI.Data;
+using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace HotelManagementAPI.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class UserProfileController : ControllerBase
+{
+    private readonly AppDbContext _context;
+    private readonly ICloudinaryService _cloudinaryService;
+
+    public UserProfileController(AppDbContext context, ICloudinaryService cloudinaryService)
+    {
+        _context = context;
+        _cloudinaryService = cloudinaryService;
+    }
+
+    // GET /api/UserProfile
+    [HttpGet]
+    public async Task<IActionResult> GetProfile()
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await _context.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user == null) return NotFound();
+
+        return Ok(new
+        {
+            user.FullName,
+            user.Email,
+            user.Phone,
+            user.AvatarUrl,
+            Role = user.Role?.Name
+        });
+    }
+
+    // POST /api/UserProfile/avatar
+    [HttpPost("avatar")]
+    public async Task<IActionResult> UploadAvatar(IFormFile file)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        // 1. XÃ³a áº£nh cÅ© trÃªn Cloudinary náº¿u cÃ³
+        if (!string.IsNullOrEmpty(user.AvatarPublicId))
+        {
+            await _cloudinaryService.DeleteImageAsync(user.AvatarPublicId);
+        }
+
+        // 2. Upload áº£nh má»›i (Chuáº©n hÃ³a 500x500, nháº­n diá»‡n khuÃ´n máº·t)
+        var avatarTransformation = new CloudinaryDotNet.Transformation()
+            .Width(500).Height(500).Crop("fill").Gravity("face").Quality("auto");
+
+        var (url, publicId) = await _cloudinaryService.UploadImageAsync(
+            file, 
+            "HotelManagement/Avatars", 
+            avatarTransformation);
+
+        // 3. LÆ°u vÃ o DB
+        user.AvatarUrl = url;
+        user.AvatarPublicId = publicId;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Cáº­p nháº­t áº£nh Ä‘áº¡i diá»‡n thÃ nh cÃ´ng", url });
+    }
+
+    // PUT /api/UserProfile
+    [HttpPut]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        user.FullName = dto.FullName;
+        user.Phone = dto.Phone;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Cáº­p nháº­t thÃ´ng tin cÃ¡ nhÃ¢n thÃ nh cÃ´ng" });
+    }
+
+    // POST /api/UserProfile/change-password
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+    {
+        var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null) return NotFound();
+
+        // 1. Kiá»ƒm tra máº­t kháº©u cÅ©
+        if (!BCrypt.Net.BCrypt.Verify(dto.OldPassword, user.PasswordHash))
+        {
+            return BadRequest(new { message = "Máº­t kháº©u cÅ© khÃ´ng chÃ­nh xÃ¡c" });
+        }
+
+        // 2. Hash máº­t kháº©u má»›i vÃ  lÆ°u
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Äá»•i máº­t kháº©u thÃ nh cÃ´ng" });
+    }
+}
+

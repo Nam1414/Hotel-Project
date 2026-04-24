@@ -5,6 +5,7 @@ using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace HotelManagementAPI.Controllers;
 
@@ -14,13 +15,15 @@ public class EquipmentsController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
-
+    private readonly IAuditLogService _auditLogService;
     public EquipmentsController(
         AppDbContext context,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IAuditLogService auditLogService)
     {
         _context = context;
         _notificationService = notificationService;
+        _auditLogService = auditLogService;
     }
 
     // ─── GET /api/Equipments ─── Danh sách vật tư
@@ -138,7 +141,7 @@ public class EquipmentsController : ControllerBase
         return Ok(equipment);
     }
 
-    // ─── DELETE /api/Equipments/{id} ─── Soft Delete
+    // ─── DELETE /api/Equipments/{id} ─── Soft Delete + Audit Log
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
@@ -149,9 +152,36 @@ public class EquipmentsController : ControllerBase
         if (equipment == null)
             return NotFound(new { message = "Vật tư không tồn tại" });
 
+        // Lấy thông tin user từ token để ghi vào audit log
+        // Lý do: AuditLog cần biết AI nào đã thực hiện hành động để ghi lại chính xác
+        var userId   = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userName   = User.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+
+        // Ghi lại dữ liệu cũ trước khi xóa để phục vụ audit log 
+        // Lý do: Sau SaveChanges, dữ liệu cũ sẽ bị ghi đè → phải chụp lại trước khi thay đổi
+        var oldJson = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            equipment.Id,
+            equipment.Name,
+            equipment.IsActive
+        });
+
         equipment.IsActive  = false;
         equipment.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+ 
+        // Ghi log vào AuditLogs sau khi đã xóa thành công
+        // Lý do: Chỉ log khi thao tác thực sự thành công, tránh log rác khi vật tư không tồn tại hoặc đã bị ẩn trước đó
+        await _auditLogService.LogAsync(
+            tableName: "Equipments",
+            action: "DELETE",
+            recordId: equipment.Id,
+            oldValues: oldJson,
+            newValues: null,   // DELETE thì newValues = null
+            userId: int.TryParse(userId, out var uid) ? uid : (int?)null,
+            userName: userName,
+            ipAddress: HttpContext.Connection.RemoteIpAddress?.ToString()
+        );
 
         return Ok(new { message = "Đã xóa vật tư thành công" });
     }
