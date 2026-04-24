@@ -58,7 +58,7 @@ const Rooms: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)] px-4">
-        <div className="flex items-center gap-3 text-red-500">
+        <div className="flex items-center gap-3 text-error">
           <AlertCircle size={20} />
           <span>{error}</span>
         </div>
@@ -114,9 +114,9 @@ const Rooms: React.FC = () => {
           <div className="flex flex-wrap gap-3 items-center">
             {/* Search */}
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" size={18} />
               <input
-                className="w-full pl-12 pr-4 h-13 py-3.5 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)] text-[var(--text-body)] placeholder-gray-400 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
+                className="w-full pl-12 pr-4 h-13 py-3.5 rounded-2xl border border-luxury bg-[var(--card-bg)] text-body placeholder:text-muted/50 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
                 placeholder="Tìm kiếm loại phòng..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -127,7 +127,7 @@ const Rooms: React.FC = () => {
               className={`flex items-center gap-2 px-5 py-3.5 rounded-2xl border font-semibold text-sm transition-all ${
                 showFilters
                   ? 'bg-primary text-white border-primary'
-                  : 'border-[var(--border-color)] text-[var(--text-body)] hover:border-primary/40'
+                  : 'border-luxury text-body hover:border-primary/40'
               }`}
             >
               <SlidersHorizontal size={16} />
@@ -136,7 +136,7 @@ const Rooms: React.FC = () => {
             {hasFilter && (
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1.5 px-4 py-3.5 rounded-2xl text-sm text-red-400 hover:bg-red-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-3.5 rounded-2xl text-sm text-error hover:bg-error/10 transition-colors"
               >
                 <X size={15} />
                 Xóa bộ lọc
@@ -149,27 +149,27 @@ const Rooms: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-2xl border border-[var(--border-color)] bg-[var(--card-bg)]"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-5 rounded-2xl border border-luxury bg-[var(--card-bg)]"
             >
               <div>
-                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-2">
+                <label className="text-xs font-bold text-muted uppercase tracking-wider block mb-2">
                   Giá tối đa (đ/đêm)
                 </label>
                 <input
                   type="number"
-                  className="w-full px-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-body)] focus:outline-none focus:border-primary/50 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-luxury bg-[var(--bg-main)] text-body focus:outline-none focus:border-primary/50 transition-all"
                   placeholder={`VD: ${(5_000_000).toLocaleString('vi-VN')}`}
                   value={maxPrice}
                   onChange={e => setMaxPrice(e.target.value ? Number(e.target.value) : '')}
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-2">
+                <label className="text-xs font-bold text-muted uppercase tracking-wider block mb-2">
                   Số khách tối thiểu
                 </label>
                 <input
                   type="number"
-                  className="w-full px-4 py-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-body)] focus:outline-none focus:border-primary/50 transition-all"
+                  className="w-full px-4 py-3 rounded-xl border border-luxury bg-[var(--bg-main)] text-body focus:outline-none focus:border-primary/50 transition-all"
                   placeholder="VD: 2"
                   min={1}
                   value={minCapacity}
@@ -181,7 +181,7 @@ const Rooms: React.FC = () => {
 
           {/* Results count */}
           {hasFilter && (
-            <p className="text-[var(--text-muted)] text-sm">
+            <p className="text-muted text-sm">
               Hiển thị <span className="font-bold text-primary">{filtered.length}</span> / {rooms.length} loại phòng
             </p>
           )}
@@ -190,7 +190,7 @@ const Rooms: React.FC = () => {
         {/* Room grid */}
         {filtered.length === 0 ? (
           <div className="text-center py-24">
-            <p className="text-[var(--text-muted)] text-lg">Không tìm thấy loại phòng phù hợp.</p>
+            <p className="text-muted text-lg">Không tìm thấy loại phòng phù hợp.</p>
             <button onClick={clearFilters} className="mt-4 text-primary underline text-sm">Xóa bộ lọc</button>
           </div>
         ) : (
@@ -204,7 +204,7 @@ const Rooms: React.FC = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.06 }}
-                  className="bg-[var(--card-bg)] rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 group border border-[var(--border-color)] flex flex-col"
+                  className="bg-[var(--card-bg)] rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 group border border-luxury flex flex-col"
                 >
                   {/* Image */}
                   <Link to={`/rooms/${room.id}`} className="relative h-60 overflow-hidden block">
@@ -234,15 +234,15 @@ const Rooms: React.FC = () => {
                   {/* Body */}
                   <div className="p-7 flex flex-col flex-1">
                     <Link to={`/rooms/${room.id}`}>
-                      <h3 className="text-xl font-display font-bold text-[var(--text-title)] mb-3 hover:text-primary transition-colors line-clamp-1">
+                      <h3 className="text-xl font-display font-bold text-title mb-3 hover:text-primary transition-colors line-clamp-1">
                         {room.name}
                       </h3>
                     </Link>
-                    <p className="text-sm text-[var(--text-muted)] mb-5 line-clamp-2 leading-relaxed">
+                    <p className="text-sm text-muted mb-5 line-clamp-2 leading-relaxed">
                       {room.description || 'Không gian nghỉ dưỡng được thiết kế tinh tế và thoải mái.'}
                     </p>
 
-                    <div className="flex flex-wrap gap-3 mb-6 text-xs text-[var(--text-muted)]">
+                    <div className="flex flex-wrap gap-3 mb-6 text-xs text-muted">
                       <span className="flex items-center gap-1.5">
                         <Users size={14} className="text-primary" />
                         {room.capacityLabel}
@@ -270,7 +270,7 @@ const Rooms: React.FC = () => {
                           </span>
                         ))}
                         {room.amenities!.length > 3 && (
-                          <span className="text-[10px] px-2.5 py-1 rounded-full bg-[var(--border-color)] text-[var(--text-muted)]">
+                          <span className="text-[10px] px-2.5 py-1 rounded-full border border-luxury text-muted">
                             +{room.amenities!.length - 3}
                           </span>
                         )}
@@ -280,7 +280,7 @@ const Rooms: React.FC = () => {
                     <div className="flex items-center justify-between gap-3 mt-auto">
                       <Link
                         to={`/rooms/${room.id}`}
-                        className="text-[var(--text-title)] font-bold text-sm hover:text-primary transition-colors flex items-center gap-1.5"
+                        className="text-title font-bold text-sm hover:text-primary transition-colors flex items-center gap-1.5"
                       >
                         Chi tiết
                         <ArrowRight size={15} />

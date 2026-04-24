@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { App, Button, Card, Col, Divider, Form, Input, InputNumber, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd';
 import { Plus, RefreshCw, ShoppingCart, CheckCircle2, XCircle, Truck, Search } from 'lucide-react';
 import dayjs from 'dayjs';
-import { bookingApi, BookingResponseDto } from '../../services/bookingApi';
+import { BookingResponseDto } from '../../services/bookingApi';
 import { adminApi, RoomDto } from '../../services/adminApi';
 import { serviceOrderApi, OrderServiceResponseDto, OrderServiceStatus, ServiceDto } from '../../services/serviceOrderApi';
 
@@ -65,13 +65,20 @@ const ServiceOrderManagementPage: React.FC = () => {
     setLoading(true);
     try {
       const [bk, rm, sv] = await Promise.all([
-        bookingApi.getAll(),
+        serviceOrderApi.getBookingsForManagement(),
         adminApi.getRooms(),
         serviceOrderApi.getServices(),
       ]);
       setBookings(bk);
       setRooms(rm);
       setServices(sv);
+      setSelectedBookingId((current) => {
+        if (current && bk.some((booking) => booking.id === current)) {
+          return current;
+        }
+
+        return bk[0]?.id ?? null;
+      });
     } catch {
       message.error('Không thể tải dữ liệu đặt hàng/dịch vụ');
     } finally {
@@ -93,8 +100,13 @@ const ServiceOrderManagementPage: React.FC = () => {
   }, [loadBase]);
 
   useEffect(() => {
-    if (selectedBookingId) loadOrders(selectedBookingId);
-  }, [selectedBookingId]);
+    if (selectedBookingId) {
+      void loadOrders(selectedBookingId);
+      return;
+    }
+
+    setOrders([]);
+  }, [selectedBookingId, loadOrders]);
 
   const visibleOrders = useMemo(() => {
     const term = search.trim().toLowerCase();

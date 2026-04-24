@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { authApi } from '../../services/authApi';
+import { userProfileApi } from '../../services/userProfileApi';
 
 export type Role = 'ADMIN' | 'STAFF' | 'USER' | 'Admin' | 'Staff' | 'User' | string;
 
@@ -11,6 +12,10 @@ export interface User {
   role: Role;
   permissions: string[];
   avatar?: string;
+  membershipId?: number | null;
+  membershipName?: string | null;
+  membershipDiscountPercent?: number | null;
+  loyaltyPoints?: number | null;
 }
 
 interface AuthState {
@@ -55,13 +60,19 @@ export const loginThunk = createAsyncThunk(
 
     try {
       const response = await authApi.login(dto);
+      const profile = await userProfileApi.getProfile().catch(() => null);
       const user: User = {
-        id: '0',
+        id: String(response.userId ?? 0),
         fullName: response.fullName,
         name: response.fullName,
         email: response.email,
         role: response.role,
         permissions: response.permissions ?? [],
+        avatar: profile?.avatarUrl ?? undefined,
+        membershipId: profile?.membershipId ?? null,
+        membershipName: profile?.membershipName ?? null,
+        membershipDiscountPercent: profile?.membershipDiscountPercent ?? null,
+        loyaltyPoints: profile?.loyaltyPoints ?? 0,
       };
 
       dispatch(loginSuccess({ user, token: response.accessToken }));

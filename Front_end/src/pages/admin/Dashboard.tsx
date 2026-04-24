@@ -1,8 +1,9 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
 import { Badge, Card, Col, List, Row, Statistic, Table, Tag, Typography } from 'antd';
-import { BellRing, BedDouble, Boxes, CircleAlert } from 'lucide-react';
-import { adminApi, NotificationDto, RoomDto } from '../../services/adminApi';
+import { BellRing, BedDouble, Boxes, CircleAlert, DollarSign, TrendingUp, BarChart3, CreditCard } from 'lucide-react';
+import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+import { adminApi, NotificationDto, RoomDto, DashboardAnalyticsDto } from '../../services/adminApi';
 import { formatVietnamTime } from '../../utils/dateFormatter';
 
 const Dashboard: React.FC = () => {
@@ -13,22 +14,54 @@ const Dashboard: React.FC = () => {
   }>({
     overall: { total: 0, inUse: 0, damaged: 0, inStock: 0 },
   });
+  const [analytics, setAnalytics] = useState<DashboardAnalyticsDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadDashboard = async () => {
       setLoading(true);
       try {
-        const result = await adminApi.getDashboardSummary();
+        const [result, analyticsData] = await Promise.all([
+          adminApi.getDashboardSummary(),
+          adminApi.getDashboardAnalytics()
+        ]);
         setRooms(result.rooms);
         setNotifications(result.notifications);
         setStockSummary(result.stockSummary);
+        setAnalytics(analyticsData);
       } finally {
         setLoading(false);
       }
     };
 
     loadDashboard();
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5206';
+    const token = localStorage.getItem('token');
+    const connection = new HubConnectionBuilder()
+      .withUrl(`${API_URL}/notificationHub`, {
+        accessTokenFactory: () => token || '',
+      })
+      .configureLogging(LogLevel.Information)
+      .withAutomaticReconnect()
+      .build();
+
+    connection
+      .start()
+      .then(() => {
+        connection.on('RoomStatusChanged', (roomId: number, status: string, cleaningStatus: string) => {
+          setRooms((prev) =>
+            prev.map((room) =>
+              room.id === roomId ? { ...room, status, cleaningStatus } : room
+            )
+          );
+        });
+      })
+      .catch((err) => console.error('SignalR Connection Error: ', err));
+
+    return () => {
+      connection.stop();
+    };
   }, []);
 
   const summary = useMemo(() => {
@@ -69,20 +102,59 @@ const Dashboard: React.FC = () => {
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12} xl={6}>
           <Card className="glass-card" loading={loading}>
+            <Statistic 
+              title="Tổng doanh thu (30 ngày)" 
+              value={analytics?.totalRevenue || 0} 
+              prefix={<DollarSign size={18} />} 
+              formatter={(val) => Number(val).toLocaleString('vi-VN') + ' đ'}
+              valueStyle={{ color: '#d4af37' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={6}>
+          <Card className="glass-card" loading={loading}>
+            <Statistic 
+              title="Tỉ lệ lấp đầy" 
+              value={analytics?.occupancyRate || summary.occupancyRate} 
+              suffix="%" 
+              prefix={<TrendingUp size={18} />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={6}>
+          <Card className="glass-card" loading={loading}>
+            <Statistic 
+              title="RevPAR (Doanh thu/phòng)" 
+              value={analytics?.revPAR || 0} 
+              prefix={<BarChart3 size={18} />} 
+              formatter={(val) => Number(val).toLocaleString('vi-VN') + ' đ'}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={6}>
+          <Card className="glass-card" loading={loading}>
+            <Statistic 
+              title="ADR (Giá trung bình)" 
+              value={analytics?.adr || 0} 
+              prefix={<CreditCard size={18} />} 
+              formatter={(val) => Number(val).toLocaleString('vi-VN') + ' đ'}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={12} xl={8}>
+          <Card className="glass-card" loading={loading}>
             <Statistic title="Tổng phòng hoạt động" value={summary.totalRooms} prefix={<BedDouble size={18} />} />
           </Card>
         </Col>
-        <Col xs={24} md={12} xl={6}>
+        <Col xs={24} md={12} xl={8}>
           <Card className="glass-card" loading={loading}>
-            <Statistic title="Tỉ lệ lấp đầy" value={summary.occupancyRate} suffix="%" />
+            <Statistic title="Phòng cần dọn" value={summary.dirty} prefix={<CircleAlert size={18} />} valueStyle={{ color: '#ef4444' }} />
           </Card>
         </Col>
-        <Col xs={24} md={12} xl={6}>
-          <Card className="glass-card" loading={loading}>
-            <Statistic title="Phòng cần dọn" value={summary.dirty} prefix={<CircleAlert size={18} />} />
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={6}>
+        <Col xs={24} md={12} xl={8}>
           <Card className="glass-card" loading={loading}>
             <Statistic title="Vật tư trong kho" value={stockSummary.overall.inStock} prefix={<Boxes size={18} />} />
           </Card>

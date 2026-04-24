@@ -1,4 +1,5 @@
 import axiosClient from '../api/axiosClient';
+import type { BookingResponseDto } from './bookingApi';
 
 export type OrderServiceStatus = 'Pending' | 'Delivered' | 'Cancelled';
 
@@ -52,6 +53,9 @@ export const serviceOrderApi = {
 
   getServices: async (): Promise<ServiceDto[]> =>
     (await axiosClient.get('/api/Services')) as unknown as ServiceDto[],
+
+  getBookingsForManagement: async (): Promise<BookingResponseDto[]> =>
+    (await axiosClient.get('/api/OrderServices/bookings')) as unknown as BookingResponseDto[],
 
   getOrdersByBookingId: async (bookingId: number): Promise<OrderServiceResponseDto[]> =>
     (await axiosClient.get(`/api/OrderServices/booking/${bookingId}`)) as unknown as OrderServiceResponseDto[],

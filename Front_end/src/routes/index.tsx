@@ -39,14 +39,22 @@ const CMSPage = lazy(() => import('../pages/admin/CMS'));
 const BookingManagementPage = lazy(() => import('../pages/admin/BookingManagement'));
 const InvoiceManagementPage = lazy(() => import('../pages/staff/InvoiceManagement'));
 const VoucherManagementPage = lazy(() => import('../pages/admin/VoucherManagement'));
+const MembershipManagementPage = lazy(() => import('../pages/admin/MembershipManagement'));
 const ServiceOrderManagementPage = lazy(() => import('../pages/staff/ServiceOrderManagement'));
+const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage'));
+const AnalyticsPage = lazy(() => import('../pages/admin/AnalyticsPage'));
+const SystemSettingsPage = lazy(() => import('../pages/admin/SystemSettingsPage'));
 const UnauthorizedPage = lazy(() => import('../pages/errors/UnauthorizedPage'));
 
 const StaffBookingPage = lazy(() => import('../pages/admin/BookingManagement'));
 const StaffInvoicePage = lazy(() => import('../pages/staff/InvoiceManagement'));
 const StaffCleaningPage = lazy(() => import('../pages/admin/CleaningPage'));
 
-const LossAndDamageManagement = lazy(() => import('../pages/LossAndDamageManagement'));
+const LoadingScreen = () => (
+  <div className="flex h-screen w-screen items-center justify-center bg-dark-base text-primary font-display text-2xl animate-pulse">
+    Đang tải...
+  </div>
+);
 
 const AppRoutes: React.FC = () => {
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
@@ -54,7 +62,7 @@ const AppRoutes: React.FC = () => {
   const homePath = getAuthorizedHomePath(user);
 
   return (
-    <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center bg-dark-base text-primary font-display text-2xl animate-pulse">KANT...</div>}>
+    <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
@@ -76,11 +84,7 @@ const AppRoutes: React.FC = () => {
           />
           <Route
             path="/booking/:roomId"
-            element={
-              <ProtectedRoute>
-                <Booking />
-              </ProtectedRoute>
-            }
+            element={<Booking />}
           />
         </Route>
 
@@ -106,6 +110,14 @@ const AppRoutes: React.FC = () => {
             element={
               <RequirePermission allowedPermissions={['VIEW_DASHBOARD']}>
                 <AdminDashboard />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="analytics"
+            element={
+              <RequirePermission allowedPermissions={['VIEW_DASHBOARD']}>
+                <AnalyticsPage />
               </RequirePermission>
             }
           />
@@ -246,6 +258,14 @@ const AppRoutes: React.FC = () => {
             }
           />
           <Route
+            path="memberships"
+            element={
+              <RequirePermission allowedPermissions={['MANAGE_BOOKINGS']}>
+                <MembershipManagementPage />
+              </RequirePermission>
+            }
+          />
+          <Route
             path="orders"
             element={
               <RequirePermission allowedPermissions={['MANAGE_SERVICES', 'MANAGE_ROOMS']}>
@@ -266,6 +286,22 @@ const AppRoutes: React.FC = () => {
                 <RoleManagement />
               </RequirePermission>
             } 
+          />
+          <Route
+            path="audit-logs"
+            element={
+              <RequirePermission allowedPermissions={['VIEW_DASHBOARD']}>
+                <AuditLogsPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="settings"
+            element={
+              <RequirePermission allowedPermissions={['MANAGE_ROLES']}>
+                <SystemSettingsPage />
+              </RequirePermission>
+            }
           />
         </Route>
 
@@ -341,8 +377,6 @@ const AppRoutes: React.FC = () => {
             }
           />
         </Route>
-
-        <Route path="/loss-and-damage" element={<ProtectedRoute><LossAndDamageManagement /></ProtectedRoute>} />
 
         {/* Error Pages */}
         <Route path="/401" element={<UnauthorizedPage />} />

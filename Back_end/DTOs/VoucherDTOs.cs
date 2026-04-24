@@ -16,6 +16,8 @@ namespace HotelManagementAPI.DTOs
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public int? UsageLimit { get; set; }
+        public int? EligibleMembershipId { get; set; }
+        public bool EligibleMemberOnly { get; set; }
         public int UsageCount { get; set; }
         public bool IsActive { get; set; }
         public bool IsCurrentlyValid { get; set; }
@@ -52,6 +54,9 @@ namespace HotelManagementAPI.DTOs
 
         [Range(1, int.MaxValue)]
         public int? UsageLimit { get; set; }
+
+        public int? EligibleMembershipId { get; set; }
+        public bool EligibleMemberOnly { get; set; } = false;
 
         public bool IsActive { get; set; } = true;
     }

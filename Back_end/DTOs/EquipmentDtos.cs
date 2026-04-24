@@ -1,4 +1,3 @@
-
 namespace HotelManagementAPI.DTOs;
 
 public record CreateEquipmentDto(
@@ -9,7 +8,8 @@ public record CreateEquipmentDto(
     int TotalQuantity,
     decimal BasePrice,
     decimal DefaultPriceIfLost,
-    string? Supplier
+    string? Supplier,
+    string? ImageUrl
 );
 
 public record UpdateEquipmentDto(
@@ -17,20 +17,16 @@ public record UpdateEquipmentDto(
     string Category,
     string Unit,
     int TotalQuantity,
-    string? Supplier
+    decimal BasePrice,
+    decimal DefaultPriceIfLost,
+    string? Supplier,
+    string? ImageUrl,
+    bool IsActive
 );
 
 public record UpdatePriceDto(
     decimal BasePrice,
     decimal DefaultPriceIfLost
-);
-
-public record BulkCreateRoomDto(
-    int RoomTypeId,
-    int Floor,
-    int StartNumber,   // Số phòng bắt đầu, VD: 101
-    int Count,         // Tạo bao nhiêu phòng
-    int? TemplateRoomId // Clone vật tư từ phòng mẫu nào (optional)
 );
 
 public record UpdateCompensationDto(

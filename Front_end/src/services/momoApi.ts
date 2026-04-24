@@ -38,14 +38,19 @@ export const createMoMoPayment = async (
  */
 export const parseMoMoReturnParams = () => {
   const params = new URLSearchParams(window.location.search);
+  const rawResultCode = params.get('resultCode');
+  const resultCode = rawResultCode ? parseInt(rawResultCode, 10) : null;
+  const rawPaymentStatus = params.get('payment_status');
+
   return {
-    paymentStatus: params.get('payment_status'),      // 'success' | null
+    paymentStatus:
+      resultCode !== null
+        ? (resultCode === 0 ? 'success' : 'failed')
+        : rawPaymentStatus,
     invoiceId: params.get('invoiceId')
       ? parseInt(params.get('invoiceId')!, 10)
       : null,
-    resultCode: params.get('resultCode')
-      ? parseInt(params.get('resultCode')!, 10)
-      : null,
+    resultCode,
     message: params.get('message'),
   };
 };

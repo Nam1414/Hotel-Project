@@ -23,6 +23,44 @@ namespace HotelManagementAPI.Services
             return vouchers.Select(v => MapToDto(v, null));
         }
 
+        public async Task<IEnumerable<VoucherResponseDto>> GetPublicForBookingAsync(decimal? bookingAmount = null)
+        {
+            var now = DateTime.Now;
+
+            var vouchers = await _context.Vouchers
+                .Where(v =>
+                    v.IsActive &&
+                    v.StartDate <= now &&
+                    v.EndDate >= now &&
+                    (!v.UsageLimit.HasValue || v.UsageCount < v.UsageLimit.Value))
+                .OrderBy(v => v.MinBookingAmount)
+                .ThenBy(v => v.Code)
+                .ToListAsync();
+
+            return vouchers.Select(v => MapToDto(v, bookingAmount));
+        }
+
+        public async Task<IEnumerable<VoucherResponseDto>> GetVipForMemberAsync(int membershipId, decimal? bookingAmount = null)
+        {
+            var now = DateTime.Now;
+
+            var vouchers = await _context.Vouchers
+                .Where(v =>
+                    v.IsActive &&
+                    v.StartDate <= now &&
+                    v.EndDate >= now &&
+                    (!v.UsageLimit.HasValue || v.UsageCount < v.UsageLimit.Value) &&
+                    (
+                        !v.EligibleMemberOnly ||
+                        (v.EligibleMembershipId.HasValue && v.EligibleMembershipId.Value == membershipId)
+                    ))
+                .OrderBy(v => v.MinBookingAmount)
+                .ThenBy(v => v.Code)
+                .ToListAsync();
+
+            return vouchers.Select(v => MapToDto(v, bookingAmount));
+        }
+
         public async Task<VoucherResponseDto?> GetByIdAsync(int id)
         {
             var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Id == id);
@@ -34,6 +72,7 @@ namespace HotelManagementAPI.Services
             await EnsureCodeUniqueAsync(dto.Code, null);
             ValidateVoucherDates(dto.StartDate, dto.EndDate);
             ValidateDiscount(dto.DiscountType, dto.DiscountValue);
+            ValidateVipVoucher(dto.EligibleMemberOnly, dto.EligibleMembershipId);
 
             var voucher = new Voucher
             {
@@ -47,6 +86,8 @@ namespace HotelManagementAPI.Services
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 UsageLimit = dto.UsageLimit,
+                EligibleMembershipId = dto.EligibleMembershipId,
+                EligibleMemberOnly = dto.EligibleMemberOnly,
                 IsActive = dto.IsActive,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
@@ -66,6 +107,7 @@ namespace HotelManagementAPI.Services
             await EnsureCodeUniqueAsync(dto.Code, id);
             ValidateVoucherDates(dto.StartDate, dto.EndDate);
             ValidateDiscount(dto.DiscountType, dto.DiscountValue);
+            ValidateVipVoucher(dto.EligibleMemberOnly, dto.EligibleMembershipId);
 
             voucher.Code = dto.Code.Trim().ToUpperInvariant();
             voucher.Name = dto.Name.Trim();
@@ -77,6 +119,8 @@ namespace HotelManagementAPI.Services
             voucher.StartDate = dto.StartDate;
             voucher.EndDate = dto.EndDate;
             voucher.UsageLimit = dto.UsageLimit;
+            voucher.EligibleMembershipId = dto.EligibleMembershipId;
+            voucher.EligibleMemberOnly = dto.EligibleMemberOnly;
             voucher.IsActive = dto.IsActive;
             voucher.UpdatedAt = DateTime.Now;
 
@@ -140,6 +184,14 @@ namespace HotelManagementAPI.Services
             }
         }
 
+        private static void ValidateVipVoucher(bool eligibleMemberOnly, int? eligibleMembershipId)
+        {
+            if (eligibleMemberOnly && !eligibleMembershipId.HasValue)
+            {
+                throw new InvalidOperationException("Voucher VIP phải chỉ định hạng thành viên áp dụng");
+            }
+        }
+
         private static bool IsVoucherValid(Voucher voucher, decimal bookingAmount)
         {
             var now = DateTime.Now;
@@ -179,6 +231,8 @@ namespace HotelManagementAPI.Services
                 StartDate = voucher.StartDate,
                 EndDate = voucher.EndDate,
                 UsageLimit = voucher.UsageLimit,
+                EligibleMembershipId = voucher.EligibleMembershipId,
+                EligibleMemberOnly = voucher.EligibleMemberOnly,
                 UsageCount = voucher.UsageCount,
                 IsActive = voucher.IsActive,
                 IsCurrentlyValid = IsVoucherValid(voucher, bookingAmount ?? voucher.MinBookingAmount),

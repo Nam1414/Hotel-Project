@@ -1,6 +1,7 @@
 using HotelManagementAPI.Data;
 using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Models;
+using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,13 +14,13 @@ namespace HotelManagementAPI.Controllers;
 public class MinibarController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IAuditLogService _auditLogService;
 
-    public MinibarController(AppDbContext context)
+    public MinibarController(AppDbContext context, IAuditLogService auditLogService)
     {
         _context = context;
+        _auditLogService = auditLogService;
     }
-
-    // --- QUẢN LÝ DANH MỤC ĐỒ (MinibarItems) ---
 
     [HttpGet("items")]
     [AllowAnonymous]
@@ -34,6 +35,7 @@ public class MinibarController : ControllerBase
         var item = new MinibarItem { Name = dto.Name, Price = dto.Price };
         _context.MinibarItems.Add(item);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("CREATE", "MinibarItem", new { minibarItemId = item.Id, item.Name }, null, dto, $"Tạo minibar item {item.Name}.");
         return CreatedAtAction(nameof(GetAllItems), new { id = item.Id }, item);
     }
 
@@ -48,10 +50,9 @@ public class MinibarController : ControllerBase
         item.IsActive = dto.IsActive;
 
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "MinibarItem", new { minibarItemId = id }, dto, item, $"Cập nhật minibar item {item.Name}.");
         return Ok(item);
     }
-
-    // --- QUẢN LÝ TỒN KHO TRONG PHÒNG (RoomMinibarStock) ---
 
     [HttpGet("stock/{roomId}")]
     public async Task<IActionResult> GetRoomStock(int roomId)
@@ -85,6 +86,7 @@ public class MinibarController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "MinibarStock", new { dto.RoomId, dto.MinibarItemId }, null, dto, $"Cập nhật tồn kho minibar phòng #{dto.RoomId}.");
         return Ok(stock);
     }
 }

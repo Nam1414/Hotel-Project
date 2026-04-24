@@ -149,8 +149,8 @@ namespace HotelManagementAPI.Services
             invoice.TaxAmount = tax;
             invoice.FinalTotal = subTotal + tax;
 
-            // Recalculate status based on payments AND deposit
-            decimal deposit = booking.DepositAmount;
+            // Only count deposit after it has actually been paid.
+            decimal deposit = GetEffectiveDepositAmount(booking);
             decimal totalPaid = (invoice.Payments?.Sum(p => p.AmountPaid) ?? 0m) + deposit;
             
             if (invoice.FinalTotal == 0)
@@ -199,9 +199,9 @@ namespace HotelManagementAPI.Services
 
             await _context.Payments.AddAsync(payment);
             
-            // Check if fully paid (including deposit)
+            // Check if fully paid (including a paid deposit only)
             var bookingRecord = await _context.Bookings.FindAsync(invoice.BookingId);
-            decimal depositAmt = bookingRecord?.DepositAmount ?? 0;
+            decimal depositAmt = GetEffectiveDepositAmount(bookingRecord);
             var totalWithDeposit = invoice.Payments.Sum(p => p.AmountPaid) + payment.AmountPaid + depositAmt;
             
             if (totalWithDeposit >= invoice.FinalTotal)
@@ -221,9 +221,39 @@ namespace HotelManagementAPI.Services
             };
         }
 
+        public async Task<InvoiceResponseDto?> MarkInvoicePaidAsync(int bookingId, string? transactionCode = null)
+        {
+            var invoice = await _context.Invoices
+                .Include(i => i.Payments)
+                .FirstOrDefaultAsync(i => i.BookingId == bookingId);
+
+            if (invoice == null) return null;
+
+            invoice.Status = InvoiceStatus.Paid;
+
+            var booking = await _context.Bookings.Include(b => b.User).FirstOrDefaultAsync(b => b.Id == bookingId);
+            if (booking?.UserId != null && booking.UserId > 0)
+            {
+                var loyaltyPointsToAdd = Math.Max(1, (int)Math.Floor((invoice.FinalTotal ?? 0m) / 100000m));
+                booking.User!.LoyaltyPoints += loyaltyPointsToAdd;
+                booking.User.MembershipId = await _context.Memberships
+                    .Where(m => m.MinPoints == null || m.MinPoints <= booking.User.LoyaltyPoints)
+                    .OrderByDescending(m => m.MinPoints ?? 0)
+                    .ThenByDescending(m => m.Id)
+                    .Select(m => (int?)m.Id)
+                    .FirstOrDefaultAsync();
+            }
+
+            await _context.SaveChangesAsync();
+            return await GetInvoiceByBookingIdAsync(bookingId);
+        }
+
         private async Task<InvoiceResponseDto> MapToDtoAsync(Invoice invoice)
         {
             var bookingId = invoice.BookingId;
+            var booking = await _context.Bookings.FindAsync(invoice.BookingId);
+            var depositRequiredAmount = Math.Max(0m, booking?.DepositAmount ?? 0m);
+            var depositPaidAmount = GetEffectiveDepositAmount(booking);
             
             // Lấy danh sách dịch vụ
             var services = await _context.OrderServices
@@ -290,8 +320,35 @@ namespace HotelManagementAPI.Services
                     ld.RoomInventory?.Room?.RoomNumber,
                     ld.Equipment?.Name ?? ld.RoomInventory?.Equipment?.Name ?? "Vật tư"
                 )).ToList(),
-                DepositAmount = (await _context.Bookings.FindAsync(invoice.BookingId))?.DepositAmount ?? 0
+                DepositAmount = depositRequiredAmount,
+                DepositPaidAmount = depositPaidAmount,
+                DepositRemainingAmount = Math.Max(0m, depositRequiredAmount - depositPaidAmount),
+                DepositStatus = ResolveDepositStatus(booking)
             };
+        }
+
+        private static decimal GetEffectiveDepositAmount(Booking? booking)
+        {
+            if (booking == null)
+            {
+                return 0m;
+            }
+
+            return string.Equals(booking.DepositStatus, "Paid", StringComparison.OrdinalIgnoreCase)
+                ? booking.DepositAmount
+                : 0m;
+        }
+
+        private static string ResolveDepositStatus(Booking? booking)
+        {
+            if (booking == null || booking.DepositAmount <= 0)
+            {
+                return "NotRequired";
+            }
+
+            return string.IsNullOrWhiteSpace(booking.DepositStatus)
+                ? "Unpaid"
+                : booking.DepositStatus;
         }
 
         private static decimal CalculateVoucherDiscount(Booking booking, decimal baseAmount)

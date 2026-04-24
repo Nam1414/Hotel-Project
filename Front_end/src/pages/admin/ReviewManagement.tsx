@@ -60,12 +60,12 @@ const ReviewManagement: React.FC = () => {
       key: 'action',
       render: (_, record) => (
         <div className="flex gap-2">
-          <Button type="text" icon={<Eye size={16} className="text-blue-500" />} onClick={() => setViewReview(record)} />
+          <Button type="text" icon={<Eye size={16} className="text-info" />} onClick={() => setViewReview(record)} />
           {!record.isApproved && (
-            <Button type="text" icon={<CheckCircle size={16} className="text-green-500" />} onClick={() => handleApprove(record.id)} />
+            <Button type="text" icon={<CheckCircle size={16} className="text-success" />} onClick={() => handleApprove(record.id)} />
           )}
           <Popconfirm title="Xóa bình luận này?" onConfirm={() => handleDelete(record.id)}>
-            <Button type="text" icon={<Trash2 size={16} className="text-red-500" />} />
+            <Button type="text" icon={<Trash2 size={16} className="text-error" />} />
           </Popconfirm>
         </div>
       )
@@ -89,7 +89,7 @@ const ReviewManagement: React.FC = () => {
             <div><p className="text-muted">Người viết:</p><p className="font-bold text-title">{viewReview.authorName}</p></div>
             <div><p className="text-muted">Đối tượng:</p><p className="font-bold">{viewReview.targetType} (ID: {viewReview.targetId})</p></div>
             <div><p className="text-muted">Số sao:</p><p className="text-yellow-500 font-bold">{viewReview.rating} ⭐</p></div>
-            <div><p className="text-muted">Nội dung:</p><div className="bg-gray-100 dark:bg-zinc-800 p-4 rounded-xl mt-1">{viewReview.comment || <i>Không có nội dung bìn luận</i>}</div></div>
+            <div><p className="text-muted">Nội dung:</p><div className="bg-subtle p-4 rounded-xl mt-1">{viewReview.comment || <i>Không có nội dung bìn luận</i>}</div></div>
             <div className="flex justify-end gap-3 mt-6">
               <Button onClick={() => setViewReview(null)}>Đóng</Button>
               {!viewReview.isApproved && (

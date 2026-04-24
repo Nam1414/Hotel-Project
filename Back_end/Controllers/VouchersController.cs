@@ -13,16 +13,33 @@ namespace HotelManagementAPI.Controllers
     public class VouchersController : ControllerBase
     {
         private readonly IVoucherService _voucherService;
+        private readonly IAuditLogService _auditLogService;
 
-        public VouchersController(IVoucherService voucherService)
+        public VouchersController(IVoucherService voucherService, IAuditLogService auditLogService)
         {
             _voucherService = voucherService;
+            _auditLogService = auditLogService;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
             var vouchers = await _voucherService.GetAllAsync();
+            return Ok(vouchers);
+        }
+
+        [HttpGet("public")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicForBooking([FromQuery] decimal? bookingAmount)
+        {
+            var vouchers = await _voucherService.GetPublicForBookingAsync(bookingAmount);
+            return Ok(vouchers);
+        }
+
+        [HttpGet("vip")]
+        public async Task<IActionResult> GetVipForMember([FromQuery] int membershipId, [FromQuery] decimal? bookingAmount)
+        {
+            var vouchers = await _voucherService.GetVipForMemberAsync(membershipId, bookingAmount);
             return Ok(vouchers);
         }
 
@@ -34,6 +51,7 @@ namespace HotelManagementAPI.Controllers
         }
 
         [HttpGet("{id:int}/validate")]
+        [AllowAnonymous]
         public async Task<IActionResult> ValidateForBooking(int id, [FromQuery] decimal bookingAmount)
         {
             var voucher = await _voucherService.ValidateForBookingAsync(id, bookingAmount);
@@ -48,6 +66,7 @@ namespace HotelManagementAPI.Controllers
             try
             {
                 var created = await _voucherService.CreateAsync(dto);
+                await _auditLogService.LogAsync("CREATE", "Voucher", new { voucherId = created.Id, created.Code }, null, dto, $"Tạo voucher {created.Code}.");
                 return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
             }
             catch (InvalidOperationException ex)
@@ -64,7 +83,9 @@ namespace HotelManagementAPI.Controllers
             try
             {
                 var updated = await _voucherService.UpdateAsync(id, dto);
-                return updated == null ? NotFound(new { message = "Voucher không tồn tại" }) : Ok(updated);
+                if (updated == null) return NotFound(new { message = "Voucher không tồn tại" });
+                await _auditLogService.LogAsync("UPDATE", "Voucher", new { voucherId = id, updated.Code }, dto, updated, $"Cập nhật voucher {updated.Code}.");
+                return Ok(updated);
             }
             catch (InvalidOperationException ex)
             {
@@ -78,7 +99,9 @@ namespace HotelManagementAPI.Controllers
             try
             {
                 var deleted = await _voucherService.DeleteAsync(id);
-                return deleted ? Ok(new { message = "Đã xóa voucher" }) : NotFound(new { message = "Voucher không tồn tại" });
+                if (!deleted) return NotFound(new { message = "Voucher không tồn tại" });
+                await _auditLogService.LogAsync("DELETE", "Voucher", new { voucherId = id }, null, null, $"Xóa voucher #{id}.");
+                return Ok(new { message = "Đã xóa voucher" });
             }
             catch (InvalidOperationException ex)
             {

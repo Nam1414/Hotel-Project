@@ -75,13 +75,38 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
   Cancelled: 'Đã hủy',
 };
 
-const PAYMENT_METHODS = ['Cash', 'Card', 'BankTransfer', 'MoMo', 'VNPay'];
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  Cash: 'Tiền mặt',
+  Card: 'Thẻ',
+  BankTransfer: 'Chuyển khoản',
+  MoMo: 'MoMo',
+  VNPay: 'VNPay',
+};
+
+const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS);
+
+const DEPOSIT_STATUS_COLOR: Record<string, string> = {
+  NotRequired: 'default',
+  Unpaid: 'orange',
+  Paid: 'green',
+};
+
+const DEPOSIT_STATUS_LABEL: Record<string, string> = {
+  NotRequired: 'Không yêu cầu đặt cọc',
+  Unpaid: 'Chưa thanh toán đặt cọc',
+  Paid: 'Đã thanh toán đặt cọc',
+};
+
+const getPaymentMethodLabel = (method?: string) => PAYMENT_METHOD_LABELS[method || ''] ?? method ?? 'Không rõ';
 
 const formatMoney = (v?: number | null) =>
   v !== undefined && v !== null ? v.toLocaleString('vi-VN') + ' ₫' : '—';
 
 const nightsBetween = (from: string, to: string) =>
   Math.max(1, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86_400_000));
+
+const getDepositStatusLabel = (status?: string) => DEPOSIT_STATUS_LABEL[status || 'NotRequired'] ?? status ?? 'Không yêu cầu cọc';
+const getDepositStatusColor = (status?: string) => DEPOSIT_STATUS_COLOR[status || 'NotRequired'] ?? 'default';
 
 type BookingViewMode = 'manage' | 'arrivals' | 'in-house' | 'check-out' | 'invoices';
 
@@ -96,37 +121,37 @@ const VIEW_CONFIG: Record<
   }
 > = {
   manage: {
-    title: 'Quản lý Đặt phòng',
-    subtitle: 'Tạo booking, nhận phòng, trả phòng và theo dõi toàn bộ lịch lưu trú.',
-    createLabel: 'Tạo booking mới',
+    title: 'Quản lý đặt phòng',
+    subtitle: 'Tạo đặt phòng, nhận phòng, trả phòng và theo dõi toàn bộ lịch lưu trú.',
+    createLabel: 'Tạo đặt phòng mới',
     defaultStatus: 'all',
     showCreate: true,
   },
   arrivals: {
     title: 'Khách đến hôm nay',
-    subtitle: 'Danh sách booking check-in hôm nay — nhấn Nhận phòng để làm thủ tục nhanh.',
-    createLabel: '+ Booking walk-in',
+    subtitle: 'Danh sách khách cần làm thủ tục nhận phòng hôm nay.',
+    createLabel: 'Tạo đặt phòng walk-in',
     defaultStatus: 'all',
     showCreate: true,
   },
   'in-house': {
     title: 'Khách đang lưu trú',
-    subtitle: 'Theo dõi khách đã nhận phòng. Có thể tạo booking mới cho khách walk-in.',
-    createLabel: '+ Booking walk-in',
+    subtitle: 'Theo dõi khách đã nhận phòng và xử lý các nghiệp vụ phát sinh.',
+    createLabel: 'Tạo đặt phòng walk-in',
     defaultStatus: 'CheckedIn',
     showCreate: true,
   },
   'check-out': {
     title: 'Thủ tục trả phòng',
-    subtitle: 'Xử lý trả phòng nhanh. Có thể tạo booking mới cho khách walk-in.',
-    createLabel: '+ Booking walk-in',
+    subtitle: 'Xử lý trả phòng nhanh và ghi nhận các khoản phát sinh.',
+    createLabel: 'Tạo đặt phòng walk-in',
     defaultStatus: 'CheckedIn',
     showCreate: true,
   },
   invoices: {
-    title: 'Quản lý Hóa đơn',
+    title: 'Quản lý hóa đơn',
     subtitle: 'Tạo hóa đơn, ghi nhận thanh toán và in chứng từ cho khách.',
-    createLabel: '+ Booking mới',
+    createLabel: 'Tạo đặt phòng mới',
     defaultStatus: 'all',
     showCreate: true,
   },
@@ -229,7 +254,7 @@ const BookingPage: React.FC = () => {
       setRoomTypes(rt);
       setVouchers(vc);
     } catch {
-      antdMessage.error('Không thể tải dữ liệu đặt phòng');
+      antdMessage.error('Không thể tải dữ liệu đặt phòng. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -330,10 +355,10 @@ const BookingPage: React.FC = () => {
   const updateStatus = async (booking: BookingResponseDto, status: BookingStatus) => {
     try {
       await bookingApi.updateStatus(booking.id, status);
-      antdMessage.success(`Đã cập nhật → ${STATUS_LABEL[status]}`);
+      antdMessage.success(`Đã cập nhật trạng thái thành ${STATUS_LABEL[status]}`);
       loadData();
     } catch (err: any) {
-      antdMessage.error(err.response?.data?.message || 'Cập nhật thất bại');
+      antdMessage.error(err.response?.data?.message || 'Không thể cập nhật trạng thái booking. Vui lòng thử lại.');
     }
   };
 
@@ -376,9 +401,9 @@ const BookingPage: React.FC = () => {
     try {
       const inv = await bookingApi.createInvoice(selectedBooking.id);
       setSelectedInvoice(inv);
-      antdMessage.success('Tạo hóa đơn thành công');
+      antdMessage.success('Tạo hóa đơn tạm tính thành công');
     } catch (err: any) {
-      antdMessage.error(err.response?.data?.message || 'Không thể tạo hóa đơn');
+      antdMessage.error(err.response?.data?.message || 'Không thể tạo hóa đơn tạm tính. Vui lòng kiểm tra lại dữ liệu.');
     }
   };
 
@@ -398,10 +423,10 @@ const BookingPage: React.FC = () => {
       });
       
       await Promise.all(promises);
-      antdMessage.success('Đã gửi yêu cầu buồng phòng kiểm tra và báo cáo!');
+      antdMessage.success('Đã gửi yêu cầu buồng phòng kiểm tra trạng thái phòng.');
       loadData();
     } catch (err: any) {
-      antdMessage.error('Lỗi khi gửi yêu cầu. Có thể phòng chưa được thiết lập.');
+      antdMessage.error('Không thể gửi yêu cầu kiểm tra phòng. Vui lòng thử lại hoặc kiểm tra thiết lập phòng.');
     }
   };
 
@@ -427,14 +452,14 @@ const BookingPage: React.FC = () => {
       }
       
       await bookingApi.updateStatus(selectedBookingForCheckOut!.id, 'CheckedOut');
-      antdMessage.success(`Đã trả phòng xuất sắc!`);
+      antdMessage.success('Đã trả phòng thành công.');
       
       await bookingApi.createInvoice(selectedBookingForCheckOut!.id).catch(() => {});
       
       setCheckOutOpen(false);
       loadData();
     } catch (err: any) {
-      antdMessage.error(err.response?.data?.message || 'Có lỗi xảy ra khi trả phòng');
+      antdMessage.error(err.response?.data?.message || 'Không thể hoàn tất thủ tục trả phòng. Vui lòng thử lại.');
     }
   };
 
@@ -446,14 +471,14 @@ const BookingPage: React.FC = () => {
         amountPaid: values.amountPaid,
         transactionCode: values.transactionCode || undefined,
       });
-      antdMessage.success('Ghi nhận thanh toán thành công');
+      antdMessage.success('Đã ghi nhận thanh toán thành công.');
       paymentForm.resetFields();
       setPaymentOpen(false);
       const inv = await bookingApi.getInvoiceByBookingId(selectedBooking!.id);
       setSelectedInvoice(inv);
       loadData();
     } catch (err: any) {
-      antdMessage.error(err.response?.data?.message || 'Thanh toán thất bại');
+      antdMessage.error(err.response?.data?.message || 'Không thể ghi nhận thanh toán. Vui lòng kiểm tra lại thông tin.');
     }
   };
 
@@ -474,12 +499,12 @@ const BookingPage: React.FC = () => {
         details,
         depositAmount: Number(values.depositAmount || 0),
       });
-      antdMessage.success('Tạo booking thành công');
+      antdMessage.success('Tạo đặt phòng thành công.');
       setCreateOpen(false);
       form.resetFields();
       loadData();
     } catch (err: any) {
-      antdMessage.error(err.response?.data?.message || 'Không thể tạo booking');
+      antdMessage.error(err.response?.data?.message || 'Không thể tạo đặt phòng. Vui lòng kiểm tra lại thông tin nhập.');
     }
   };
 
@@ -490,7 +515,7 @@ const BookingPage: React.FC = () => {
   };
 
   const remainingAmount = selectedInvoice
-    ? selectedInvoice.finalTotal - selectedInvoice.depositAmount - selectedInvoice.payments.reduce((s, p) => s + p.amountPaid, 0)
+    ? selectedInvoice.finalTotal - selectedInvoice.depositPaidAmount - selectedInvoice.payments.reduce((s, p) => s + p.amountPaid, 0)
     : 0;
 
   // ── table columns ──────────────────────────────────────────────────────
@@ -546,16 +571,24 @@ const BookingPage: React.FC = () => {
       title: 'Voucher',
       key: 'voucher',
       render: (_: any, r: BookingResponseDto) =>
-        r.voucherCode ? <Tag color="blue">{r.voucherCode}</Tag> : <Tag>Không</Tag>,
+        r.voucherCode ? <Tag color="blue">{r.voucherCode}</Tag> : <Tag>Không áp dụng</Tag>,
       width: 120,
     },
     {
       title: 'Tiền cọc',
       key: 'deposit',
       render: (_: any, r: BookingResponseDto) => (
-        <Text strong style={{ color: r.depositAmount > 0 ? '#16a34a' : 'inherit' }}>
-          {formatMoney(r.depositAmount)}
-        </Text>
+        <Space direction="vertical" size={2}>
+          <Text strong style={{ color: r.depositAmount > 0 ? '#16a34a' : 'inherit' }}>
+            {formatMoney(r.depositAmount)}
+          </Text>
+          <Text style={{ fontSize: 12, color: '#64748b' }}>
+            Đã thu: {formatMoney(r.depositPaidAmount)}
+          </Text>
+          <Tag color={getDepositStatusColor(r.depositStatus)} style={{ width: 'fit-content', marginInlineEnd: 0 }}>
+            {getDepositStatusLabel(r.depositStatus)}
+          </Tag>
+        </Space>
       ),
       width: 110,
     },
@@ -563,7 +596,7 @@ const BookingPage: React.FC = () => {
       title: 'Hóa đơn',
       key: 'invoice',
       render: (_: any, r: BookingResponseDto) =>
-        r.invoiceId ? <Tag color="green">Có HĐ</Tag> : <Tag>Chưa có</Tag>,
+        r.invoiceId ? <Tag color="green">Đã xuất hóa đơn</Tag> : <Tag>Chưa xuất hóa đơn</Tag>,
       width: 90,
     },
     {
@@ -641,7 +674,7 @@ const BookingPage: React.FC = () => {
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <Title level={2} style={{ marginBottom: 0 }}>{viewConfig.title}</Title>
-          <Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
+          <Paragraph style={{ color: '#6b7280', marginTop: 8 }}>
             {viewConfig.subtitle}
           </Paragraph>
         </div>
@@ -1010,6 +1043,12 @@ const BookingPage: React.FC = () => {
               <Descriptions.Item label="Tiền đặt cọc" span={2}>
                 <Text strong style={{ color: '#16a34a', fontSize: 16 }}>{formatMoney(selectedBooking.depositAmount)}</Text>
               </Descriptions.Item>
+              <Descriptions.Item label="Đã thu cọc" span={1}>
+                <Text strong style={{ color: '#16a34a', fontSize: 16 }}>{formatMoney(selectedBooking.depositPaidAmount)}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái cọc" span={1}>
+                <Tag color={getDepositStatusColor(selectedBooking.depositStatus)}>{getDepositStatusLabel(selectedBooking.depositStatus)}</Tag>
+              </Descriptions.Item>
             </Descriptions>
 
             <Divider orientation="left">Chi tiết phòng</Divider>
@@ -1204,7 +1243,15 @@ const BookingPage: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#d97706' }}>
                   <span>Tiền đã đặt cọc:</span>
-                  <span>-{formatMoney(selectedInvoice.depositAmount)}</span>
+                  <span>{formatMoney(selectedInvoice.depositAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#16a34a' }}>
+                  <span>Tien coc da thanh toan:</span>
+                  <span>-{formatMoney(selectedInvoice.depositPaidAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: selectedInvoice.depositRemainingAmount > 0 ? '#dc2626' : '#16a34a' }}>
+                  <span>Coc con thieu:</span>
+                  <span>{formatMoney(selectedInvoice.depositRemainingAmount)}</span>
                 </div>
               </div>
 

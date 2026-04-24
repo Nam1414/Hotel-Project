@@ -11,6 +11,7 @@ export const authApi = {
   login: async (dto: { email: string; password: string }) => {
     const res = await plainAxios.post('/Auth/login', dto);
     return res.data as {
+      userId: number;
       accessToken: string;
       fullName: string;
       email: string;

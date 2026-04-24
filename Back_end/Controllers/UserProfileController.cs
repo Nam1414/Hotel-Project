@@ -15,11 +15,13 @@ public class UserProfileController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IAuditLogService _auditLogService;
 
-    public UserProfileController(AppDbContext context, ICloudinaryService cloudinaryService)
+    public UserProfileController(AppDbContext context, ICloudinaryService cloudinaryService, IAuditLogService auditLogService)
     {
         _context = context;
         _cloudinaryService = cloudinaryService;
+        _auditLogService = auditLogService;
     }
 
     // GET /api/UserProfile
@@ -39,7 +41,11 @@ public class UserProfileController : ControllerBase
             user.Email,
             user.Phone,
             user.AvatarUrl,
-            Role = user.Role?.Name
+            Role = user.Role?.Name,
+            MembershipId = user.MembershipId,
+            LoyaltyPoints = user.LoyaltyPoints,
+            MembershipName = user.Membership?.TierName,
+            MembershipDiscountPercent = user.Membership?.DiscountPercent
         });
     }
 
@@ -70,6 +76,7 @@ public class UserProfileController : ControllerBase
         user.AvatarUrl = url;
         user.AvatarPublicId = publicId;
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "UserProfile", new { userId }, null, new { avatarUrl = url }, "Cập nhật ảnh đại diện cá nhân.");
 
         return Ok(new { message = "Cập nhật ảnh đại diện thành công", url });
     }
@@ -85,6 +92,7 @@ public class UserProfileController : ControllerBase
         user.FullName = dto.FullName;
         user.Phone = dto.Phone;
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "UserProfile", new { userId }, null, dto, "Cập nhật thông tin cá nhân.");
 
         return Ok(new { message = "Cập nhật thông tin cá nhân thành công" });
     }
@@ -106,6 +114,7 @@ public class UserProfileController : ControllerBase
         // 2. Hash mật khẩu mới và lưu
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "UserProfile", new { userId }, null, null, "Đổi mật khẩu cá nhân.");
 
         return Ok(new { message = "Đổi mật khẩu thành công" });
     }

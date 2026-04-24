@@ -9,5 +9,6 @@ namespace HotelManagementAPI.Services
         Task<InvoiceResponseDto> CreateInvoiceAsync(int bookingId);
         Task<PaymentResponseDto> AddPaymentAsync(int invoiceId, AddPaymentDto paymentDto);
         Task RecalculateInvoiceAsync(int bookingId);
+        Task<InvoiceResponseDto?> MarkInvoicePaidAsync(int bookingId, string? transactionCode = null);
     }
 }

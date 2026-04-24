@@ -133,6 +133,25 @@ export interface AttractionDto {
   updatedAt?: string | null;
 }
 
+export interface PieChartDataDto {
+  name: string;
+  value: number;
+}
+
+export interface DashboardAnalyticsDto {
+  totalRevenue: number;
+  roomRevenue: number;
+  serviceRevenue: number;
+  totalBookings: number;
+  occupancyRate: number;
+  revPAR: number;
+  adr: number;
+  revenueChart30Days: Array<{ date: string; revenue: number }>;
+  revenueByRoomType: PieChartDataDto[];
+  serviceUsage: PieChartDataDto[];
+  bookingStatusDistribution: PieChartDataDto[];
+}
+
 export const adminApi = {
   getDashboardSummary: async () => {
     const [rooms, stockSummary, notifications] = await Promise.all([
@@ -147,6 +166,18 @@ export const adminApi = {
       notifications: notifications as unknown as NotificationDto[],
     };
   },
+
+  getDashboardAnalytics: async () => {
+    return (await axiosClient.get('/api/Dashboard/analytics')) as DashboardAnalyticsDto;
+  },
+
+  getAuditLogs: async (params?: { actionType?: string; entityType?: string; from?: string; to?: string; search?: string; page?: number; pageSize?: number }) =>
+    (await axiosClient.get('/api/AuditLogs', { params })) as { TotalEvents: number; Events: any[] },
+
+  exportAuditLogs: async (params?: { actionType?: string; entityType?: string; from?: string; to?: string; search?: string }) =>
+    (await axiosClient.get('/api/AuditLogs/export', { params })) as any,
+
+  cleanupAuditLogs: async () => axiosClient.post('/api/AuditLogs/cleanup', {}),
 
   getRooms: async (params?: { roomTypeId?: number; floor?: number; roomNumber?: string }) =>
     (await axiosClient.get('/api/Rooms', { params })) as RoomDto[],
@@ -312,6 +343,11 @@ export const adminApi = {
     });
   },
 
+  downloadEquipmentImportTemplate: async () =>
+    axiosClient.get('/api/Equipments/import-template', {
+      responseType: 'blob',
+    }),
+
   reportDamage: async (dto: {
     equipmentId: number;
     quantity: number;
@@ -320,10 +356,10 @@ export const adminApi = {
     imageUrl?: string;
     bookingDetailId?: number;
     roomInventoryId?: number;
-  }) => axiosClient.post('/api/Equipment/report-damage', dto),
+  }) => axiosClient.post('/api/Equipments/report-damage', dto),
 
   getDamages: async (params?: { status?: string; equipmentId?: number }) =>
-    (await axiosClient.get('/api/Equipment/damages', { params })) as DamageDto[],
+    (await axiosClient.get('/api/Equipments/damages', { params })) as DamageDto[],
 
   createLossDamage: async (dto: {
     bookingDetailId?: number;
@@ -338,7 +374,7 @@ export const adminApi = {
     (await axiosClient.get('/api/LossAndDamages', { params: { bookingDetailId } })) as any[],
 
   updateDamageStatus: async (id: number, status: 'confirmed' | 'cancelled') =>
-    axiosClient.put(`/api/Equipment/damage/${id}/status`, { status }),
+    axiosClient.put(`/api/Equipments/damage/${id}/status`, { status }),
 
   getOrderServicesByBookingId: async (bookingId: number) =>
     (await axiosClient.get(`/api/OrderServices/booking/${bookingId}`)) as any[],
@@ -346,7 +382,7 @@ export const adminApi = {
   uploadEquipmentImage: async (equipmentId: number, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return axiosClient.post(`/api/Equipment/${equipmentId}/image`, formData, {
+    return axiosClient.post(`/api/Equipments/${equipmentId}/image`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
@@ -354,7 +390,7 @@ export const adminApi = {
   uploadDamageImage: async (damageId: number, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return axiosClient.post(`/api/Equipment/damage/${damageId}/image`, formData, {
+    return axiosClient.post(`/api/Equipments/damage/${damageId}/image`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
@@ -405,4 +441,10 @@ export const adminApi = {
 
   reportMinibar: async (roomId: number, items: { serviceId: number; quantity: number }[]) =>
     axiosClient.post(`/api/OrderServices/room/${roomId}/minibar`, items),
+
+  getSystemSettings: async () => (await axiosClient.get('/api/SystemSettings')) as any[],
+
+  updateSystemSettings: async (settings: any[]) => axiosClient.put('/api/SystemSettings', settings),
+
+  getUsers: async () => (await axiosClient.get('/api/UserManagement')) as any[],
 };

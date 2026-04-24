@@ -1,4 +1,5 @@
 using HotelManagementAPI.Data;
+using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,10 +13,12 @@ namespace HotelManagementAPI.Controllers;
 public class NotificationsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IAuditLogService _auditLogService;
 
-    public NotificationsController(AppDbContext context)
+    public NotificationsController(AppDbContext context, IAuditLogService auditLogService)
     {
         _context = context;
+        _auditLogService = auditLogService;
     }
 
     // GET /api/Notifications
@@ -59,6 +62,7 @@ public class NotificationsController : ControllerBase
 
         notification.IsRead = true;
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "Notification", new { notificationId = id, userId }, new { isRead = false }, new { isRead = true }, $"Đánh dấu thông báo #{id} đã đọc.");
 
         return Ok(new { message = "Đã đánh dấu là đã đọc" });
     }
@@ -81,6 +85,7 @@ public class NotificationsController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "Notification", new { userId }, null, null, "Đánh dấu tất cả thông báo đã đọc.");
 
         return Ok(new { message = "Đã đánh dấu tất cả là đã đọc" });
     }

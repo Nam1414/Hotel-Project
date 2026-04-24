@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { App, Spin } from 'antd';
-import { MapPin, Navigation, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { App, Spin, Modal } from 'antd';
+import { MapPin, Navigation, ChevronRight, Globe, Maximize2, X, Clock, Info } from 'lucide-react';
 import { adminApi, type AttractionDto } from '../../services/adminApi';
 
 const CATEGORIES = ['Tất cả', 'Lịch sử - Văn hóa', 'Thiên nhiên', 'Ẩm thực - Trải nghiệm', 'Tâm linh'];
@@ -12,6 +12,11 @@ const Attractions: React.FC = () => {
   const [attractions, setAttractions] = useState<AttractionDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('Tất cả');
+  const [mapReady, setMapReady] = useState(false);
+  const [showFullMap, setShowFullMap] = useState(false);
+  const [selectedAttraction, setSelectedAttraction] = useState<AttractionDto | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const leafletMap = useRef<any>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -28,85 +33,215 @@ const Attractions: React.FC = () => {
     void fetch();
   }, [message]);
 
+  // Load Leaflet CDN
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      script.async = true;
+      script.onload = () => setMapReady(true);
+      document.body.appendChild(script);
+    } else if ((window as any).L) {
+      setMapReady(true);
+    }
+  }, []);
+
   const filtered = useMemo(() => {
     if (activeCategory === 'Tất cả') return attractions;
     return attractions.filter((a: any) => a.category === activeCategory);
   }, [attractions, activeCategory]);
 
+  const attractionGroup = useRef<any>(null);
+
+  // Initialize Map & Markers
+  useEffect(() => {
+    if (mapReady && mapRef.current && attractions.length > 0 && (window as any).L) {
+      const L = (window as any).L;
+      
+      if (!leafletMap.current) {
+        // First time initialization
+        const map = L.map(mapRef.current, {
+          scrollWheelZoom: false,
+          zoomControl: false
+        }).setView([10.9575, 106.8427], 13);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // Add Hotel Marker (Permanent)
+        const hotelIcon = L.divIcon({
+          className: 'hotel-div-icon',
+          html: `<div class="w-10 h-10 bg-black rounded-full border-4 border-primary shadow-2xl flex items-center justify-center text-primary animate-bounce"><span class="font-display font-bold text-[10px]">KANT</span></div>`,
+          iconSize: [40, 40],
+          iconAnchor: [20, 40]
+        });
+
+        L.marker([10.9416, 106.8185], { icon: hotelIcon, isHotel: true }).addTo(map)
+          .bindPopup('<b class="font-display text-primary">KANT HOTEL</b><br/>Vị trí của chúng tôi');
+
+        // Create group for attractions
+        attractionGroup.current = L.layerGroup().addTo(map);
+        leafletMap.current = map;
+      }
+
+      const map = leafletMap.current;
+      const group = attractionGroup.current;
+
+      if (group) {
+        group.clearLayers();
+
+        const customIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="w-8 h-8 bg-primary rounded-full border-4 border-white shadow-lg flex items-center justify-center text-white"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 32]
+        });
+
+        const markers: any[] = [];
+        filtered.forEach(attr => {
+          if (attr.latitude && attr.longitude) {
+            const marker = L.marker([attr.latitude, attr.longitude], { icon: customIcon })
+              .bindPopup(`<div class="p-1"><b class="text-primary font-display">${attr.name}</b><p class="text-[10px] mt-1">${attr.category}</p></div>`);
+            group.addLayer(marker);
+            markers.push(marker);
+          }
+        });
+
+        if (markers.length > 0) {
+          const featureGroup = L.featureGroup(markers);
+          map.fitBounds(featureGroup.getBounds().pad(0.3), { animate: true });
+        } else {
+          // If no attractions, center back to hotel
+          map.setView([10.9416, 106.8185], 13, { animate: true });
+        }
+      }
+    }
+  }, [mapReady, attractions, filtered]);
+
   return (
-    <div className="min-h-screen bg-[#F9F6F1]">
+    <div className="min-h-screen bg-[var(--bg-main)] transition-colors duration-300">
       {/* Hero */}
-      <section className="relative h-[35vh] sm:h-[45vh] flex items-center justify-center bg-dark-base overflow-hidden">
+      <section className="relative h-[40vh] sm:h-[55vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
             src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80"
             alt="Attractions Hero"
-            className="w-full h-full object-cover opacity-30"
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-dark-base to-transparent" />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
         </div>
         <div className="relative z-10 text-center px-4 flex flex-col items-center">
+          <motion.span 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-primary font-bold tracking-[0.4em] uppercase text-xs mb-4 block"
+          >
+            Explore
+          </motion.span>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-display font-semibold text-white tracking-widest uppercase mb-4"
+            transition={{ delay: 0.1 }}
+            className="text-4xl sm:text-7xl font-display font-bold text-white tracking-widest uppercase mb-6"
           >
-            Điểm tham quan
+            ĐIỂM THAM QUAN
           </motion.h1>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="w-24 h-1 bg-primary mb-6"
+            initial={{ width: 0 }}
+            animate={{ width: 100 }}
+            transition={{ duration: 1, delay: 0.5 }}
+            className="h-1 bg-primary mb-8"
           />
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-gray-300 max-w-xl mx-auto font-light text-lg tracking-wide"
+            className="text-white/80 max-w-xl mx-auto font-light text-lg tracking-wide leading-relaxed"
           >
-            Khám phá những địa điểm hấp dẫn xung quanh Kant Hotel — Biên Hòa, Đồng Nai
+            Khám phá tinh hoa văn hóa và thiên nhiên tuyệt đẹp <br/> xung quanh <span className="text-primary font-bold">KANT HOTEL</span>
           </motion.p>
         </div>
       </section>
 
-      {/* Content */}
-      <section className="max-w-7xl mx-auto px-4 py-16 sm:py-20">
-        {/* Category filters */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-5 py-2 rounded-full border transition-all duration-300 text-sm font-semibold tracking-wider ${
-                activeCategory === cat
-                  ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                  : 'bg-transparent border-primary/30 text-primary hover:bg-primary/5'
-              }`}
+      {/* Interactive Map Section */}
+      <section className="max-w-7xl mx-auto px-4 -mt-16 relative z-20">
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[var(--card-bg)] rounded-[32px] overflow-hidden border border-luxury shadow-2xl"
+        >
+          <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 border-b border-luxury">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                <Globe size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-display font-bold text-title">Bản đồ tương tác</h2>
+                <p className="text-muted text-xs">Xem vị trí thực tế của các điểm đến</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-4 py-2 rounded-xl border transition-all duration-300 text-[10px] font-bold uppercase tracking-wider ${
+                    activeCategory === cat
+                      ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
+                      : 'bg-transparent border-luxury text-muted hover:bg-primary/5 hover:text-primary'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="relative h-[400px] md:h-[500px]">
+            {!mapReady && (
+              <div className="absolute inset-0 flex items-center justify-center bg-subtle">
+                <Spin size="large" />
+              </div>
+            )}
+            <div ref={mapRef} className="w-full h-full z-0 grayscale-[0.5] hover:grayscale-0 transition-all duration-700" />
+            <button 
+              onClick={() => setShowFullMap(true)}
+              className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-2xl text-primary shadow-xl border border-luxury hover:bg-primary hover:text-white transition-all z-10"
             >
-              {cat}
+              <Maximize2 size={20} />
             </button>
-          ))}
-        </div>
+          </div>
+        </motion.div>
+      </section>
 
-        {/* Grid */}
+      {/* Grid List */}
+      <section className="max-w-7xl mx-auto px-4 py-24">
         {loading ? (
           <div className="flex justify-center py-20">
             <Spin size="large" />
           </div>
         ) : filtered.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {filtered.map((attraction: any, idx) => (
               <motion.div
                 key={attraction.id}
                 initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 transition={{ delay: idx * 0.06 }}
-                whileHover={{ y: -6 }}
-                className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-black/5 flex flex-col"
+                whileHover={{ y: -10 }}
+                className="group bg-[var(--card-bg)] rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-luxury flex flex-col"
               >
                 {/* Image */}
-                <div className="relative h-56 overflow-hidden bg-slate-100">
+                <div className="relative h-64 overflow-hidden">
                   {attraction.imageUrl ? (
                     <img
                       src={attraction.imageUrl}
@@ -114,16 +249,16 @@ const Attractions: React.FC = () => {
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-                      <MapPin size={40} className="opacity-30" />
+                    <div className="w-full h-full flex items-center justify-center bg-subtle text-muted">
+                      <MapPin size={40} className="opacity-20" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
                   {/* Category badge */}
                   {attraction.category && (
-                    <div className="absolute top-4 left-4">
-                      <span className="bg-white/90 backdrop-blur-sm text-primary px-3 py-1 rounded-full font-semibold text-[10px] uppercase tracking-widest">
+                    <div className="absolute top-5 left-5">
+                      <span className="bg-primary/90 backdrop-blur-md text-white px-3 py-1 rounded-full font-bold text-[9px] uppercase tracking-widest shadow-lg">
                         {attraction.category}
                       </span>
                     </div>
@@ -131,9 +266,9 @@ const Attractions: React.FC = () => {
 
                   {/* Distance badge */}
                   {attraction.distanceKm && (
-                    <div className="absolute bottom-4 right-4">
-                      <span className="bg-primary/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full font-bold text-xs flex items-center gap-1.5">
-                        <Navigation size={12} />
+                    <div className="absolute bottom-5 right-5">
+                      <span className="bg-white/90 backdrop-blur-md text-primary px-4 py-2 rounded-2xl font-bold text-xs flex items-center gap-2 shadow-xl border border-luxury">
+                        <Navigation size={14} className="animate-pulse" />
                         {attraction.distanceKm} km
                       </span>
                     </div>
@@ -141,72 +276,203 @@ const Attractions: React.FC = () => {
                 </div>
 
                 {/* Info */}
-                <div className="p-6 flex flex-col flex-1">
-                  <h3 className="text-xl font-display font-semibold text-gray-900 leading-snug group-hover:text-primary transition-colors mb-2">
+                <div className="p-8 flex flex-col flex-1">
+                  <h3 className="text-2xl font-display font-bold text-title leading-tight group-hover:text-primary transition-colors mb-4">
                     {attraction.name}
                   </h3>
-
+ 
                   {attraction.address && (
-                    <p className="text-gray-400 text-sm flex items-start gap-1.5 mb-3">
-                      <MapPin size={14} className="text-primary mt-0.5 shrink-0" />
+                    <p className="text-muted text-sm flex items-start gap-2 mb-4 font-light">
+                      <MapPin size={16} className="text-primary mt-0.5 shrink-0" />
                       {attraction.address}
                     </p>
                   )}
-
+ 
                   {attraction.description && (
-                    <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-4">
+                    <p className="text-muted text-sm leading-relaxed line-clamp-3 mb-8 font-light">
                       {attraction.description}
                     </p>
                   )}
 
-                  {/* Map embed */}
-                  {attraction.mapEmbedLink && (
-                    <div className="mt-auto">
-                      <div
-                        className="w-full h-36 rounded-xl overflow-hidden border border-gray-100"
-                        dangerouslySetInnerHTML={{
-                          __html: attraction.mapEmbedLink.replace(
-                            /width="[^"]*"/,
-                            'width="100%"'
-                          ).replace(
-                            /height="[^"]*"/,
-                            'height="144"'
-                          ),
-                        }}
-                      />
-                    </div>
-                  )}
+                  {/* Action */}
+                  <div className="mt-auto flex items-center justify-between gap-4">
+                    <button 
+                      onClick={() => setSelectedAttraction(attraction)}
+                      className="text-primary font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:translate-x-1 transition-transform"
+                    >
+                      Xem chi tiết <ChevronRight size={14} />
+                    </button>
+                    {attraction.mapEmbedLink && (
+                       <div 
+                        onClick={() => setSelectedAttraction(attraction)}
+                        className="w-10 h-10 rounded-full border border-luxury flex items-center justify-center text-muted hover:bg-primary hover:text-white transition-all cursor-pointer"
+                        title="Xem vị trí"
+                       >
+                         <MapPin size={16} />
+                       </div>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-black/5">
-            <MapPin size={40} className="text-gray-300 mx-auto mb-3" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Không tìm thấy địa điểm</h3>
-            <p className="text-gray-400">Chưa có địa điểm nào trong danh mục này.</p>
+          <div className="text-center py-32 bg-[var(--card-bg)] rounded-[32px] border border-luxury shadow-xl">
+            <MapPin size={60} className="text-primary/20 mx-auto mb-6" />
+            <h3 className="text-2xl font-display font-bold text-title mb-2">Không tìm thấy địa điểm</h3>
+            <p className="text-muted font-light">Vui lòng chọn danh mục khác hoặc quay lại sau.</p>
           </div>
         )}
       </section>
 
       {/* CTA */}
-      <section className="max-w-4xl mx-auto px-4 pb-20 text-center">
-        <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-3xl p-10 md:p-14 text-white">
-          <h2 className="font-display text-3xl md:text-4xl font-semibold mb-4">
-            Sẵn sàng khám phá Biên Hòa?
-          </h2>
-          <p className="text-gray-300 mb-8 max-w-lg mx-auto">
-            Đặt phòng tại Kant Hotel để trải nghiệm sự thoải mái trọn vẹn sau mỗi hành trình khám phá.
-          </p>
-          <Link
-            to="/rooms"
-            className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-3.5 rounded-full font-bold tracking-wider uppercase text-sm transition-all shadow-lg shadow-primary/30 hover:shadow-primary/50"
-          >
-            Xem phòng & Đặt ngay
-            <ChevronRight size={18} />
-          </Link>
+      <section className="max-w-6xl mx-auto px-4 pb-32 text-center">
+        <div className="bg-primary/5 rounded-[40px] p-12 md:p-20 border border-luxury relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px]" />
+          <div className="relative z-10">
+            <h2 className="font-display text-4xl md:text-6xl font-bold text-title mb-6">
+              Sẵn sàng khám phá <span className="text-primary italic">Biên Hòa?</span>
+            </h2>
+            <p className="text-muted text-lg mb-10 max-w-2xl mx-auto font-light">
+              Đặt phòng tại <span className="font-bold text-primary">KANT HOTEL</span> để trải nghiệm sự thoải mái trọn vẹn sau mỗi hành trình khám phá tinh hoa vùng đất Đồng Nai.
+            </p>
+            <Link
+              to="/rooms"
+              className="inline-flex items-center gap-3 bg-primary hover:bg-primary-dark text-white px-12 py-5 rounded-full font-bold tracking-[0.2em] uppercase text-xs transition-all shadow-2xl shadow-primary/30 hover:shadow-primary/50"
+            >
+              Xem phòng & Đặt ngay
+              <ChevronRight size={20} />
+            </Link>
+          </div>
         </div>
       </section>
+
+      {/* Attraction Detail Modal */}
+      <Modal
+        open={!!selectedAttraction}
+        onCancel={() => setSelectedAttraction(null)}
+        footer={null}
+        width={1000}
+        centered
+        closeIcon={<X className="text-muted hover:text-primary transition-colors" />}
+        className="luxury-modal"
+        styles={{
+          mask: { backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.6)' },
+          content: { padding: 0, borderRadius: 32, overflow: 'hidden', backgroundColor: 'var(--card-bg)' }
+        }}
+      >
+        {selectedAttraction && (
+          <div className="flex flex-col md:flex-row min-h-[600px]">
+            {/* Left: Image & Quick Info */}
+            <div className="md:w-1/2 relative bg-subtle">
+              <img 
+                src={selectedAttraction.imageUrl || ''} 
+                alt={selectedAttraction.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-8 left-8 right-8 text-white">
+                <span className="bg-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 inline-block">
+                  {selectedAttraction.category}
+                </span>
+                <h2 className="text-3xl md:text-4xl font-display font-bold mb-2 leading-tight">
+                  {selectedAttraction.name}
+                </h2>
+                <p className="text-white/80 flex items-center gap-2 text-sm font-light">
+                  <MapPin size={14} className="text-primary" />
+                  {selectedAttraction.address}
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Full Details */}
+            <div className="md:w-1/2 p-8 md:p-12 flex flex-col bg-[var(--card-bg)]">
+              <div className="mb-10">
+                <h3 className="text-xs font-bold text-primary uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+                  <Info size={14} /> Giới thiệu địa điểm
+                </h3>
+                <p className="text-muted text-lg leading-relaxed font-light mb-8">
+                  {selectedAttraction.description}
+                </p>
+                <div className="grid grid-cols-2 gap-6 border-t border-luxury pt-8">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Khoảng cách</span>
+                    <span className="text-xl font-display font-bold text-title flex items-center gap-2">
+                      <Navigation size={18} className="text-primary" /> {selectedAttraction.distanceKm} km
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Thời gian di chuyển</span>
+                    <span className="text-xl font-display font-bold text-title flex items-center gap-2">
+                      <Clock size={18} className="text-primary" /> ~{Math.round((selectedAttraction.distanceKm || 0) * 3)} phút
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Map Section */}
+              <div className="mt-auto">
+                <h3 className="text-xs font-bold text-primary uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
+                  <Globe size={14} /> Vị trí bản đồ
+                </h3>
+                {selectedAttraction.mapEmbedLink ? (
+                  <div 
+                    className="w-full h-48 rounded-2xl overflow-hidden border border-luxury shadow-inner"
+                    dangerouslySetInnerHTML={{
+                      __html: selectedAttraction.mapEmbedLink.replace(
+                        /width="[^"]*"/,
+                        'width="100%"'
+                      ).replace(
+                        /height="[^"]*"/,
+                        'height="192"'
+                      ),
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-48 rounded-2xl bg-subtle flex items-center justify-center text-muted border border-luxury border-dashed">
+                    <MapPin size={24} className="opacity-20" />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Fullscreen Map Modal (Area Overview) */}
+      <Modal
+        open={showFullMap}
+        onCancel={() => setShowFullMap(false)}
+        footer={null}
+        width="90vw"
+        styles={{ content: { padding: 0, borderRadius: 24, overflow: 'hidden' } }}
+        centered
+        className="luxury-modal-full"
+      >
+        <div className="h-[80vh] relative">
+          <div className="absolute top-4 left-4 z-10">
+             <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-luxury">
+                <h3 className="font-display font-bold text-primary">Khu vực Biên Hòa</h3>
+                <p className="text-[10px] text-muted uppercase tracking-widest">Điểm tham quan & Văn hóa</p>
+             </div>
+          </div>
+          <div 
+            dangerouslySetInnerHTML={{ 
+              __html: `<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d125380.05282438837!2d106.7570499!3d10.957500!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3174d85e7997933d%3A0x19a0088597970d!2zQmnDqm4gSMOyYSwgxJDhu5NuZyBOYWksIFZp4buHdCBOYW0!5e0!3m2!1svi!2s!4v1713955000000!5m2!1svi!2s" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>`
+            }} 
+            className="w-full h-full"
+          />
+        </div>
+      </Modal>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .leaflet-container { font-family: inherit; }
+        .custom-div-icon { background: none; border: none; }
+        .hotel-div-icon { background: none; border: none; }
+        .leaflet-popup-content-wrapper { border-radius: 12px; border: 1px solid var(--border-luxury); }
+        .leaflet-popup-tip { background: white; }
+        .luxury-modal .ant-modal-content { border: 1px solid var(--border-luxury); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+      `}} />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
@@ -58,6 +59,12 @@ public class PermissionMiddleware
         // ── Bước 1: Xác định permission yêu cầu ──────────────────────────
         // Ưu tiên 1: [RequirePermission] attribute trên endpoint (attribute-based)
         var endpoint = context.GetEndpoint();
+
+        if (endpoint?.Metadata.GetMetadata<IAllowAnonymous>() != null)
+        {
+            await _next(context);
+            return;
+        }
         var requiredPermission = endpoint?
             .Metadata.GetMetadata<RequirePermissionAttribute>()
             ?.Permission;

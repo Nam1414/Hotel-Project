@@ -32,7 +32,7 @@ const CMS: React.FC = () => {
     try {
       setCategories(await contentApi.getCategories());
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the tai danh muc bai viet');
+      message.error(err.response?.data?.message || 'Không thể tải danh mục bài viết');
     } finally {
       setLoadingCategories(false);
     }
@@ -43,7 +43,7 @@ const CMS: React.FC = () => {
     try {
       setArticles(await contentApi.getArticles());
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the tai danh sach bai viet');
+      message.error(err.response?.data?.message || 'Không thể tải danh sách bài viết');
     } finally {
       setLoadingArticles(false);
     }
@@ -90,7 +90,7 @@ const CMS: React.FC = () => {
       });
       setArticleModalOpen(true);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the tai chi tiet bai viet');
+      message.error(err.response?.data?.message || 'Không thể tải chi tiết bài viết');
     }
   };
 
@@ -104,11 +104,11 @@ const CMS: React.FC = () => {
       if (editingArticle) {
         await contentApi.updateArticle(editingArticle.id, payload);
         if (thumbnailFile) await contentApi.uploadThumbnail(editingArticle.id, thumbnailFile);
-        message.success('Da cap nhat bai viet');
+        message.success('Đã cập nhật bài viết');
       } else {
         const created = await contentApi.createArticle(payload);
         if (thumbnailFile) await contentApi.uploadThumbnail(created.id, thumbnailFile);
-        message.success('Da tao bai viet moi');
+        message.success('Đã tạo bài viết mới');
       }
 
       setArticleModalOpen(false);
@@ -116,17 +116,17 @@ const CMS: React.FC = () => {
       articleForm.resetFields();
       await loadArticles();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the luu bai viet');
+      message.error(err.response?.data?.message || 'Không thể lưu bài viết');
     }
   };
 
   const removeArticle = async (record: ArticleListItemDto) => {
     try {
       await contentApi.deleteArticle(record.id);
-      message.success('Da xoa bai viet');
+      message.success('Đã xóa bài viết');
       await loadArticles();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the xoa bai viet');
+      message.error(err.response?.data?.message || 'Không thể xóa bài viết');
     }
   };
 
@@ -147,28 +147,28 @@ const CMS: React.FC = () => {
     try {
       if (editingCategory) {
         await contentApi.updateCategory(editingCategory.id, values);
-        message.success('Da cap nhat danh muc');
+        message.success('Đã cập nhật danh mục');
       } else {
         await contentApi.createCategory(values);
-        message.success('Da tao danh muc');
+        message.success('Đã tạo danh mục');
       }
 
       setCategoryModalOpen(false);
       categoryForm.resetFields();
       await loadCategories();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the luu danh muc');
+      message.error(err.response?.data?.message || 'Không thể lưu danh mục');
     }
   };
 
   const removeCategory = async (record: ArticleCategoryDto) => {
     try {
       await contentApi.deleteCategory(record.id);
-      message.success('Da vo hieu hoa danh muc');
+      message.success('Đã vô hiệu hóa danh mục');
       await loadCategories();
       await loadArticles();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the xoa danh muc');
+      message.error(err.response?.data?.message || 'Không thể xóa danh mục');
     }
   };
 

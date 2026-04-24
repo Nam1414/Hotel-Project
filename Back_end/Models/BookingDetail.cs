@@ -29,6 +29,10 @@ namespace HotelManagementAPI.Models
         [Column("price_per_night")]
         public decimal PricePerNight { get; set; }
 
+        [Column("status")]
+        [StringLength(50)]
+        public string? Status { get; set; } = "Pending";
+
         // Navigation properties
         public Booking? Booking { get; set; }
         public Room? Room { get; set; }

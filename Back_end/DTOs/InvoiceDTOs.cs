@@ -20,6 +20,9 @@ namespace HotelManagementAPI.DTOs
         public List<OrderServiceResponseDto> ServiceOrders { get; set; } = new List<OrderServiceResponseDto>();
         public List<LossDamageResponseDto> LossDamages { get; set; } = new List<LossDamageResponseDto>();
         public decimal DepositAmount { get; set; }
+        public decimal DepositPaidAmount { get; set; }
+        public decimal DepositRemainingAmount { get; set; }
+        public string DepositStatus { get; set; } = "NotRequired";
     }
 
     public class PaymentResponseDto

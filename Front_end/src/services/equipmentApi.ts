@@ -36,18 +36,18 @@ export const equipmentApi = {
     category?: string;
     isActive?: boolean;
   }): Promise<Equipment[]> => {
-    const res = await api.get('/Equipment', { params });
+    const res = await api.get('/Equipments', { params });
     return res.data;
   },
 
   getById: async (id: number): Promise<Equipment> => {
-    const res = await api.get(`/Equipment/${id}`);
+    const res = await api.get(`/Equipments/${id}`);
     return res.data;
   },
 
   // Thêm vật tư
   create: async (data: Partial<Equipment>): Promise<Equipment> => {
-    const res = await api.post('/Equipment', {
+    const res = await api.post('/Equipments', {
       itemCode          : data.itemCode,
       name              : data.name,
       category          : data.category,
@@ -62,7 +62,7 @@ export const equipmentApi = {
   },
 
   update: async (id: number, data: Partial<Equipment>): Promise<Equipment> => {
-    const res = await api.put(`/Equipment/${id}`, {
+    const res = await api.put(`/Equipments/${id}`, {
       name              : data.name,
       category          : data.category,
       unit              : data.unit,
@@ -91,7 +91,7 @@ export const equipmentApi = {
     newDamaged   : number;
     inStock      : number;
   }> => {
-    const res = await api.post('/Equipment/report-damage', {
+    const res = await api.post('/Equipments/report-damage', {
       equipmentId,
       quantity        : damagedQty,
       penaltyAmount   : 0,         // 0 → BE dùng DefaultPriceIfLost
@@ -115,7 +115,7 @@ export const equipmentApi = {
       supplier          : r.supplier,
       imageUrl          : null,
     }));
-    const res = await api.post('/Equipment/import', payload);
+    const res = await api.post('/Equipments/import', payload);
     return res.data;
   },
 };
@@ -127,7 +127,7 @@ export const lossApi = {
     status?    : string;
     equipmentId?: number;
   }): Promise<LossDamage[]> => {
-    const res = await api.get('/Equipment/damages', { params });
+    const res = await api.get('/Equipments/damages', { params });
     return res.data;
   },
 
@@ -144,7 +144,7 @@ export const lossApi = {
     booking_detail_id?: number;
     room_inventory_id?: number;
   }): Promise<LossDamage> => {
-    const res = await api.post('/Equipment/report-damage', {
+    const res = await api.post('/Equipments/report-damage', {
       equipmentId    : data.equipment_id,
       quantity       : data.quantity,
       penaltyAmount  : data.penalty_amount,
@@ -172,7 +172,7 @@ export const lossApi = {
    * status: "confirmed" | "cancelled"
    */
   updateStatus: async (id: number, status: LossDamage['status']): Promise<LossDamage> => {
-    const res = await api.put(`/Equipment/damage/${id}/status`, { status });
+    const res = await api.put(`/Equipments/damage/${id}/status`, { status });
     return res.data;
   },
 };

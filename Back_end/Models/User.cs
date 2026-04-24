@@ -22,6 +22,7 @@ public class User
 
     //new fields
     [Column("membership_id")] public int? MembershipId { get; set; }
+    [Column("loyalty_points")] public int LoyaltyPoints { get; set; }
     [Column("date_of_birth")] public DateOnly? DateOfBirth { get; set; }
     [Column("address")] public string? Address { get; set; }
 

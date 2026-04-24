@@ -24,7 +24,7 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-20 bg-dark-base relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center px-4 py-20 bg-[var(--bg-main)] relative overflow-hidden transition-colors duration-300">
       <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[120px]"></div>
       </div>
@@ -36,14 +36,14 @@ const Register: React.FC = () => {
       >
         <div className="text-center mb-10">
           <h1 className="text-4xl font-display font-bold text-primary mb-2 tracking-widest">KANT</h1>
-          <p className="text-gray-400">Join the world of luxury</p>
+          <p className="text-muted">Join the world of luxury</p>
         </div>
 
         <div className="glass-card p-10">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Full Name</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-widest">Full Name</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                   <input 
@@ -53,7 +53,7 @@ const Register: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Phone Number</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-widest">Phone Number</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                   <input 
@@ -63,9 +63,9 @@ const Register: React.FC = () => {
                 </div>
               </div>
             </div>
-
+ 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Email Address</label>
+              <label className="text-xs font-bold text-muted uppercase tracking-widest">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                 <input 
@@ -74,10 +74,10 @@ const Register: React.FC = () => {
                 />
               </div>
             </div>
-
+ 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Password</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-widest">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                   <input 
@@ -87,7 +87,7 @@ const Register: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Confirm Password</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-widest">Confirm Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                   <input 
@@ -103,7 +103,7 @@ const Register: React.FC = () => {
               className="btn-gold w-full py-4 text-lg flex items-center justify-center group"
             >
               {loading ? (
-                <div className="w-6 h-6 border-2 border-dark-base border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
                   CREATE ACCOUNT <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
@@ -112,8 +112,8 @@ const Register: React.FC = () => {
             </button>
           </form>
 
-          <div className="mt-10 pt-8 border-t border-white/5 text-center">
-            <p className="text-gray-400 text-sm">
+          <div className="mt-10 pt-8 border-t border-luxury text-center">
+            <p className="text-muted text-sm">
               Already have an account? <button onClick={() => navigate('/login')} className="text-primary font-bold hover:underline">Sign in</button>
             </p>
           </div>

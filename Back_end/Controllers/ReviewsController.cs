@@ -2,6 +2,7 @@ using System.Security.Claims;
 using HotelManagementAPI.Data;
 using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Models;
+using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace HotelManagementAPI.Controllers;
 public class ReviewsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IAuditLogService _auditLogService;
 
-    public ReviewsController(AppDbContext context)
+    public ReviewsController(AppDbContext context, IAuditLogService auditLogService)
     {
         _context = context;
+        _auditLogService = auditLogService;
     }
 
     // GET /api/Reviews/{targetType}/{targetId}
@@ -80,6 +83,7 @@ public class ReviewsController : ControllerBase
 
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("CREATE", "Review", new { reviewId = review.Id, review.TargetType, review.TargetId }, null, dto, $"Gửi đánh giá cho {dto.TargetType} #{dto.TargetId}.");
 
         return Ok(new { message = "Đã gửi đánh giá thành công. Vui lòng chờ kiểm duyệt." });
     }
@@ -125,6 +129,7 @@ public class ReviewsController : ControllerBase
 
         review.IsApproved = true;
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "Review", new { reviewId = id }, new { isApproved = false }, new { isApproved = true }, $"Duyệt đánh giá #{id}.");
         return Ok(new { message = "Đã duyệt bình luận" });
     }
 
@@ -138,6 +143,7 @@ public class ReviewsController : ControllerBase
 
         _context.Reviews.Remove(review);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("DELETE", "Review", new { reviewId = id }, null, null, $"Xóa đánh giá #{id}.");
         return Ok(new { message = "Đã xóa bình luận" });
     }
 }

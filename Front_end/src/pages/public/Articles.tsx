@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { App, Tag } from 'antd';
-import { Calendar, User } from 'lucide-react';
+import { Calendar, User, ArrowRight, Bookmark } from 'lucide-react';
 import { contentApi, type ArticleListItemDto, type ArticleCategoryDto } from '../../services/contentApi';
 
 const Articles: React.FC = () => {
@@ -23,12 +23,11 @@ const Articles: React.FC = () => {
         setArticles(articlesData);
         setCategories(categoriesData);
       } catch (err: any) {
-        message.error('Không thể tải danh sách bài viết. Vui lòng thử lại sau.');
+        message.error('Không thể tải danh sách bài viết.');
       } finally {
         setLoading(false);
       }
     };
-
     void fetchData();
   }, [message]);
 
@@ -40,53 +39,49 @@ const Articles: React.FC = () => {
     });
   }, [articles, categories, activeCategoryId]);
 
+  const featuredArticle = useMemo(() => {
+    return articles.length > 0 ? articles[0] : null;
+  }, [articles]);
+
+  const remainingArticles = useMemo(() => {
+    return filteredArticles.filter(a => a.id !== featuredArticle?.id || activeCategoryId !== null);
+  }, [filteredArticles, featuredArticle, activeCategoryId]);
+
   return (
-    <div className="min-h-screen bg-[#F9F6F1]">
-      {/* Hero Section */}
-      <section className="relative h-[30vh] sm:h-[40vh] flex items-center justify-center bg-dark-base overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1542314831-c6a4d27160c7?auto=format&fit=crop&q=80"
-            alt="News Hero"
-            className="w-full h-full object-cover opacity-30"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-dark-base to-transparent" />
-        </div>
-        <div className="relative z-10 text-center px-4 flex flex-col items-center">
+    <div className="min-h-screen bg-[#FDFCFB] pt-32 pb-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Page Header */}
+        <div className="text-center mb-16">
+          <motion.span 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-[10px] font-bold uppercase tracking-[0.5em] text-[#C6A96B] mb-4 block"
+          >
+            Tin tức & Sự kiện
+          </motion.span>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-display font-semibold text-white tracking-widest uppercase mb-4"
+            className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-[#1a1a1a] tracking-tight"
           >
-            Tin tức
+            KANT Journal
           </motion.h1>
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="w-24 h-1 bg-primary mb-6"
-          ></motion.div>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-gray-300 max-w-xl mx-auto font-light text-lg tracking-wide"
-          >
-            Khám phá những câu chuyện, sự kiện và ưu đãi đặc quyền từ KANT.
-          </motion.p>
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            className="w-20 h-0.5 bg-[#C6A96B] mx-auto mt-6"
+          />
         </div>
-      </section>
 
-      {/* Content Section */}
-      <section className="max-w-7xl mx-auto px-4 py-16 sm:py-20 lg:py-24">
-        {/* Category Filters */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
+        {/* Category Navigation */}
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
           <button
             onClick={() => setActiveCategoryId(null)}
-            className={`px-6 py-2 rounded-full border transition-all duration-300 text-sm font-semibold tracking-wider uppercase ${
+            className={`px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border ${
               activeCategoryId === null 
-                ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' 
-                : 'bg-transparent border-primary/30 text-primary hover:bg-primary/5'
+                ? 'bg-[#1a1a1a] border-[#1a1a1a] text-white shadow-xl shadow-black/10 scale-105' 
+                : 'bg-white border-[#e5e5e5] text-[#666666] hover:border-[#C6A96B] hover:text-[#C6A96B]'
             }`}
           >
             Tất cả
@@ -95,10 +90,10 @@ const Articles: React.FC = () => {
             <button
               key={category.id}
               onClick={() => setActiveCategoryId(category.id)}
-              className={`px-6 py-2 rounded-full border transition-all duration-300 text-sm font-semibold tracking-wider uppercase ${
+              className={`px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border ${
                 activeCategoryId === category.id 
-                  ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' 
-                  : 'bg-transparent border-primary/30 text-primary hover:bg-primary/5'
+                  ? 'bg-[#1a1a1a] border-[#1a1a1a] text-white shadow-xl shadow-black/10 scale-105' 
+                  : 'bg-white border-[#e5e5e5] text-[#666666] hover:border-[#C6A96B] hover:text-[#C6A96B]'
               }`}
             >
               {category.name}
@@ -106,93 +101,138 @@ const Articles: React.FC = () => {
           ))}
         </div>
 
-        {/* Articles Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3, 4, 5, 6].map((idx) => (
-              <div key={idx} className="bg-white rounded-2xl h-96 animate-pulse p-4 flex flex-col justify-end">
-                <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-                <div className="h-8 bg-gray-200 rounded w-full mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        ) : filteredArticles.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredArticles.map((article) => (
-              <motion.article
-                key={article.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                whileHover={{ y: -5 }}
-                className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-black/5 flex flex-col"
-              >
-                <Link to={`/news/${article.slug}`} className="block relative w-full h-64 overflow-hidden bg-slate-100">
-                  {article.thumbnailUrl ? (
-                    <img 
-                      src={article.thumbnailUrl} 
-                      alt={article.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-                      <span className="font-display tracking-widest opacity-30 text-2xl">KANT</span>
-                    </div>
-                  )}
-                  <div className="absolute top-4 left-4">
-                    <Tag className="bg-white/90 backdrop-blur-sm border-none text-primary px-3 py-1 font-semibold uppercase tracking-wider text-[10px]">
-                      {article.category}
-                    </Tag>
-                  </div>
-                </Link>
-                
-                <div className="p-6 flex flex-col flex-1">
-                  <div className="flex items-center text-xs text-gray-400 gap-4 mb-4">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={14} className="text-primary"/>
-                      {new Date(article.publishedAt).toLocaleDateString('vi-VN')}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <User size={14} className="text-primary"/>
-                      {article.author}
-                    </div>
-                  </div>
-                  
-                  <Link to={`/news/${article.slug}`}>
-                    <h3 className="text-xl font-display font-semibold text-gray-900 leading-snug group-hover:text-primary transition-colors line-clamp-3">
-                      {article.title}
-                    </h3>
-                  </Link>
-
-                  <div className="mt-auto pt-6">
-                    <Link 
-                      to={`/news/${article.slug}`}
-                      className="inline-flex items-center text-primary font-bold text-sm tracking-wider uppercase group-hover:text-primary-dark transition-colors"
-                    >
-                      Đọc tiếp
-                      <motion.span 
-                        className="ml-2 inline-block"
-                        initial={{ x: 0 }}
-                        whileHover={{ x: 5 }}
-                      >
-                        →
-                      </motion.span>
-                    </Link>
-                  </div>
-                </div>
-              </motion.article>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-white rounded-3xl h-96 animate-pulse border border-gray-100" />
             ))}
           </div>
         ) : (
-          <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-black/5">
-            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300">
-              <Calendar size={24} />
+          <div className="space-y-16">
+            
+            {/* Featured Article (only on "All") */}
+            {activeCategoryId === null && featuredArticle && (
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl shadow-black/[0.03] border border-[#f0f0f0]"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2">
+                  <div className="relative h-80 lg:h-[500px] overflow-hidden bg-[#f8f8f8]">
+                    {featuredArticle.thumbnailUrl ? (
+                      <img 
+                        src={featuredArticle.thumbnailUrl} 
+                        alt={featuredArticle.title}
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#C6A96B]/20 text-4xl font-display italic">KANT</div>
+                    )}
+                    <div className="absolute top-8 left-8">
+                      <span className="bg-white/95 backdrop-blur-md text-[#C6A96B] px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                        Mới nhất
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-8 lg:p-16 flex flex-col justify-center">
+                    <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest text-[#999999] mb-6">
+                      <span className="flex items-center gap-2"><Calendar size={14} className="text-[#C6A96B]"/> {new Date(featuredArticle.publishedAt).toLocaleDateString('vi-VN')}</span>
+                      <span className="flex items-center gap-2"><User size={14} className="text-[#C6A96B]"/> {featuredArticle.author || 'ADMIN'}</span>
+                    </div>
+                    <h2 className="text-3xl lg:text-4xl font-display font-bold text-[#1a1a1a] mb-6 leading-tight group-hover:text-[#C6A96B] transition-colors">
+                      {featuredArticle.title}
+                    </h2>
+                    <p className="text-[#666666] leading-relaxed mb-10 line-clamp-3 text-lg font-light">
+                      {featuredArticle.title} — Khám phá những trải nghiệm độc bản và những câu chuyện thú vị chỉ có tại KANT Hotel. Chúng tôi mang đến cho bạn không gian của sự xa hoa và tinh tế nhất.
+                    </p>
+                    <Link 
+                      to={`/news/${featuredArticle.slug}`}
+                      className="flex items-center gap-3 text-[#1a1a1a] font-black text-xs uppercase tracking-[0.2em] group/btn"
+                    >
+                      Đọc tiếp
+                      <div className="w-10 h-10 rounded-full bg-[#f5f5f5] flex items-center justify-center transition-all group-hover/btn:bg-[#1a1a1a] group-hover/btn:text-white group-hover/btn:translate-x-2">
+                        <ArrowRight size={16} />
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Articles Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+              <AnimatePresence mode='popLayout'>
+                {remainingArticles.map((article, idx) => (
+                  <motion.article
+                    key={article.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="group bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border border-[#f0f0f0] flex flex-col"
+                  >
+                    <Link to={`/news/${article.slug}`} className="block relative aspect-[4/3] overflow-hidden bg-[#f8f8f8]">
+                      {article.thumbnailUrl ? (
+                        <img 
+                          src={article.thumbnailUrl} 
+                          alt={article.title}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[#C6A96B]/10 text-2xl font-display italic">KANT</div>
+                      )}
+                      <div className="absolute top-5 left-5">
+                        <span className="bg-[#1a1a1a]/80 backdrop-blur-sm text-white px-4 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest">
+                          {article.category}
+                        </span>
+                      </div>
+                    </Link>
+                    
+                    <div className="p-8 flex flex-col flex-1">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-bold text-[#C6A96B] uppercase tracking-widest">
+                          {new Date(article.publishedAt).toLocaleDateString('vi-VN')}
+                        </span>
+                        <Bookmark size={14} className="text-[#dddddd] group-hover:text-[#C6A96B] transition-colors cursor-pointer" />
+                      </div>
+                      
+                      <Link to={`/news/${article.slug}`}>
+                        <h3 className="text-xl font-display font-bold text-[#1a1a1a] leading-snug group-hover:text-[#C6A96B] transition-colors line-clamp-3 mb-6">
+                          {article.title}
+                        </h3>
+                      </Link>
+
+                      <div className="mt-auto flex items-center justify-between pt-6 border-t border-[#f5f5f5]">
+                        <span className="text-[10px] font-bold text-[#999999] uppercase tracking-wider flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#C6A96B]" />
+                          {article.author || 'ADMIN'}
+                        </span>
+                        <Link 
+                          to={`/news/${article.slug}`}
+                          className="w-8 h-8 rounded-full bg-[#f8f8f8] flex items-center justify-center text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition-all"
+                        >
+                          <ArrowRight size={14} />
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.article>
+                ))}
+              </AnimatePresence>
             </div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Không tìm thấy bài viết</h3>
-            <p className="text-gray-400">Chưa có bài viết nào trong danh mục này.</p>
+
+            {remainingArticles.length === 0 && !loading && (
+              <div className="text-center py-32 bg-white rounded-[3rem] shadow-sm border border-[#f0f0f0]">
+                <div className="w-20 h-20 bg-[#f9f9f9] rounded-full flex items-center justify-center mx-auto mb-6 text-[#C6A96B]/30">
+                  <Bookmark size={32} />
+                </div>
+                <h3 className="text-2xl font-display font-bold text-[#1a1a1a] mb-2">Chưa có bài viết</h3>
+                <p className="text-[#666666] font-light">Danh mục này hiện đang được cập nhật nội dung mới.</p>
+              </div>
+            )}
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 };

@@ -13,10 +13,12 @@ namespace HotelManagementAPI.Controllers;
 public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;
+    private readonly IAuditLogService _auditLogService;
 
-    public InventoryController(IInventoryService inventoryService)
+    public InventoryController(IInventoryService inventoryService, IAuditLogService auditLogService)
     {
         _inventoryService = inventoryService;
+        _auditLogService = auditLogService;
     }
 
     [HttpPost("sync")]
@@ -26,6 +28,7 @@ public class InventoryController : ControllerBase
         try
         {
             var result = await _inventoryService.SyncAsync(dto);
+            await _auditLogService.LogAsync("UPDATE", "Inventory", new { dto.RoomId }, null, dto, $"Đồng bộ vật tư phòng #{dto.RoomId}.");
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -58,8 +61,10 @@ public class InventoryController : ControllerBase
     [Authorize(Roles = "Admin,Manager,HR,Nhân sự,Housekeeping")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomInventoryDto dto)
     {
+        var previous = await _inventoryService.GetByIdAsync(id);
         var result = await _inventoryService.UpdateByIdAsync(id, dto);
         if (result == null) return NotFound(new { message = "Không tìm thấy thiết bị trong phòng" });
+        await _auditLogService.LogAsync("UPDATE", "Inventory", new { inventoryId = id }, previous, result, $"Cập nhật vật tư trong phòng #{id}.");
         return Ok(result);
     }
 
@@ -70,6 +75,7 @@ public class InventoryController : ControllerBase
     {
         var result = await _inventoryService.DeleteByIdAsync(id);
         if (!result) return NotFound(new { message = "Không tìm thấy thiết bị trong phòng" });
+        await _auditLogService.LogAsync("DELETE", "Inventory", new { inventoryId = id }, null, null, $"Xóa vật tư khỏi phòng #{id}.");
         return Ok(new { message = "Đã xóa thiết bị khỏi phòng thành công" });
     }
 }

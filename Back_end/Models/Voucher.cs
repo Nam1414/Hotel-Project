@@ -45,6 +45,12 @@ namespace HotelManagementAPI.Models
         [Column("usage_limit")]
         public int? UsageLimit { get; set; }
 
+        [Column("eligible_membership_id")]
+        public int? EligibleMembershipId { get; set; }
+
+        [Column("eligible_member_only")]
+        public bool EligibleMemberOnly { get; set; }
+
         [Column("usage_count")]
         public int UsageCount { get; set; }
 

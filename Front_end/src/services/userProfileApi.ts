@@ -6,6 +6,10 @@ export interface UserProfileDto {
   phone?: string | null;
   avatarUrl?: string | null;
   role?: string | null;
+  membershipId?: number | null;
+  membershipName?: string | null;
+  membershipDiscountPercent?: number | null;
+  loyaltyPoints?: number | null;
 }
 
 export const userProfileApi = {

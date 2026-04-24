@@ -21,23 +21,23 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const variants = {
-    primary: 'bg-primary text-white hover:bg-primary-dark shadow-sm',
-    secondary: 'bg-white border border-border text-text-main hover:bg-gray-50 shadow-sm',
-    outline: 'border border-primary text-primary hover:bg-primary/5',
-    ghost: 'text-text-muted hover:bg-gray-100 hover:text-text-main',
-    danger: 'bg-red-500 text-white hover:bg-red-600 shadow-sm',
+    primary: 'btn-gold text-white',
+    secondary: 'bg-subtle border border-luxury text-body hover:bg-primary/10 hover:text-primary shadow-sm',
+    outline: 'btn-outline-gold',
+    ghost: 'text-muted hover:bg-primary/10 hover:text-primary',
+    danger: 'bg-rose-500 text-white hover:bg-rose-600 shadow-sm',
   };
 
   const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2',
-    lg: 'px-6 py-3 text-lg',
+    sm: 'px-4 py-2 text-sm',
+    md: 'px-6 py-2.5',
+    lg: 'px-8 py-3.5 text-lg',
   };
 
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none',
+        'inline-flex items-center justify-center rounded-xl font-bold transition-all duration-300 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none',
         variants[variant],
         sizes[size],
         className
@@ -57,7 +57,7 @@ export const Button: React.FC<ButtonProps> = ({
 };
 
 export const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-  <div className={cn('bg-white border border-border rounded-xl shadow-sm overflow-hidden', className)}>
+  <div className={cn('admin-card', className)}>
     {children}
   </div>
 );
@@ -65,7 +65,7 @@ export const Card: React.FC<{ children: React.ReactNode; className?: string }> =
 export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = ({ className, ...props }) => (
   <input
     className={cn(
-      'w-full bg-white border border-border rounded-lg px-3 py-2 text-text-main placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all',
+      'input-luxury',
       className
     )}
     {...props}
@@ -78,22 +78,22 @@ export const Badge: React.FC<{ children: React.ReactNode; variant?: 'success' | 
   className,
 }) => {
   const variants = {
-    success: 'bg-green-100 text-green-700',
-    warning: 'bg-amber-100 text-amber-700',
-    error: 'bg-red-100 text-red-700',
-    info: 'bg-blue-100 text-blue-700',
-    neutral: 'bg-gray-100 text-gray-700',
+    success: 'status-success',
+    warning: 'status-warning',
+    error: 'status-error',
+    info: 'status-info',
+    neutral: 'bg-subtle text-muted border border-luxury',
   };
 
   return (
-    <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', variants[variant], className)}>
+    <span className={cn('badge-luxury', variants[variant], className)}>
       {children}
     </span>
   );
 };
 
 export const Table: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <table className="min-w-full divide-y divide-gray-200 bg-white shadow-sm">
+  <table className="min-w-full divide-y border-luxury bg-transparent">
     {children}
   </table>
 );

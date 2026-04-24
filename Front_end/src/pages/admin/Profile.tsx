@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   User,
   Mail,
@@ -12,17 +12,19 @@ import {
   Save,
   LogOut,
   Loader2,
-  Calendar
+  Calendar,
+  Trophy,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Form, Input, Button, Switch, Tabs, message, Avatar, Badge, Tag } from 'antd';
+import { Form, Input, Button, Switch, Tabs, message, Avatar, Badge, Tag, Card } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../store/themeStore';
 import { userProfileApi, UserProfileDto } from '../../services/userProfileApi';
 import { useAppDispatch } from '../../hooks/useAppStore';
 import { logout, updateUser } from '../../store/slices/authSlice';
-import { bookingApi, type BookingResponseDto, type BookingDetailDto } from '../../services/bookingApi';
+import { bookingApi, type BookingResponseDto } from '../../services/bookingApi';
 import { serviceOrderApi, type ServiceDto, type ServiceCategoryDto } from '../../services/serviceOrderApi';
+import { membershipApi, type MembershipDto } from '../../services/membershipApi';
 
 type GeneralFormValues = {
   fullName: string;
@@ -37,27 +39,150 @@ type PasswordFormValues = {
   confirmPassword: string;
 };
 
+const formatCurrency = (value?: number | null) =>
+  Number(value || 0).toLocaleString('vi-VN') + 'd';
+
+const formatDate = (value?: string | null) =>
+  value ? value.split('T')[0] : '--';
+
+const getMembershipBadgeColor = (membershipName?: string | null) => {
+  const normalized = (membershipName || '').toLowerCase();
+  if (normalized.includes('platinum')) return 'gold';
+  if (normalized.includes('gold')) return 'orange';
+  if (normalized.includes('silver')) return 'default';
+  return 'blue';
+};
+
+const isCheckedInBooking = (status: string | number) =>
+  String(status) === '2' || String(status) === 'CheckedIn';
+
+// --- Sub-components ---
+
+const MembershipTab = ({ profile, tiers }: { profile: UserProfileDto | null, tiers: MembershipDto[] }) => {
+  const sortedTiers = [...tiers].sort((a, b) => (a.minPoints || 0) - (b.minPoints || 0));
+  const currentPoints = profile?.loyaltyPoints || 0;
+  const currentTierIndex = sortedTiers.findLastIndex(t => currentPoints >= (t.minPoints || 0));
+  const currentTier = currentTierIndex !== -1 ? sortedTiers[currentTierIndex] : null;
+  const nextTier = currentTierIndex + 1 < sortedTiers.length ? sortedTiers[currentTierIndex + 1] : null;
+
+  const progress = nextTier 
+    ? Math.min(100, Math.max(0, ((currentPoints - (currentTier?.minPoints || 0)) / ((nextTier.minPoints || 0) - (currentTier?.minPoints || 0))) * 100))
+    : 100;
+
+  return (
+    <div className="space-y-8 mt-6">
+      <div className="bg-subtle p-8 rounded-3xl border border-luxury relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-6 opacity-10">
+          <Trophy size={120} className="text-primary" />
+        </div>
+        
+        <div className="relative z-10">
+          <div className="flex justify-between items-end mb-6">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-muted mb-2">Hạng hiện tại</p>
+              <h3 className="text-4xl font-display font-bold text-primary">
+                {currentTier?.tierName || 'Guest'}
+              </h3>
+            </div>
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-widest text-muted mb-2">Điểm tích lũy</p>
+              <h3 className="text-3xl font-bold text-title">{currentPoints.toLocaleString()}</h3>
+            </div>
+          </div>
+
+          {nextTier && (
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-body font-medium">Tiến trình lên {nextTier.tierName}</span>
+                <span className="text-muted">Cần thêm {(nextTier.minPoints! - currentPoints).toLocaleString()} điểm</span>
+              </div>
+              <div className="h-3 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  className="h-full bg-gradient-to-r from-primary to-primary-light"
+                />
+              </div>
+            </div>
+          )}
+          {!nextTier && currentTier && (
+            <p className="text-sm text-emerald-600 font-bold">✨ Bạn đã đạt hạng cao nhất. Tận hưởng đặc quyền tối đa!</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="glass-card !p-0 overflow-hidden border-none shadow-none">
+          <div className="p-4 bg-primary/10 border-b border-primary/20">
+            <h4 className="font-bold text-title flex items-center gap-2">
+              <Shield size={18} className="text-primary" /> Đặc quyền của bạn
+            </h4>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-body">Giảm giá đặt phòng</span>
+              <span className="font-bold text-primary">{profile?.membershipDiscountPercent || 0}%</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-body">Ưu tiên nhận phòng sớm</span>
+              <span className="text-emerald-500 font-bold">{currentTierIndex >= 1 ? 'Khả dụng' : 'Không'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-body">Quà tặng sinh nhật</span>
+              <span className="text-emerald-500 font-bold">{currentTierIndex >= 2 ? 'Premium' : 'Standard'}</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="glass-card !p-0 overflow-hidden border-none shadow-none">
+          <div className="p-4 bg-black/5 dark:bg-white/5 border-b border-luxury">
+            <h4 className="font-bold text-title flex items-center gap-2">
+              <Calendar size={18} className="text-muted" /> Lộ trình thăng hạng
+            </h4>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {sortedTiers.map((tier, idx) => (
+                <div key={tier.id} className={`flex items-center justify-between p-3 rounded-xl ${idx === currentTierIndex ? 'bg-primary/5 border border-primary/20' : ''}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${idx <= currentTierIndex ? 'bg-primary' : 'bg-muted'}`} />
+                    <span className={`font-bold ${idx === currentTierIndex ? 'text-primary' : 'text-title'}`}>{tier.tierName}</span>
+                  </div>
+                  <span className="text-xs text-muted font-medium">{tier.minPoints?.toLocaleString()} điểm</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
 const MyBookingsTab = () => {
   const [bookings, setBookings] = useState<BookingResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Service Order Modal State
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<BookingResponseDto | null>(null);
   const [selectedBookingDetailId, setSelectedBookingDetailId] = useState<number | null>(null);
-  
   const [services, setServices] = useState<ServiceDto[]>([]);
   const [categories, setCategories] = useState<ServiceCategoryDto[]>([]);
   const [cart, setCart] = useState<Record<number, number>>({});
   const [orderingService, setOrderingService] = useState(false);
 
-  useEffect(() => {
-    bookingApi.getMyBookings()
-      .then(setBookings)
-      .catch(err => message.error('Không thể tải danh sách đặt phòng'))
-      .finally(() => setLoading(false));
+  const loadBookings = async () => {
+    try {
+      const data = await bookingApi.getMyBookings();
+      setBookings(data);
+    } catch {
+      message.error('Could not load your bookings.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Load services quietly for potential use
+  useEffect(() => {
+    void loadBookings();
     serviceOrderApi.getCategories().then(setCategories).catch(console.error);
     serviceOrderApi.getServices().then(setServices).catch(console.error);
   }, []);
@@ -70,67 +195,124 @@ const MyBookingsTab = () => {
   };
 
   const handleAddToCart = (serviceId: number, change: number) => {
-    setCart(prev => {
-      const newVal = (prev[serviceId] || 0) + change;
-      if (newVal <= 0) {
+    setCart((prev) => {
+      const nextValue = (prev[serviceId] || 0) + change;
+      if (nextValue <= 0) {
         const next = { ...prev };
         delete next[serviceId];
         return next;
       }
-      return { ...prev, [serviceId]: newVal };
+
+      return { ...prev, [serviceId]: nextValue };
     });
   };
 
   const handleOrderService = async () => {
     if (!selectedBookingDetailId || Object.keys(cart).length === 0) {
-      return message.warning('Vui lòng chọn phòng và ít nhất một dịch vụ');
+      message.warning('Please choose a room and at least one service.');
+      return;
     }
 
     setOrderingService(true);
     try {
       await serviceOrderApi.createOrder({
         bookingDetailId: selectedBookingDetailId,
-        items: Object.entries(cart).map(([serviceId, qty]) => ({
+        items: Object.entries(cart).map(([serviceId, quantity]) => ({
           serviceId: Number(serviceId),
-          quantity: qty,
+          quantity,
         })),
       });
-      message.success('Đã gửi yêu cầu dịch vụ thành công!');
+
+      message.success('Your service request has been sent.');
+      await loadBookings();
       setIsServiceModalOpen(false);
       setCart({});
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Có lỗi xảy ra khi gọi dịch vụ');
+    } catch (error: any) {
+      message.error(error.response?.data?.message || 'Could not place the service request.');
     } finally {
       setOrderingService(false);
     }
   };
 
-  const cartTotal = Object.entries(cart).reduce((total, [serviceId, qty]) => {
-    const s = services.find(x => x.id === Number(serviceId));
-    return total + (s?.price || 0) * qty;
-  }, 0);
+  const handlePayMoMo = async (booking: BookingResponseDto) => {
+    try {
+      const depositRemaining = Math.max(0, booking.depositRemainingAmount || 0);
+      if (depositRemaining <= 0) {
+        message.info('This deposit is already fully paid.');
+        return;
+      }
 
-  const getStatusTag = (status: number | string) => {
-    const s = String(status);
-    switch (s) {
-      case '0': case 'Pending': return <Tag color="orange">Chờ xác nhận</Tag>;
-      case '1': case 'Confirmed': return <Tag color="blue">Đã xác nhận</Tag>;
-      case '2': case 'CheckedIn': return <Tag color="green">Đang lưu trú</Tag>;
-      case '3': case 'CheckedOut': return <Tag color="default">Đã trả phòng</Tag>;
-      case '4': case 'Cancelled': return <Tag color="red">Đã hủy</Tag>;
-      default: return <Tag>{s}</Tag>;
+      message.loading({ content: 'Creating MoMo payment...', key: 'momo' });
+      let invoiceId = booking.invoiceId;
+      if (!invoiceId) {
+        const invoice = await bookingApi.createInvoice(booking.id);
+        invoiceId = invoice.id;
+      }
+
+      const momoResult = await bookingApi.createMoMoPayment(
+        invoiceId,
+        depositRemaining,
+        `Deposit payment for ${booking.bookingCode}`
+      );
+
+      if (momoResult.payUrl) {
+        window.location.href = momoResult.payUrl;
+      }
+    } catch (error: any) {
+      message.error({
+        content: error.response?.data?.message || 'Could not create MoMo payment.',
+        key: 'momo',
+      });
     }
   };
 
-  if (loading) return <div className="py-10 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" /></div>;
+  const cartTotal = useMemo(
+    () =>
+      Object.entries(cart).reduce((total, [serviceId, quantity]) => {
+        const service = services.find((item) => item.id === Number(serviceId));
+        return total + (service?.price || 0) * quantity;
+      }, 0),
+    [cart, services]
+  );
+
+  const getStatusTag = (status: string | number) => {
+    const normalized = String(status);
+    switch (normalized) {
+      case '0':
+      case 'Pending':
+        return <Tag color="orange">Pending</Tag>;
+      case '1':
+      case 'Confirmed':
+        return <Tag color="blue">Confirmed</Tag>;
+      case '2':
+      case 'CheckedIn':
+        return <Tag color="green">Checked in</Tag>;
+      case '3':
+      case 'CheckedOut':
+        return <Tag color="default">Checked out</Tag>;
+      case '4':
+      case 'Cancelled':
+        return <Tag color="red">Cancelled</Tag>;
+      default:
+        return <Tag>{normalized}</Tag>;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="py-10 text-center">
+        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (bookings.length === 0) {
     return (
-      <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 mt-10">
-        <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <p className="text-[var(--text-muted)]">Bạn chưa có đặt phòng nào.</p>
-        <Button onClick={() => window.location.href = '/rooms'} type="primary" className="btn-gold mt-4 px-6 h-10">
-          Khám phá phòng ngay
+      <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center dark:border-slate-700 dark:bg-slate-800/50">
+        <Calendar className="mx-auto mb-3 h-12 w-12 text-slate-300" />
+        <p className="text-[var(--text-muted)]">You do not have any bookings yet.</p>
+        <Button onClick={() => { window.location.href = '/rooms'; }} type="primary" className="btn-gold mt-4 h-10 px-6">
+          Explore rooms
         </Button>
       </div>
     );
@@ -138,81 +320,145 @@ const MyBookingsTab = () => {
 
   return (
     <div className="mt-10 space-y-4">
-      {bookings.map(b => (
-        <div key={b.id} className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {bookings.map((booking) => (
+        <div
+          key={booking.id}
+          className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/50 md:flex-row md:items-center"
+        >
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <span className="font-display font-bold text-lg text-[var(--text-title)]">{b.bookingCode}</span>
-              {getStatusTag(b.status)}
+              <span className="font-display text-lg font-bold text-[var(--text-title)]">
+                {booking.bookingCode}
+              </span>
+              {getStatusTag(booking.status)}
             </div>
             <div className="text-sm text-[var(--text-muted)]">
-              {b.details.length} phòng • {b.details[0]?.checkInDate.split('T')[0]} đến {b.details[b.details.length-1]?.checkOutDate.split('T')[0]}
+              {booking.details.length} room(s) • {formatDate(booking.details[0]?.checkInDate)} to{' '}
+              {formatDate(booking.details[booking.details.length - 1]?.checkOutDate)}
             </div>
-            <div className="text-sm">
-              <span className="text-[var(--text-muted)]">Tiền cọc: </span><span className="font-semibold text-amber-600">{b.depositAmount?.toLocaleString('vi-VN')}đ</span>
+            <div className="grid gap-1 text-sm sm:grid-cols-3 sm:gap-4">
+              <div>
+                <span className="text-[var(--text-muted)]">Deposit required: </span>
+                <span className="font-semibold text-amber-600">{formatCurrency(booking.depositAmount)}</span>
+              </div>
+              <div>
+                <span className="text-[var(--text-muted)]">Paid: </span>
+                <span className="font-semibold text-emerald-600">{formatCurrency(booking.depositPaidAmount)}</span>
+              </div>
+              <div>
+                <span className="text-[var(--text-muted)]">Remaining: </span>
+                <span className="font-semibold text-rose-600">{formatCurrency(booking.depositRemainingAmount)}</span>
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            {(b.status === 'CheckedIn' || String(b.status) === '2') && ( // CheckedIn
-              <Button type="primary" className="rounded-xl font-medium btn-gold" onClick={() => handleOpenServiceModal(b)}>
-                Gọi Dịch Vụ
+
+          <div className="flex flex-wrap gap-2">
+            {(String(booking.status) === 'Pending' ||
+              String(booking.status) === 'Confirmed' ||
+              String(booking.status) === 'CheckedOut') &&
+              (booking.depositRemainingAmount || 0) > 0 && (
+                <Button
+                  type="default"
+                  className="rounded-xl border-pink-500 font-medium text-pink-600 hover:bg-pink-50"
+                  onClick={() => void handlePayMoMo(booking)}
+                >
+                  Pay deposit with MoMo
+                </Button>
+              )}
+
+            {isCheckedInBooking(booking.status) && (
+              <Button
+                type="primary"
+                className="btn-gold rounded-xl font-medium"
+                onClick={() => handleOpenServiceModal(booking)}
+              >
+                Order service
               </Button>
             )}
-            <Button type="default" className="rounded-xl font-medium" onClick={() => window.location.href = `/profile`}>
-              Chi tiết
-            </Button>
           </div>
         </div>
       ))}
 
-      {/* Service Modal */}
       {selectedBooking && (
-        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-all ${isServiceModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm transition-all ${
+            isServiceModalOpen ? 'visible opacity-100' : 'invisible opacity-0'
+          }`}
+        >
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 p-6 dark:border-slate-800">
               <div>
-                <h3 className="text-xl font-display font-bold text-title">Gọi Dịch Vụ Tại Phòng</h3>
+                <h3 className="text-xl font-bold text-title">Room service request</h3>
                 <p className="text-sm text-muted">Booking {selectedBooking.bookingCode}</p>
               </div>
-              <button onClick={() => setIsServiceModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400">
+              <button
+                onClick={() => setIsServiceModalOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 &times;
               </button>
             </div>
-            
-            <div className="p-6 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-900/50">
+
+            <div className="flex-1 overflow-y-auto bg-slate-50 p-6 dark:bg-slate-900/50">
               {selectedBooking.details.length > 1 && (
                 <div className="mb-6">
-                  <label className="block text-sm font-bold text-title mb-2">Chọn phòng nhận dịch vụ:</label>
-                  <select 
-                    className="w-full h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-title"
+                  <label className="mb-2 block text-sm font-bold text-title">Choose room:</label>
+                  <select
+                    className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-title dark:border-slate-700 dark:bg-slate-800"
                     value={selectedBookingDetailId || ''}
-                    onChange={e => setSelectedBookingDetailId(Number(e.target.value))}
+                    onChange={(event) => setSelectedBookingDetailId(Number(event.target.value))}
                   >
-                    {selectedBooking.details.map(d => (
-                      <option key={d.id} value={d.id}>Phòng {d.roomId || '(Chưa xếp phòng)'} (Từ {d.checkInDate.split('T')[0]} đến {d.checkOutDate.split('T')[0]})</option>
+                    {selectedBooking.details.map((detail) => (
+                      <option key={detail.id} value={detail.id}>
+                        Room {detail.roomId || 'TBA'} ({formatDate(detail.checkInDate)} - {formatDate(detail.checkOutDate)})
+                      </option>
                     ))}
                   </select>
                 </div>
               )}
 
               <div className="space-y-8">
-                {categories.map(cat => {
-                  const catServices = services.filter(s => s.categoryId === cat.id);
-                  if (catServices.length === 0) return null;
+                {categories.map((category) => {
+                  const categoryServices = services.filter((service) => service.categoryId === category.id);
+                  if (categoryServices.length === 0) {
+                    return null;
+                  }
+
                   return (
-                    <div key={cat.id}>
-                      <h4 className="font-bold text-primary mb-4 pb-2 border-b border-slate-200 dark:border-slate-800">{cat.name}</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {catServices.map(service => (
-                          <div key={service.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                    <div key={category.id}>
+                      <h4 className="mb-4 border-b border-slate-200 pb-2 font-bold text-primary dark:border-slate-800">
+                        {category.name}
+                      </h4>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {categoryServices.map((service) => (
+                          <div
+                            key={service.id}
+                            className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+                          >
                             <div>
-                              <div className="font-bold text-title text-sm">{service.name}</div>
-                              <div className="text-primary font-semibold text-sm">{service.price.toLocaleString('vi-VN')}đ {service.unit ? `/ ${service.unit}` : ''}</div>
+                              <div className="text-sm font-bold text-title">{service.name}</div>
+                              <div className="text-sm font-semibold text-primary">
+                                {formatCurrency(service.price)} {service.unit ? `/ ${service.unit}` : ''}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 p-1 rounded-xl border border-slate-100 dark:border-slate-700">
-                              <button type="button" onClick={() => handleAddToCart(service.id, -1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 shadow-sm">-</button>
-                              <span className="w-6 text-center font-bold text-sm text-title">{cart[service.id] || 0}</span>
-                              <button type="button" onClick={() => handleAddToCart(service.id, 1)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-500 shadow-sm">+</button>
+                            <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-900">
+                              <button
+                                type="button"
+                                onClick={() => handleAddToCart(service.id, -1)}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 shadow-sm hover:bg-white dark:hover:bg-slate-800"
+                              >
+                                -
+                              </button>
+                              <span className="w-6 text-center text-sm font-bold text-title">
+                                {cart[service.id] || 0}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleAddToCart(service.id, 1)}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 shadow-sm hover:bg-white dark:hover:bg-slate-800"
+                              >
+                                +
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -223,13 +469,19 @@ const MyBookingsTab = () => {
               </div>
             </div>
 
-            <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
+            <div className="flex items-center justify-between border-t border-slate-100 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
               <div>
-                <p className="text-sm text-muted">Tổng tạm tính</p>
-                <p className="text-xl font-bold text-primary">{cartTotal.toLocaleString('vi-VN')}đ</p>
+                <p className="text-sm text-muted">Estimated total</p>
+                <p className="text-xl font-bold text-primary">{formatCurrency(cartTotal)}</p>
               </div>
-              <Button type="primary" className="btn-gold h-12 px-8 rounded-xl text-sm" loading={orderingService} onClick={handleOrderService} disabled={cartTotal === 0}>
-                Xác nhận đặt ({Object.values(cart).reduce((a, b) => a + b, 0)} món)
+              <Button
+                type="primary"
+                className="btn-gold h-12 rounded-xl px-8 text-sm"
+                loading={orderingService}
+                onClick={() => void handleOrderService()}
+                disabled={cartTotal === 0}
+              >
+                Confirm order ({Object.values(cart).reduce((sum, value) => sum + value, 0)} item)
               </Button>
             </div>
           </div>
@@ -251,6 +503,11 @@ const Profile: React.FC = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [tiers, setTiers] = useState<MembershipDto[]>([]);
+
+  useEffect(() => {
+    membershipApi.getAll().then(setTiers).catch(console.error);
+  }, []);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -264,7 +521,7 @@ const Profile: React.FC = () => {
           role: data.role ?? '',
         });
       } catch (error: any) {
-        message.error(error.response?.data?.message || 'Khong tai duoc thong tin tai khoan');
+        message.error(error.response?.data?.message || 'Could not load account details.');
       } finally {
         setLoading(false);
       }
@@ -290,9 +547,9 @@ const Profile: React.FC = () => {
 
       setProfile(nextProfile);
       dispatch(updateUser({ fullName: nextProfile.fullName, name: nextProfile.fullName }));
-      message.success('Đã cập nhật thông tin cá nhân');
+      message.success('Profile updated successfully.');
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Không thể cập nhật thông tin');
+      message.error(error.response?.data?.message || 'Could not update profile.');
     } finally {
       setSavingProfile(false);
     }
@@ -307,9 +564,9 @@ const Profile: React.FC = () => {
         newPassword: values.newPassword,
       });
       passwordForm.resetFields();
-      message.success('Da doi mat khau thanh cong');
+      message.success('Password updated successfully.');
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Khong the doi mat khau');
+      message.error(error.response?.data?.message || 'Could not update password.');
     } finally {
       setSavingPassword(false);
     }
@@ -334,9 +591,9 @@ const Profile: React.FC = () => {
 
       setProfile(nextProfile);
       dispatch(updateUser({ avatar: response.url }));
-      message.success('Đã cập nhật ảnh đại diện');
+      message.success('Avatar updated successfully.');
     } catch (error: any) {
-      message.error(error.response?.data?.message || 'Không thể tải ảnh đại diện');
+      message.error(error.response?.data?.message || 'Could not upload avatar.');
     } finally {
       setUploadingAvatar(false);
     }
@@ -349,8 +606,8 @@ const Profile: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -359,16 +616,16 @@ const Profile: React.FC = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-6xl mx-auto space-y-12 pb-10"
+      className="mx-auto max-w-6xl space-y-12 pb-10"
     >
-      <div className="flex flex-col md:flex-row gap-10">
-        <div className="w-full md:w-1/3 space-y-8">
+      <div className="flex flex-col gap-10 md:flex-row">
+        <div className="w-full space-y-8 md:w-1/3">
           <div className="admin-card text-center">
-            <div className="relative inline-block mb-8">
+            <div className="relative mb-8 inline-block">
               <Avatar
                 size={140}
                 src={profile?.avatarUrl || undefined}
-                className="border-4 border-white dark:border-slate-800 shadow-2xl"
+                className="border-4 border-white shadow-2xl dark:border-slate-800"
               >
                 {profile?.fullName?.charAt(0)?.toUpperCase()}
               </Avatar>
@@ -376,7 +633,7 @@ const Profile: React.FC = () => {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
-                className="absolute bottom-1 right-1 p-3 bg-primary text-white rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-60 disabled:hover:scale-100"
+                className="absolute bottom-1 right-1 rounded-full bg-primary p-3 text-white shadow-lg transition-transform hover:scale-110 disabled:opacity-60 disabled:hover:scale-100"
               >
                 <Camera size={18} />
               </button>
@@ -388,18 +645,24 @@ const Profile: React.FC = () => {
                 onChange={handleAvatarChange}
               />
             </div>
-            <h1 className="text-4xl mb-2">{profile?.fullName}</h1>
-            <p className="text-muted font-medium tracking-wide uppercase text-xs mb-6">{profile?.role || 'User'}</p>
-            <Badge status="success" text={<span className="text-sm font-bold text-title">Active</span>} />
 
-            <div className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800 space-y-5 text-left">
+            <div className="mt-4">
+              <h1 className="mb-2 text-4xl font-display font-bold text-title">{profile?.fullName}</h1>
+              <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
+                <Tag color={getMembershipBadgeColor(profile?.membershipName)} className="px-4 py-1 rounded-full border-luxury font-bold">
+                  {profile?.membershipName || 'Hạng thường'}
+                </Tag>
+              </div>
+            </div>
+
+            <div className="mt-8 space-y-5 border-t border-luxury pt-8 text-left">
               <div className="flex items-center space-x-4 text-body">
                 <Mail size={18} className="text-primary" />
                 <span className="text-sm font-medium">{profile?.email}</span>
               </div>
               <div className="flex items-center space-x-4 text-body">
                 <Phone size={18} className="text-primary" />
-                <span className="text-sm font-medium">{profile?.phone || 'Chưa cập nhật'}</span>
+                <span className="text-sm font-medium">{profile?.phone || 'Not updated yet'}</span>
               </div>
               <div className="flex items-center space-x-4 text-body">
                 <Shield size={18} className="text-primary" />
@@ -412,9 +675,9 @@ const Profile: React.FC = () => {
               danger
               icon={<LogOut size={18} />}
               onClick={handleLogout}
-              className="mt-10 h-14 rounded-xl flex items-center justify-center font-bold tracking-wider text-xs uppercase"
+              className="mt-10 flex h-14 items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider"
             >
-              Dang xuat
+              Sign out
             </Button>
           </div>
         </div>
@@ -429,17 +692,27 @@ const Profile: React.FC = () => {
                   key: '1',
                   label: (
                     <span className="flex items-center space-x-2 px-2 py-1">
+                      <Trophy size={18} />
+                      <span>Hạng thành viên</span>
+                    </span>
+                  ),
+                  children: <MembershipTab profile={profile} tiers={tiers} />,
+                },
+                {
+                  key: '2',
+                  label: (
+                    <span className="flex items-center space-x-2 px-2 py-1">
                       <User size={18} />
-                      <span>General</span>
+                      <span>Thông tin chung</span>
                     </span>
                   ),
                   children: (
                     <Form form={form} layout="vertical" className="mt-10 space-y-6" onFinish={handleSaveProfile}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <Form.Item
                           label="Full Name"
                           name="fullName"
-                          rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
+                          rules={[{ required: true, message: 'Please enter your full name.' }]}
                         >
                           <Input className="h-14 rounded-xl font-medium" />
                         </Form.Item>
@@ -447,7 +720,7 @@ const Profile: React.FC = () => {
                           <Input className="h-14 rounded-xl font-medium" disabled />
                         </Form.Item>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <Form.Item label="Phone Number" name="phone">
                           <Input className="h-14 rounded-xl font-medium" />
                         </Form.Item>
@@ -470,19 +743,24 @@ const Profile: React.FC = () => {
                   ),
                 },
                 {
-                  key: '2',
+                  key: '3',
                   label: (
                     <span className="flex items-center space-x-2 px-2 py-1">
                       <Lock size={18} />
-                      <span>Security</span>
+                      <span>Bảo mật</span>
                     </span>
                   ),
                   children: (
-                    <Form form={passwordForm} layout="vertical" className="mt-10 space-y-6" onFinish={handleChangePassword}>
+                    <Form
+                      form={passwordForm}
+                      layout="vertical"
+                      className="mt-10 space-y-6"
+                      onFinish={handleChangePassword}
+                    >
                       <Form.Item
                         label="Current Password"
                         name="currentPassword"
-                        rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại' }]}
+                        rules={[{ required: true, message: 'Please enter your current password.' }]}
                       >
                         <Input.Password className="h-14 rounded-xl" />
                       </Form.Item>
@@ -490,8 +768,8 @@ const Profile: React.FC = () => {
                         label="New Password"
                         name="newPassword"
                         rules={[
-                          { required: true, message: 'Vui lòng nhập mật khẩu mới' },
-                          { min: 6, message: 'Mat khau moi phai co it nhat 6 ky tu' },
+                          { required: true, message: 'Please enter a new password.' },
+                          { min: 6, message: 'Password must be at least 6 characters.' },
                         ]}
                       >
                         <Input.Password className="h-14 rounded-xl" />
@@ -501,14 +779,14 @@ const Profile: React.FC = () => {
                         name="confirmPassword"
                         dependencies={['newPassword']}
                         rules={[
-                          { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
+                          { required: true, message: 'Please confirm the new password.' },
                           ({ getFieldValue }) => ({
                             validator(_, value) {
                               if (!value || getFieldValue('newPassword') === value) {
                                 return Promise.resolve();
                               }
 
-                              return Promise.reject(new Error('Mật khẩu xác nhận không khớp'));
+                              return Promise.reject(new Error('Password confirmation does not match.'));
                             },
                           }),
                         ]}
@@ -524,21 +802,25 @@ const Profile: React.FC = () => {
                   ),
                 },
                 {
-                  key: '3',
+                  key: '4',
                   label: (
                     <span className="flex items-center space-x-2 px-2 py-1">
                       <Bell size={18} />
-                      <span>Preferences</span>
+                      <span>Cài đặt</span>
                     </span>
                   ),
                   children: (
                     <div className="mt-10 space-y-10">
                       <div className="space-y-6">
                         <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Appearance</h4>
-                        <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-800/50">
                           <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
-                              {isDarkMode ? <Moon size={24} className="text-primary" /> : <Sun size={24} className="text-primary" />}
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                              {isDarkMode ? (
+                                <Moon size={24} className="text-primary" />
+                              ) : (
+                                <Sun size={24} className="text-primary" />
+                              )}
                             </div>
                             <div>
                               <p className="font-bold text-title">Dark Mode</p>
@@ -551,18 +833,18 @@ const Profile: React.FC = () => {
 
                       <div className="space-y-6">
                         <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Avatar</h4>
-                        <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 gap-4">
+                        <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-6 dark:border-slate-800 dark:bg-slate-800/50">
                           <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
                               <Camera size={24} className="text-primary" />
                             </div>
                             <div>
                               <p className="font-bold text-title">Cloudinary Upload</p>
-                              <p className="text-xs text-muted">Cập nhật ảnh đại diện trực tiếp từ trang hồ sơ</p>
+                              <p className="text-xs text-muted">Update your avatar directly from the profile page</p>
                             </div>
                           </div>
                           <Button onClick={() => fileInputRef.current?.click()} loading={uploadingAvatar} className="rounded-xl">
-                            Tải ảnh
+                            Upload image
                           </Button>
                         </div>
                       </div>
@@ -570,16 +852,14 @@ const Profile: React.FC = () => {
                   ),
                 },
                 {
-                  key: '4',
+                  key: '5',
                   label: (
                     <span className="flex items-center space-x-2 px-2 py-1">
                       <Calendar size={18} />
-                      <span>My Bookings</span>
+                      <span>Lịch sử đặt phòng</span>
                     </span>
                   ),
-                  children: (
-                    <MyBookingsTab />
-                  ),
+                  children: <MyBookingsTab />,
                 },
               ]}
             />

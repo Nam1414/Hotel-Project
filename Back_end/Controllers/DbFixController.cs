@@ -43,4 +43,22 @@ public class DbFixController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    [HttpPost("seed-demo-presentation")]
+    public async Task<IActionResult> SeedDemoPresentation()
+    {
+        try
+        {
+            var summary = await DemoPresentationSeeder.SeedAsync(HttpContext.RequestServices);
+            return Ok(new
+            {
+                message = "Demo presentation data seeded successfully",
+                summary
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }

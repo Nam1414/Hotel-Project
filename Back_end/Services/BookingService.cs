@@ -59,37 +59,14 @@ namespace HotelManagementAPI.Services
         public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingRequestDto requestDto)
         {
             var bookingCode = "BK" + DateTime.Now.ToString("yyyyMMddHHmmss");
-            var bookingAmount = requestDto.Details.Sum(d =>
-                Math.Max(1, (decimal)(d.CheckOutDate - d.CheckInDate).TotalDays) * d.PricePerNight);
-
-            if (requestDto.VoucherId.HasValue)
-            {
-                var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Id == requestDto.VoucherId.Value);
-                if (voucher == null)
-                {
-                    throw new Exception("Voucher không tồn tại");
-                }
-
-                var now = DateTime.Now;
-                var isValid = voucher.IsActive
-                    && voucher.StartDate <= now
-                    && voucher.EndDate >= now
-                    && bookingAmount >= voucher.MinBookingAmount
-                    && (!voucher.UsageLimit.HasValue || voucher.UsageCount < voucher.UsageLimit.Value);
-
-                if (!isValid)
-                {
-                    throw new Exception("Voucher không hợp lệ hoặc không áp dụng được");
-                }
-            }
-            
             var bookingDetails = new List<BookingDetail>();
+            decimal trueTotalAmount = 0m;
+
             foreach (var d in requestDto.Details)
             {
                 int? assignedRoomId = d.RoomId;
                 if (!assignedRoomId.HasValue && d.RoomTypeId.HasValue)
                 {
-                    // Tự động gán phòng trống cho loại phòng này
                     var availableRoom = await _context.Rooms
                         .Where(r => r.RoomTypeId == d.RoomTypeId && r.IsActive)
                         .FirstOrDefaultAsync(r => !_context.BookingDetails.Any(bd => 
@@ -100,15 +77,46 @@ namespace HotelManagementAPI.Services
                             bd.CheckInDate < d.CheckOutDate && 
                             bd.CheckOutDate > d.CheckInDate));
 
-                    if (availableRoom != null)
-                    {
-                        assignedRoomId = availableRoom.Id;
-                    }
-                    else 
-                    {
-                        throw new Exception("Không có phòng trống cho loại phòng này trong thời gian yêu cầu.");
-                    }
+                    if (availableRoom != null) assignedRoomId = availableRoom.Id;
+                    else throw new Exception("Không có phòng trống cho loại phòng này trong thời gian yêu cầu.");
                 }
+
+                // SECURITY FIX: Lấy BasePrice từ Database thay vì tin tưởng Frontend
+                var roomType = await _context.RoomTypes.FindAsync(d.RoomTypeId);
+                if (roomType == null) throw new Exception("Không tìm thấy thông tin hạng phòng.");
+
+                decimal basePrice = roomType.BasePrice;
+                decimal nights = (decimal)(d.CheckOutDate - d.CheckInDate).TotalDays;
+                if (nights <= 0) nights = 1;
+
+                // DYNAMIC PRICING: Tăng 20% nếu là cuối tuần (T6, T7, CN)
+                decimal averagePricePerNight = basePrice;
+                decimal totalLinePrice = 0m;
+                
+                for(int i = 0; i < nights; i++)
+                {
+                    var currentNight = d.CheckInDate.AddDays(i);
+                    decimal nightPrice = basePrice;
+                    
+                    // Cuối tuần +20%
+                    if (currentNight.DayOfWeek == DayOfWeek.Friday || 
+                        currentNight.DayOfWeek == DayOfWeek.Saturday || 
+                        currentNight.DayOfWeek == DayOfWeek.Sunday)
+                    {
+                        nightPrice = basePrice * 1.20m;
+                    }
+                    
+                    // Mùa cao điểm (Tháng 6,7,8) +10%
+                    if (currentNight.Month >= 6 && currentNight.Month <= 8)
+                    {
+                        nightPrice *= 1.10m;
+                    }
+                    
+                    totalLinePrice += nightPrice;
+                }
+                
+                averagePricePerNight = Math.Round(totalLinePrice / nights);
+                trueTotalAmount += totalLinePrice;
 
                 bookingDetails.Add(new BookingDetail
                 {
@@ -116,8 +124,23 @@ namespace HotelManagementAPI.Services
                     RoomTypeId = d.RoomTypeId,
                     CheckInDate = d.CheckInDate,
                     CheckOutDate = d.CheckOutDate,
-                    PricePerNight = d.PricePerNight
+                    PricePerNight = averagePricePerNight
                 });
+            }
+
+            if (requestDto.VoucherId.HasValue)
+            {
+                var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Id == requestDto.VoucherId.Value);
+                if (voucher == null) throw new Exception("Voucher không tồn tại");
+
+                var now = DateTime.Now;
+                var isValid = voucher.IsActive
+                    && voucher.StartDate <= now
+                    && voucher.EndDate >= now
+                    && trueTotalAmount >= voucher.MinBookingAmount
+                    && (!voucher.UsageLimit.HasValue || voucher.UsageCount < voucher.UsageLimit.Value);
+
+                if (!isValid) throw new Exception("Voucher không hợp lệ hoặc không áp dụng được");
             }
 
             var booking = new Booking
@@ -129,6 +152,7 @@ namespace HotelManagementAPI.Services
                 VoucherId = requestDto.VoucherId,
                 BookingCode = bookingCode,
                 DepositAmount = requestDto.DepositAmount,
+                DepositStatus = requestDto.DepositAmount > 0 ? "Unpaid" : "NotRequired",
                 Status = BookingStatus.Pending,
                 BookingDetails = bookingDetails
             };
@@ -219,6 +243,9 @@ namespace HotelManagementAPI.Services
 
         private BookingResponseDto MapToResponseDto(Booking booking)
         {
+            var depositPaidAmount = GetEffectiveDepositAmount(booking);
+            var depositRequiredAmount = Math.Max(0m, booking.DepositAmount);
+
             return new BookingResponseDto
             {
                 Id = booking.Id,
@@ -231,7 +258,10 @@ namespace HotelManagementAPI.Services
                 VoucherCode = booking.Voucher?.Code,
                 Status = booking.Status,
                 InvoiceId = booking.Invoice?.Id,
-                DepositAmount = booking.DepositAmount,
+                DepositAmount = depositRequiredAmount,
+                DepositPaidAmount = depositPaidAmount,
+                DepositRemainingAmount = Math.Max(0m, depositRequiredAmount - depositPaidAmount),
+                DepositStatus = ResolveDepositStatus(booking),
                 Details = booking.BookingDetails?.Select(d => new BookingDetailResponseDto
                 {
                     Id = d.Id,
@@ -242,6 +272,30 @@ namespace HotelManagementAPI.Services
                     PricePerNight = d.PricePerNight
                 }).ToList() ?? new List<BookingDetailResponseDto>()
             };
+        }
+
+        private static decimal GetEffectiveDepositAmount(Booking? booking)
+        {
+            if (booking == null)
+            {
+                return 0m;
+            }
+
+            return string.Equals(booking.DepositStatus, "Paid", StringComparison.OrdinalIgnoreCase)
+                ? booking.DepositAmount
+                : 0m;
+        }
+
+        private static string ResolveDepositStatus(Booking booking)
+        {
+            if (booking.DepositAmount <= 0)
+            {
+                return "NotRequired";
+            }
+
+            return string.IsNullOrWhiteSpace(booking.DepositStatus)
+                ? "Unpaid"
+                : booking.DepositStatus;
         }
 
         /// <summary>
@@ -401,6 +455,7 @@ namespace HotelManagementAPI.Services
                 GuestEmail   = original.GuestEmail,
                 BookingCode  = newBookingCode,
                 DepositAmount = dto.NewBookingDepositAmount,
+                DepositStatus = dto.NewBookingDepositAmount > 0 ? "Unpaid" : "NotRequired",
                 Status       = dto.CheckOutImmediately ? BookingStatus.CheckedOut : original.Status,
             };
 

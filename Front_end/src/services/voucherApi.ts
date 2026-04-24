@@ -14,6 +14,8 @@ export interface VoucherResponseDto {
   startDate: string;
   endDate: string;
   usageLimit?: number | null;
+  eligibleMembershipId?: number | null;
+  eligibleMemberOnly: boolean;
   usageCount: number;
   isActive: boolean;
   isCurrentlyValid: boolean;
@@ -31,12 +33,27 @@ export interface UpsertVoucherDto {
   startDate: string;
   endDate: string;
   usageLimit?: number | null;
+  eligibleMembershipId?: number | null;
+  eligibleMemberOnly: boolean;
   isActive: boolean;
 }
 
 export const voucherApi = {
   getAll: async (): Promise<VoucherResponseDto[]> =>
     (await axiosClient.get('/api/Vouchers')) as unknown as VoucherResponseDto[],
+
+  getPublic: async (bookingAmount?: number): Promise<VoucherResponseDto[]> =>
+    (await axiosClient.get('/api/Vouchers/public', {
+      params: bookingAmount !== undefined ? { bookingAmount } : undefined,
+    })) as unknown as VoucherResponseDto[],
+
+  getVip: async (membershipId: number, bookingAmount?: number): Promise<VoucherResponseDto[]> =>
+    (await axiosClient.get('/api/Vouchers/vip', {
+      params: {
+        membershipId,
+        ...(bookingAmount !== undefined ? { bookingAmount } : {}),
+      },
+    })) as unknown as VoucherResponseDto[],
 
   create: async (dto: UpsertVoucherDto): Promise<VoucherResponseDto> =>
     (await axiosClient.post('/api/Vouchers', dto)) as unknown as VoucherResponseDto,

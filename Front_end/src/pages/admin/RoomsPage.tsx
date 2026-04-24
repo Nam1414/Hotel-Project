@@ -20,6 +20,9 @@ import {
 import { Bed, Boxes, Copy, Edit2, Plus, RefreshCcw, Trash2 } from 'lucide-react';
 import { adminApi, EquipmentDto, RoomDto, RoomInventoryDto, RoomTypeDto } from '../../services/adminApi';
 import { usePermission } from '../../hooks/useAppStore';
+import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5206';
 
 const RoomsPage: React.FC = () => {
   const canManageRooms = usePermission('MANAGE_ROOMS');
@@ -73,6 +76,32 @@ const RoomsPage: React.FC = () => {
 
   useEffect(() => {
     loadBaseData(filters);
+
+    const token = localStorage.getItem('token');
+    const connection = new HubConnectionBuilder()
+      .withUrl(`${API_URL}/notificationHub`, {
+        accessTokenFactory: () => token || '',
+      })
+      .configureLogging(LogLevel.Information)
+      .withAutomaticReconnect()
+      .build();
+
+    connection
+      .start()
+      .then(() => {
+        connection.on('RoomStatusChanged', (roomId: number, status: string, cleaningStatus: string) => {
+          setRooms((prev) =>
+            prev.map((room) =>
+              room.id === roomId ? { ...room, status, cleaningStatus } : room
+            )
+          );
+        });
+      })
+      .catch((err) => console.error('SignalR Connection Error: ', err));
+
+    return () => {
+      connection.stop();
+    };
   }, []);
 
   const roomTypeOptions = useMemo(
@@ -237,51 +266,67 @@ const RoomsPage: React.FC = () => {
         </Space>
       </div>
 
-      <Card className="glass-card">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={8}>
+      <Card className="glass-card !border-none" styles={{ body: { padding: '24px 24px 32px' } }}>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 items-end">
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary ml-1">Số phòng</span>
             <Input
-              placeholder="Số phòng"
+              size="large"
+              placeholder="Nhập số phòng..."
               value={filters.roomNumber}
               onChange={(e) => setFilters((prev) => ({ ...prev, roomNumber: e.target.value || undefined }))}
+              className="rounded-xl border-luxury"
             />
-          </Col>
-          <Col xs={24} md={8}>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary ml-1">Hạng phòng</span>
             <Select
               allowClear
-              style={{ width: '100%' }}
-              placeholder="Lọc theo hạng phòng"
+              size="large"
+              placeholder="Chọn hạng phòng..."
               value={filters.roomTypeId}
               options={roomTypeOptions}
               onChange={(value) => setFilters((prev) => ({ ...prev, roomTypeId: value }))}
+              className="w-full custom-select-luxury"
             />
-          </Col>
-          <Col xs={24} md={4}>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary ml-1">Tầng</span>
             <InputNumber
+              size="large"
               min={1}
-              style={{ width: '100%' }}
-              placeholder="Tầng"
+              placeholder="Chọn tầng..."
               value={filters.floor}
               onChange={(value) => setFilters((prev) => ({ ...prev, floor: value || undefined }))}
+              className="w-full rounded-xl border-luxury"
             />
-          </Col>
-          <Col xs={24} md={4}>
-            <Space>
-              <Button type="primary" onClick={() => loadBaseData(filters)}>
-                Lọc
-              </Button>
-              <Button
-                onClick={() => {
-                  const next = {};
-                  setFilters(next);
-                  loadBaseData(next);
-                }}
-              >
-                Xóa lọc
-              </Button>
-            </Space>
-          </Col>
-        </Row>
+          </div>
+
+          <div className="flex gap-3">
+            <Button 
+              type="primary" 
+              size="large"
+              className="btn-gold flex-1 rounded-xl h-12"
+              icon={<RefreshCcw size={18} />}
+              onClick={() => loadBaseData(filters)}
+            >
+              Lọc
+            </Button>
+            <Button
+              size="large"
+              className="flex-1 rounded-xl h-12"
+              onClick={() => {
+                const next = {};
+                setFilters(next);
+                loadBaseData(next);
+              }}
+            >
+              Xóa lọc
+            </Button>
+          </div>
+        </div>
       </Card>
 
       <Card className="glass-card">

@@ -30,10 +30,10 @@ import {
 import { Card, Button, Badge, cn } from '../components/ui';
 
 const stats = [
-  { label: 'Total Rooms', value: '120', icon: Bed, color: 'text-blue-500', bg: 'bg-blue-50', trend: '+2.5%', trendUp: true },
-  { label: 'Available', value: '45', icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', trend: '+12%', trendUp: true },
-  { label: 'Occupied', value: '75', icon: Users, color: 'text-amber-500', bg: 'bg-amber-50', trend: '-5%', trendUp: false },
-  { label: 'Inventory Alert', value: '12', icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50', trend: 'Low Stock', trendUp: false },
+  { label: 'Total Rooms', value: '120', icon: Bed, color: 'text-info', bg: 'bg-info/10', trend: '+2.5%', trendUp: true },
+  { label: 'Available', value: '45', icon: CheckCircle, color: 'text-success', bg: 'bg-success/10', trend: '+12%', trendUp: true },
+  { label: 'Occupied', value: '75', icon: Users, color: 'text-warning', bg: 'bg-warning/10', trend: '-5%', trendUp: false },
+  { label: 'Inventory Alert', value: '12', icon: AlertTriangle, color: 'text-error', bg: 'bg-error/10', trend: 'Low Stock', trendUp: false },
 ];
 
 const occupancyData = [
@@ -60,8 +60,8 @@ const Dashboard: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text-main">Dashboard Overview</h1>
-          <p className="text-text-muted">Welcome back, here's what's happening today.</p>
+          <h1 className="text-2xl font-bold text-title">Dashboard Overview</h1>
+          <p className="text-muted">Welcome back, here's what's happening today.</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="secondary" className="hidden sm:flex gap-2">
@@ -89,8 +89,8 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
             <div className="mt-4">
-              <p className="text-text-muted text-sm font-medium">{stat.label}</p>
-              <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
+              <p className="text-muted text-sm font-medium">{stat.label}</p>
+              <h3 className="text-2xl font-bold mt-1 text-title">{stat.value}</h3>
             </div>
           </Card>
         ))}
@@ -149,8 +149,8 @@ const Dashboard: React.FC = () => {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-2xl font-bold">1,200</span>
-              <span className="text-xs text-text-muted">Total Items</span>
+              <span className="text-2xl font-bold text-title">1,200</span>
+              <span className="text-xs text-muted">Total Items</span>
             </div>
           </div>
           <div className="mt-6 space-y-3">
@@ -184,7 +184,7 @@ const Dashboard: React.FC = () => {
                 <div className={cn('p-3 rounded-lg mb-2 group-hover:scale-110 transition-transform', action.color)}>
                   <action.icon className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-medium text-text-main">{action.label}</span>
+                <span className="text-xs font-medium text-title">{action.label}</span>
               </button>
             ))}
           </div>
@@ -207,8 +207,8 @@ const Dashboard: React.FC = () => {
                     {booking.name.charAt(0)}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold">{booking.name}</p>
-                    <p className="text-xs text-text-muted">Room {booking.room} • {booking.time}</p>
+                    <p className="text-sm font-semibold text-title">{booking.name}</p>
+                    <p className="text-xs text-muted">Room {booking.room} • {booking.time}</p>
                   </div>
                 </div>
                 <div className="text-right">

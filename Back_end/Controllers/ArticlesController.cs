@@ -19,15 +19,18 @@ public class ArticlesController : ControllerBase
     private readonly AppDbContext _context;
     private readonly ISlugService _slugService;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IAuditLogService _auditLogService;
 
     public ArticlesController(
         AppDbContext context, 
         ISlugService slugService, 
-        ICloudinaryService cloudinaryService)
+        ICloudinaryService cloudinaryService,
+        IAuditLogService auditLogService)
     {
         _context = context;
         _slugService = slugService;
         _cloudinaryService = cloudinaryService;
+        _auditLogService = auditLogService;
     }
 
     // GET /api/Articles  ← Public
@@ -127,6 +130,7 @@ public class ArticlesController : ControllerBase
 
         _context.Articles.Add(article);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("CREATE", "Article", new { articleId = article.Id, article.Slug }, null, dto, $"Tạo bài viết {article.Title}.");
 
         return CreatedAtAction(nameof(GetBySlug), new { slug = article.Slug }, new
         {
@@ -163,6 +167,7 @@ public class ArticlesController : ControllerBase
         article.UpdatedAt  = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "Article", new { articleId = article.Id, article.Slug }, dto, article, $"Cập nhật bài viết {article.Title}.");
         return Ok(article);
     }
 
@@ -179,6 +184,7 @@ public class ArticlesController : ControllerBase
 
         article.IsActive = false;
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("DELETE", "Article", new { articleId = article.Id, article.Slug }, null, null, $"Vô hiệu hóa bài viết {article.Title}.");
 
         return Ok(new { message = "Đã vô hiệu hóa bài viết" });
     }

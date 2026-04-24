@@ -10,6 +10,7 @@ using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace HotelManagementAPI.Controllers;
 
@@ -19,18 +20,75 @@ public class OrderServicesController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IInvoiceService _invoiceService;
+    private readonly INotificationService _notificationService;
+    private readonly IAuditLogService _auditLogService;
 
-    public OrderServicesController(AppDbContext context, IInvoiceService invoiceService)
+    public OrderServicesController(AppDbContext context, IInvoiceService invoiceService, INotificationService notificationService, IAuditLogService auditLogService)
     {
         _context = context;
         _invoiceService = invoiceService;
+        _notificationService = notificationService;
+        _auditLogService = auditLogService;
+    }
+
+    [HttpGet("bookings")]
+    [Authorize]
+    public async Task<IActionResult> GetBookingsForServiceManagement()
+    {
+        if (!CanManageServiceOrders())
+            return Forbid("Ban khong co quyen quan ly don dich vu.");
+
+        var bookings = await _context.Bookings
+            .Include(b => b.BookingDetails)
+            .Include(b => b.Invoice)
+            .Include(b => b.Voucher)
+            .Where(b => b.StatusString != "Cancelled")
+            .OrderByDescending(b => b.Id)
+            .ToListAsync();
+
+        var bookingDtos = bookings.Select(b => new BookingResponseDto
+            {
+                Id = b.Id,
+                UserId = b.UserId,
+                GuestName = b.GuestName,
+                GuestPhone = b.GuestPhone,
+                GuestEmail = b.GuestEmail,
+                BookingCode = b.BookingCode,
+                VoucherId = b.VoucherId,
+                VoucherCode = b.Voucher != null ? b.Voucher.Code : null,
+                Status = b.Status,
+                InvoiceId = b.Invoice != null ? b.Invoice.Id : null,
+                DepositAmount = b.DepositAmount,
+                DepositPaidAmount = string.Equals(b.DepositStatus, "Paid", StringComparison.OrdinalIgnoreCase) ? b.DepositAmount : 0m,
+                DepositRemainingAmount = string.Equals(b.DepositStatus, "Paid", StringComparison.OrdinalIgnoreCase) ? 0m : Math.Max(0m, b.DepositAmount),
+                DepositStatus = string.IsNullOrWhiteSpace(b.DepositStatus)
+                    ? (b.DepositAmount > 0 ? "Unpaid" : "NotRequired")
+                    : b.DepositStatus,
+                Details = b.BookingDetails
+                    .OrderBy(d => d.CheckInDate)
+                    .Select(d => new BookingDetailResponseDto
+                    {
+                        Id = d.Id,
+                        RoomId = d.RoomId,
+                        RoomTypeId = d.RoomTypeId,
+                        CheckInDate = d.CheckInDate,
+                        CheckOutDate = d.CheckOutDate,
+                        PricePerNight = d.PricePerNight
+                    })
+                    .ToList()
+            })
+            .ToList();
+
+        return Ok(bookingDtos);
     }
 
     [HttpGet("booking/{bookingId:int}")]
     [Authorize]
-    [RequirePermission("MANAGE_ROOMS")]
     public async Task<IActionResult> GetByBookingId(int bookingId)
     {
+        if (!CanManageServiceOrders())
+            return Forbid("Ban khong co quyen xem don dich vu.");
+
         var orders = await _context.OrderServices
             .Include(o => o.Details)
             .ThenInclude(d => d.Service)
@@ -96,47 +154,57 @@ public class OrderServicesController : ControllerBase
 
         await _context.OrderServices.AddAsync(order);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("CREATE", "OrderService", new { bookingDetailId = bookingDetail.Id, bookingDetail.BookingId }, null, dto, $"Tạo đơn dịch vụ cho booking #{bookingDetail.BookingId}.");
 
         if (bookingDetail.BookingId != null)
         {
             await _invoiceService.RecalculateInvoiceAsync(bookingDetail.BookingId.Value);
         }
 
-        // Reload with service names for response
         var reloaded = await _context.OrderServices
             .Include(o => o.Details).ThenInclude(d => d.Service)
             .FirstAsync(o => o.Id == order.Id);
+
+        await NotifyServiceOrderCreatedAsync(bookingDetail, reloaded, userRole);
 
         return Ok(MapToDto(reloaded));
     }
 
     [HttpPut("{id:int}/status")]
     [Authorize]
-    [RequirePermission("MANAGE_ROOMS")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderServiceStatusDto dto)
     {
+        if (!CanManageServiceOrders())
+            return Forbid("Ban khong co quyen cap nhat trang thai don dich vu.");
+
         var order = await _context.OrderServices
             .Include(o => o.BookingDetail)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order == null) return NotFound(new { message = "Order not found" });
 
+        var oldStatus = order.Status;
         order.Status = dto.Status;
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "OrderServiceStatus", new { orderId = id }, new { status = oldStatus }, new { status = dto.Status }, $"Cập nhật trạng thái đơn dịch vụ #{id}.");
 
         if (order.BookingDetail?.BookingId != null)
         {
             await _invoiceService.RecalculateInvoiceAsync(order.BookingDetail.BookingId.Value);
         }
 
+        await NotifyServiceOrderStatusUpdatedAsync(order);
+
         return Ok(new { success = true });
     }
 
     [HttpPost("room/{roomId:int}/minibar")]
     [Authorize]
-    [RequirePermission("MANAGE_ROOMS")]
     public async Task<IActionResult> ReportMinibar(int roomId, [FromBody] List<CreateOrderServiceItemDto> items)
     {
+        if (!CanManageServiceOrders())
+            return Forbid("Ban khong co quyen cong minibar/dich vu vao hoa don.");
+
         if (items == null || items.Count == 0)
             return BadRequest(new { message = "Danh sách dịch vụ/Minibar trống" });
 
@@ -151,6 +219,9 @@ public class OrderServicesController : ControllerBase
             return BadRequest(new { message = "Phòng không có khách đang ở hoặc chưa có booking hợp lệ." });
 
         var b = activeBookingDetail.Booking;
+        if (b == null)
+            return BadRequest(new { message = "Khong tim thay booking hop le cho phong nay." });
+        var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
         bool canCharge = false;
         
         if (b.StatusString == "CheckedIn") 
@@ -196,6 +267,7 @@ public class OrderServicesController : ControllerBase
 
         await _context.OrderServices.AddAsync(order);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("CREATE", "MinibarCharge", new { roomId, bookingId = b.Id }, null, items, $"Cộng minibar cho phòng #{roomId}.");
 
         if (activeBookingDetail.BookingId != null)
         {
@@ -205,6 +277,8 @@ public class OrderServicesController : ControllerBase
         var reloaded = await _context.OrderServices
             .Include(o => o.Details).ThenInclude(d => d.Service)
             .FirstAsync(o => o.Id == order.Id);
+
+        await NotifyServiceOrderCreatedAsync(activeBookingDetail, reloaded, userRole);
 
         return Ok(new { 
             message = "Đã cộng dồn Minibar vào hóa đơn thành công", 
@@ -232,5 +306,80 @@ public class OrderServicesController : ControllerBase
             order.Status,
             details
         );
+    }
+
+    private bool CanManageServiceOrders()
+    {
+        if (User.IsInRole("Admin"))
+            return true;
+
+        var permissions = User.Claims
+            .Where(c => c.Type == "permission")
+            .Select(c => c.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return permissions.Contains("MANAGE_ROOMS") || permissions.Contains("MANAGE_SERVICES");
+    }
+
+    private async Task NotifyServiceOrderCreatedAsync(BookingDetail bookingDetail, OrderService order, string? userRole)
+    {
+        try
+        {
+            var booking = bookingDetail.Booking;
+            var bookingCode = booking?.BookingCode ?? (bookingDetail.BookingId?.ToString() ?? "N/A");
+            var summary = string.Join(", ", order.Details.Select(d => $"{d.Service?.Name ?? $"#{d.ServiceId}"} x{d.Quantity}"));
+            var isGuestRequest = !string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(userRole, "Staff", StringComparison.OrdinalIgnoreCase);
+
+            if (isGuestRequest)
+            {
+                await _notificationService.SendToRoleByNameAsync(
+                    "Admin",
+                    "Yeu cau dich vu moi",
+                    $"Khach vua gui don dich vu cho booking {bookingCode}: {summary}.",
+                    NotificationType.Info,
+                    "/admin/orders");
+
+                await _notificationService.SendToRoleByNameAsync(
+                    "Manager",
+                    "Yeu cau dich vu moi",
+                    $"Khach vua gui don dich vu cho booking {bookingCode}: {summary}.",
+                    NotificationType.Info,
+                    "/admin/orders");
+            }
+            else
+            {
+                if (booking?.UserId != null)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        booking.UserId.Value,
+                        "Yeu cau dich vu da duoc tao",
+                        $"Don dich vu cho booking {bookingCode} da duoc tao: {summary}.",
+                        NotificationType.Success,
+                        "/profile");
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task NotifyServiceOrderStatusUpdatedAsync(OrderService order)
+    {
+        try
+        {
+            var bookingCode = order.BookingDetail?.Booking?.BookingCode ?? order.BookingDetail?.BookingId?.ToString() ?? "N/A";
+            var summary = string.Join(", ", order.Details.Select(d => $"{d.Service?.Name ?? $"#{d.ServiceId}"} x{d.Quantity}"));
+
+            if (order.BookingDetail?.Booking?.UserId != null)
+            {
+                await _notificationService.SendNotificationAsync(
+                    order.BookingDetail.Booking.UserId.Value,
+                    "Don dich vu da cap nhat",
+                    $"Don dich vu {summary} cho booking {bookingCode} da cap nhat trang thai thanh {order.Status}.",
+                    NotificationType.Info,
+                    "/profile");
+            }
+        }
+        catch { }
     }
 }

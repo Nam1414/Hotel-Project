@@ -25,6 +25,8 @@ public static class DatabaseSchemaInitializer
                     [start_date] DATETIME2 NOT NULL,
                     [end_date] DATETIME2 NOT NULL,
                     [usage_limit] INT NULL,
+                    [eligible_membership_id] INT NULL,
+                    [eligible_member_only] BIT NOT NULL CONSTRAINT [DF_Vouchers_EligibleMemberOnly] DEFAULT(0),
                     [usage_count] INT NOT NULL CONSTRAINT [DF_Vouchers_UsageCount] DEFAULT(0),
                     [is_active] BIT NOT NULL CONSTRAINT [DF_Vouchers_IsActive] DEFAULT(1),
                     [created_at] DATETIME2 NOT NULL CONSTRAINT [DF_Vouchers_CreatedAt] DEFAULT(SYSDATETIME()),
@@ -68,6 +70,16 @@ public static class DatabaseSchemaInitializer
                 IF COL_LENGTH(N'[dbo].[Vouchers]', 'end_date') IS NULL
                 BEGIN
                     ALTER TABLE [dbo].[Vouchers] ADD [end_date] DATETIME2 NULL;
+                END
+
+                IF COL_LENGTH(N'[dbo].[Vouchers]', 'eligible_membership_id') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Vouchers] ADD [eligible_membership_id] INT NULL;
+                END
+
+                IF COL_LENGTH(N'[dbo].[Vouchers]', 'eligible_member_only') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Vouchers] ADD [eligible_member_only] BIT NOT NULL CONSTRAINT [DF_Vouchers_EligibleMemberOnly_Upgrade] DEFAULT(0);
                 END
 
                 IF COL_LENGTH(N'[dbo].[Vouchers]', 'usage_count') IS NULL
@@ -133,6 +145,19 @@ public static class DatabaseSchemaInitializer
                     WHEN UPPER([discount_type]) IN ('FIXED_AMOUNT', 'FIXED') THEN 'Fixed'
                     ELSE [discount_type]
                 END;
+            END
+            
+            IF OBJECT_ID(N'[dbo].[Vouchers]', N'U') IS NOT NULL
+            BEGIN
+                IF COL_LENGTH(N'[dbo].[Vouchers]', 'eligible_membership_id') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Vouchers] ADD [eligible_membership_id] INT NULL;
+                END
+
+                IF COL_LENGTH(N'[dbo].[Vouchers]', 'eligible_member_only') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Vouchers] ADD [eligible_member_only] BIT NOT NULL CONSTRAINT [DF_Vouchers_EligibleMemberOnly_Upgrade2] DEFAULT(0);
+                END
             END
             """
         );
@@ -206,10 +231,128 @@ public static class DatabaseSchemaInitializer
         );
     }
 
+    public static async Task EnsureMembershipSchemaAsync(IServiceProvider services)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'[dbo].[Memberships]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[Memberships](
+                    [id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [tier_name] NVARCHAR(100) NOT NULL,
+                    [min_points] INT NULL,
+                    [discount_percent] DECIMAL(18,2) NULL,
+                    [created_at] DATETIME2 NULL
+                );
+            END
+            """
+        );
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'[dbo].[Memberships]', N'U') IS NOT NULL
+            BEGIN
+                IF COL_LENGTH(N'[dbo].[Memberships]', 'tier_name') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Memberships] ADD [tier_name] NVARCHAR(100) NULL;
+                END
+
+                IF COL_LENGTH(N'[dbo].[Memberships]', 'min_points') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Memberships] ADD [min_points] INT NULL;
+                END
+
+                IF COL_LENGTH(N'[dbo].[Memberships]', 'discount_percent') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Memberships] ADD [discount_percent] DECIMAL(18,2) NULL;
+                END
+
+                IF COL_LENGTH(N'[dbo].[Memberships]', 'created_at') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Memberships] ADD [created_at] DATETIME2 NULL;
+                END
+
+                UPDATE [dbo].[Memberships]
+                SET [tier_name] = COALESCE(NULLIF(LTRIM(RTRIM([tier_name])), ''), CONCAT('Tier ', [id])),
+                    [created_at] = COALESCE([created_at], SYSDATETIME())
+                WHERE [tier_name] IS NULL OR LTRIM(RTRIM([tier_name])) = '';
+
+                IF EXISTS (
+                    SELECT 1
+                    FROM sys.columns
+                    WHERE object_id = OBJECT_ID(N'[dbo].[Memberships]')
+                      AND name = 'tier_name'
+                      AND is_nullable = 1
+                )
+                BEGIN
+                    ALTER TABLE [dbo].[Memberships] ALTER COLUMN [tier_name] NVARCHAR(100) NOT NULL;
+                END
+            END
+            """
+        );
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'[dbo].[Memberships]', N'U') IS NOT NULL
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM [dbo].[Memberships])
+                BEGIN
+                    INSERT INTO [dbo].[Memberships] ([tier_name], [min_points], [discount_percent], [created_at]) VALUES
+                    (N'Silver', 0, 0, SYSDATETIME()),
+                    (N'Gold', 5000, 5, SYSDATETIME()),
+                    (N'Platinum', 10000, 10, SYSDATETIME());
+                END
+            END
+
+            IF OBJECT_ID(N'[dbo].[Users]', N'U') IS NOT NULL
+            BEGIN
+                IF COL_LENGTH(N'[dbo].[Users]', 'loyalty_points') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[Users] ADD [loyalty_points] INT NOT NULL CONSTRAINT [DF_Users_LoyaltyPoints] DEFAULT(0);
+                END
+            END
+            """
+        );
+    }
+
     public static async Task EnsureEquipmentDamageSchemaAsync(IServiceProvider services)
     {
         await using var scope = services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'[dbo].[AuditLogs]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[AuditLogs](
+                    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+                    [Timestamp] DATETIME2 NOT NULL,
+                    [ActionType] NVARCHAR(50) NOT NULL,
+                    [EntityType] NVARCHAR(100) NOT NULL,
+                    [ContextJson] NVARCHAR(MAX) NULL,
+                    [ChangesJson] NVARCHAR(MAX) NULL,
+                    [Message] NVARCHAR(1000) NOT NULL,
+                    [UserId] INT NULL,
+                    [UserName] NVARCHAR(255) NULL,
+                    [IpAddress] NVARCHAR(100) NULL
+                );
+            END
+            ELSE
+            BEGIN
+                IF COL_LENGTH(N'[dbo].[AuditLogs]', 'UserId') IS NULL
+                    ALTER TABLE [dbo].[AuditLogs] ADD [UserId] INT NULL;
+
+                IF COL_LENGTH(N'[dbo].[AuditLogs]', 'UserName') IS NULL
+                    ALTER TABLE [dbo].[AuditLogs] ADD [UserName] NVARCHAR(255) NULL;
+
+                IF COL_LENGTH(N'[dbo].[AuditLogs]', 'IpAddress') IS NULL
+                    ALTER TABLE [dbo].[AuditLogs] ADD [IpAddress] NVARCHAR(100) NULL;
+            END
+            """
+        );
 
         await dbContext.Database.ExecuteSqlRawAsync(
             """

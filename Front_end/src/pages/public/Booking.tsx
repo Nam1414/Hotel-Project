@@ -1,12 +1,36 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, ArrowRight, Calendar, CheckCircle2, Loader2, Users } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Calendar, CheckCircle2, Loader2 } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import { publicHotelApi, PublicRoomType } from '../../services/publicHotelApi';
 import { bookingApi } from '../../services/bookingApi';
 import { voucherApi, VoucherResponseDto } from '../../services/voucherApi';
+
+type PaymentMethod = 'pay_at_hotel' | 'bank_transfer' | 'momo';
+
+const PAYMENT_METHOD_OPTIONS: Array<{
+  value: PaymentMethod;
+  title: string;
+  description: string;
+}> = [
+  {
+    value: 'pay_at_hotel',
+    title: 'Thanh toan tai khach san',
+    description: 'Phu hop de demo. Booking duoc tao ngay va thanh toan sau tai quay.',
+  },
+  {
+    value: 'bank_transfer',
+    title: 'Chuyen khoan thu cong',
+    description: 'Tao booking truoc, sau do lien he chuyen khoan va doi nhan vien xac nhan.',
+  },
+  {
+    value: 'momo',
+    title: 'MoMo',
+    description: 'Chi mo trang MoMo khi ban chu dong bam thanh toan, khong tu dong redirect nua.',
+  },
+];
 
 const Booking: React.FC = () => {
   const { roomId } = useParams();
@@ -14,17 +38,24 @@ const Booking: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [allRoomTypes, setAllRoomTypes] = useState<PublicRoomType[]>([]);
-  const [selectedRooms, setSelectedRooms] = useState<{ roomTypeId: number; quantity: number }[]>([{ roomTypeId: Number(roomId), quantity: 1 }]);
+  const [selectedRooms, setSelectedRooms] = useState<{ roomTypeId: number; quantity: number }[]>([
+    { roomTypeId: Number(roomId), quantity: 1 },
+  ]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [launchingPayment, setLaunchingPayment] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [bookingCode, setBookingCode] = useState('');
+  const [createdBookingId, setCreatedBookingId] = useState<number | null>(null);
+  const [createdInvoiceId, setCreatedInvoiceId] = useState<number | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pay_at_hotel');
+  const [depositInput, setDepositInput] = useState('0');
   const [vouchers, setVouchers] = useState<VoucherResponseDto[]>([]);
   const [formData, setFormData] = useState({
     checkIn: '',
     checkOut: '',
-    guests: 1, // Overall guests per room or global? Let's leave it as global per room avg or remove it. We'll keep it for API validation if needed.
+    guests: 1,
     depositAmount: 0,
     voucherId: null as number | null,
     fullName: user?.fullName || user?.name || '',
@@ -44,34 +75,49 @@ const Booking: React.FC = () => {
   const totalRoomPrice = useMemo(() => {
     let total = 0;
     for (const sr of selectedRooms) {
-       const rt = allRoomTypes.find(x => x.id === sr.roomTypeId);
-       if (rt) {
-           total += nights * sr.quantity * (rt.displayPrice || 0);
-       }
+      const rt = allRoomTypes.find((x) => x.id === sr.roomTypeId);
+      if (rt) {
+        total += nights * sr.quantity * (rt.displayPrice || 0);
+      }
     }
     return total;
   }, [nights, selectedRooms, allRoomTypes]);
 
-  const totalRoomsCount = useMemo(() => selectedRooms.reduce((acc, curr) => acc + curr.quantity, 0), [selectedRooms]);
+  const totalRoomsCount = useMemo(
+    () => selectedRooms.reduce((acc, curr) => acc + curr.quantity, 0),
+    [selectedRooms]
+  );
 
   const discountAmount = useMemo(() => {
     if (!formData.voucherId || !vouchers.length) return 0;
-    const v = vouchers.find(x => x.id === formData.voucherId);
-    if (!v) return 0;
-    if (totalRoomPrice < v.minBookingAmount) return 0;
-    
+    const voucher = vouchers.find((x) => x.id === formData.voucherId);
+    if (!voucher || totalRoomPrice < voucher.minBookingAmount) return 0;
+
     let discount = 0;
-    if (v.discountType === 'Percentage') {
-      discount = (totalRoomPrice * v.discountValue) / 100;
-      if (v.maxDiscountAmount && discount > v.maxDiscountAmount) discount = v.maxDiscountAmount;
+    if (voucher.discountType === 'Percentage') {
+      discount = (totalRoomPrice * voucher.discountValue) / 100;
+      if (voucher.maxDiscountAmount && discount > voucher.maxDiscountAmount) {
+        discount = voucher.maxDiscountAmount;
+      }
     } else {
-      discount = v.discountValue;
+      discount = voucher.discountValue;
     }
     return discount;
   }, [formData.voucherId, vouchers, totalRoomPrice]);
 
   const finalTotal = useMemo(() => Math.max(0, totalRoomPrice - discountAmount), [totalRoomPrice, discountAmount]);
-  const remainingAmount = useMemo(() => Math.max(0, finalTotal - formData.depositAmount), [finalTotal, formData.depositAmount]);
+  const normalizedDepositAmount = useMemo(
+    () => Math.min(Math.max(0, formData.depositAmount || 0), finalTotal),
+    [finalTotal, formData.depositAmount]
+  );
+  const remainingAmount = useMemo(
+    () => Math.max(0, finalTotal - normalizedDepositAmount),
+    [finalTotal, normalizedDepositAmount]
+  );
+
+  useEffect(() => {
+    setDepositInput(String(normalizedDepositAmount));
+  }, [normalizedDepositAmount]);
 
   useEffect(() => {
     const id = Number(roomId);
@@ -83,22 +129,26 @@ const Booking: React.FC = () => {
 
     const loadData = async () => {
       try {
-        const [roomsData, vList] = await Promise.all([
+        const membershipId = Number((user as any)?.membershipId || (user as any)?.membership?.id || 0) || 0;
+        const [roomsData, voucherList] = await Promise.all([
           publicHotelApi.getRoomTypes(),
-          voucherApi.getAll().catch(() => [])
+          membershipId > 0
+            ? voucherApi.getVip(membershipId).catch(() => [])
+            : voucherApi.getPublic().catch(() => []),
         ]);
         setAllRoomTypes(roomsData);
-        
-        // Ensure the initial roomId exists or fallback
-        const validInitial = roomsData.find(r => r.id === id) ? id : roomsData[0]?.id || 0;
+
+        const validInitial = roomsData.find((room) => room.id === id) ? id : roomsData[0]?.id || 0;
         setSelectedRooms([{ roomTypeId: validInitial, quantity: 1 }]);
 
         setFormData((current) => ({
           ...current,
           guests: Math.max(1, current.guests),
         }));
-        
-        const activeVouchers = vList.filter(x => x.isActive && new Date(x.endDate).getTime() >= new Date().getTime());
+
+        const activeVouchers = voucherList.filter(
+          (voucher) => voucher.isActive && new Date(voucher.endDate).getTime() >= new Date().getTime()
+        );
         setVouchers(activeVouchers);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Không thể tải thông tin phòng');
@@ -113,14 +163,47 @@ const Booking: React.FC = () => {
   const canContinue = useMemo(() => {
     return Boolean(
       formData.checkIn &&
-      formData.checkOut &&
-      nights > 0 &&
-      formData.fullName &&
-      formData.email &&
-      formData.phone &&
-      selectedRooms.length > 0 && selectedRooms.every(sr => sr.roomTypeId && sr.quantity > 0)
+        formData.checkOut &&
+        nights > 0 &&
+        formData.fullName &&
+        formData.email &&
+        formData.phone &&
+        selectedRooms.length > 0 &&
+        selectedRooms.every((sr) => sr.roomTypeId && sr.quantity > 0)
     );
   }, [formData, nights, selectedRooms]);
+
+  const commitDepositAmount = (rawValue: string) => {
+    if (!rawValue.trim()) {
+      setFormData((current) => ({ ...current, depositAmount: 0 }));
+      setDepositInput('0');
+      return;
+    }
+
+    const numericValue = Number(rawValue);
+    if (Number.isNaN(numericValue)) {
+      setDepositInput(String(normalizedDepositAmount));
+      return;
+    }
+
+    setFormData((current) => ({
+      ...current,
+      depositAmount: Math.min(Math.max(0, numericValue), finalTotal),
+    }));
+  };
+
+  const handleDepositChange = (value: string) => {
+    if (value === '') {
+      setDepositInput('');
+      return;
+    }
+
+    if (!/^\d+$/.test(value)) {
+      return;
+    }
+
+    setDepositInput(value);
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -130,8 +213,8 @@ const Booking: React.FC = () => {
     setError(null);
 
     try {
-      const detailsPayload = selectedRooms.flatMap(sr => {
-        const rt = allRoomTypes.find(x => x.id === sr.roomTypeId);
+      const detailsPayload = selectedRooms.flatMap((sr) => {
+        const rt = allRoomTypes.find((x) => x.id === sr.roomTypeId);
         return Array.from({ length: sr.quantity }).map(() => ({
           roomTypeId: sr.roomTypeId,
           checkInDate: new Date(formData.checkIn).toISOString(),
@@ -146,51 +229,102 @@ const Booking: React.FC = () => {
         guestEmail: formData.email,
         guestPhone: formData.phone,
         voucherId: formData.voucherId || undefined,
-        depositAmount: formData.depositAmount,
+        depositAmount: normalizedDepositAmount,
         details: detailsPayload,
       });
 
+      let invoiceId: number | null = null;
+      if (normalizedDepositAmount > 0) {
+        const invoice = await bookingApi.createInvoice(booking.id);
+        invoiceId = invoice.id;
+      }
+
+      setCreatedBookingId(booking.id);
+      setCreatedInvoiceId(invoiceId);
       setBookingCode(booking.bookingCode);
       setStep(3);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Khong the tao booking');
+      setError(err.response?.data?.message || 'Không thể tạo booking');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleProceedToMoMo = async () => {
+    if (!createdInvoiceId || normalizedDepositAmount <= 0) {
+      return;
+    }
+
+    setLaunchingPayment(true);
+    setError(null);
+
+    try {
+      const momoRes = await bookingApi.createMoMoPayment(
+        createdInvoiceId,
+        normalizedDepositAmount,
+        `Thanh toan coc booking ${bookingCode}`
+      );
+
+      if (momoRes.payUrl) {
+        window.location.href = momoRes.payUrl;
+        return;
+      }
+
+      setError('Không tạo được liên kết thanh toán MoMo.');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Không thể tạo thanh toán MoMo');
+    } finally {
+      setLaunchingPayment(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-[var(--text-muted)]">
+      <div className="min-h-screen flex items-center justify-center text-muted">
         <Loader2 className="mr-3 h-6 w-6 animate-spin text-primary" />
         Dang tai phong...
       </div>
     );
   }
 
-  if (allRoomTypes.length === 0 || error && step === 1) {
+  if ((allRoomTypes.length === 0 || error) && step === 1) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="admin-card max-w-xl w-full flex items-center gap-3 text-red-500">
+        <div className="admin-card max-w-xl w-full flex items-center gap-3 text-error">
           <AlertCircle size={20} />
-          <span>{error || 'Không tìm thấy loại phòng nào phù hợp'}</span>
+          <span>{error || 'Khong tim thay loai phong nao phu hop'}</span>
         </div>
       </div>
     );
   }
 
-  const primaryRoomType = allRoomTypes.find(rt => rt.id === selectedRooms[0]?.roomTypeId) || allRoomTypes[0];
+  const primaryRoomType = allRoomTypes.find((rt) => rt.id === selectedRooms[0]?.roomTypeId) || allRoomTypes[0];
+  const selectedPaymentOption =
+    PAYMENT_METHOD_OPTIONS.find((option) => option.value === paymentMethod) || PAYMENT_METHOD_OPTIONS[0];
 
   return (
     <div className="bg-[var(--bg-main)] min-h-screen py-20">
       <div className="max-w-4xl mx-auto px-4">
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => (step === 1 ? navigate(-1) : setStep(step - 1))}
+            className="inline-flex items-center gap-2 rounded-full border border-luxury bg-[var(--card-bg)] px-4 py-2 text-sm font-semibold text-title transition hover:border-primary hover:text-primary"
+          >
+            <ArrowLeft size={16} />
+            Quay lai
+          </button>
+        </div>
+
         <div className="flex items-center justify-between mb-16 relative">
-          <div className="absolute top-1/2 left-0 w-full h-0.5 bg-[var(--border-color)] -translate-y-1/2 z-0" />
+          <div className="absolute top-1/2 left-0 w-full h-0.5 bg-luxury -translate-y-1/2 z-0" />
           {[1, 2, 3].map((s) => (
             <div
               key={s}
               className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center font-bold transition-all duration-500 ${
-                step >= s ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--border-color)]'
+                step >= s
+                  ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                  : 'bg-[var(--card-bg)] text-muted border border-luxury'
               }`}
             >
               {step > s ? <CheckCircle2 size={24} /> : s}
@@ -208,9 +342,7 @@ const Booking: React.FC = () => {
               className="glass-card"
             >
               <h2 className="text-3xl font-display font-bold text-title mb-2">Reservation Details</h2>
-              <p className="text-muted mb-8">
-                You are booking multiple rooms from the live hotel system.
-              </p>
+              <p className="text-muted mb-8">You are booking multiple rooms from the live hotel system.</p>
 
               <div className="flex flex-col lg:flex-row gap-10 mb-10">
                 <div className="lg:w-1/3">
@@ -224,7 +356,9 @@ const Booking: React.FC = () => {
                   <div className="mt-4 p-4 bg-primary/5 rounded-xl border border-primary/10">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted">Avg Price / Night</span>
-                      <span className="text-primary font-bold">{primaryRoomType?.displayPrice.toLocaleString('vi-VN')} ₫</span>
+                      <span className="text-primary font-bold">
+                        {primaryRoomType?.displayPrice.toLocaleString('vi-VN')} VND
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -242,10 +376,10 @@ const Booking: React.FC = () => {
                           min={new Date().toISOString().split('T')[0]}
                           onChange={(e) => {
                             const newCheckIn = e.target.value;
-                            setFormData(prev => ({
+                            setFormData((prev) => ({
                               ...prev,
                               checkIn: newCheckIn,
-                              checkOut: prev.checkOut && prev.checkOut <= newCheckIn ? '' : prev.checkOut
+                              checkOut: prev.checkOut && prev.checkOut <= newCheckIn ? '' : prev.checkOut,
                             }));
                           }}
                         />
@@ -259,17 +393,24 @@ const Booking: React.FC = () => {
                           type="date"
                           className="input-luxury w-full pl-12"
                           value={formData.checkOut}
-                          min={formData.checkIn ? new Date(new Date(formData.checkIn).getTime() + 86400000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                          min={
+                            formData.checkIn
+                              ? new Date(new Date(formData.checkIn).getTime() + 86400000).toISOString().split('T')[0]
+                              : new Date().toISOString().split('T')[0]
+                          }
                           onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
                         />
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="space-y-4 pt-6 border-t border-[var(--border-color)]">
+
+                  <div className="space-y-4 pt-6 border-t border-luxury">
                     <label className="text-sm font-bold text-muted uppercase tracking-widest">Select Rooms</label>
                     {selectedRooms.map((sr, index) => (
-                      <div key={index} className="flex flex-col sm:flex-row items-center gap-4 bg-[var(--bg-main)] p-3 rounded-lg border border-[var(--border-color)] relative">
+                      <div
+                        key={index}
+                        className="flex flex-col sm:flex-row items-center gap-4 bg-[var(--bg-main)] p-3 rounded-lg border border-luxury relative"
+                      >
                         <select
                           className="input-luxury flex-1 w-full"
                           value={sr.roomTypeId}
@@ -279,8 +420,10 @@ const Booking: React.FC = () => {
                             setSelectedRooms(newArr);
                           }}
                         >
-                          {allRoomTypes.map(rt => (
-                            <option key={rt.id} value={rt.id}>{rt.name} - {rt.displayPrice.toLocaleString('vi-VN')}₫/night</option>
+                          {allRoomTypes.map((rt) => (
+                            <option key={rt.id} value={rt.id}>
+                              {rt.name} - {rt.displayPrice.toLocaleString('vi-VN')}VND/night
+                            </option>
                           ))}
                         </select>
                         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -293,41 +436,57 @@ const Booking: React.FC = () => {
                               setSelectedRooms(newArr);
                             }}
                           >
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => <option key={num} value={num}>{num} Room{num > 1 ? 's' : ''}</option>)}
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                              <option key={num} value={num}>
+                                {num} Room{num > 1 ? 's' : ''}
+                              </option>
+                            ))}
                           </select>
                           {selectedRooms.length > 1 && (
-                            <button 
-                              type="button" 
-                              onClick={() => setSelectedRooms(selectedRooms.filter((_, i) => i !== index))} 
-                              className="text-red-500 font-bold p-3 hover:bg-red-50 rounded-lg shrink-0"
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRooms(selectedRooms.filter((_, i) => i !== index))}
+                              className="text-error font-bold p-3 hover:bg-error/10 rounded-lg shrink-0"
                             >
-                              ✕
+                              x
                             </button>
                           )}
                         </div>
                       </div>
                     ))}
-                    <button 
-                      type="button" 
-                      onClick={() => setSelectedRooms([...selectedRooms, { roomTypeId: allRoomTypes[0]?.id || 0, quantity: 1 }])} 
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedRooms([...selectedRooms, { roomTypeId: allRoomTypes[0]?.id || 0, quantity: 1 }])
+                      }
                       className="text-primary font-bold text-sm hover:underline flex items-center"
                     >
                       + Add another room type
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-[var(--border-color)]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-luxury">
                     <div className="space-y-3">
                       <label className="text-sm font-bold text-muted uppercase tracking-widest">Voucher / Promo Code</label>
                       <select
                         className="input-luxury w-full"
                         value={formData.voucherId || ''}
-                        onChange={(e) => setFormData({ ...formData, voucherId: e.target.value ? Number(e.target.value) : null })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, voucherId: e.target.value ? Number(e.target.value) : null })
+                        }
                       >
                         <option value="">No voucher applied</option>
-                        {vouchers.map(v => (
-                          <option key={v.id} value={v.id} disabled={totalRoomPrice < v.minBookingAmount}>
-                            {v.code} - {v.discountType === 'Percentage' ? `${v.discountValue}%` : `${v.discountValue.toLocaleString('vi-VN')}₫`} {totalRoomPrice < v.minBookingAmount ? '(Đơn chưa đủ ĐK)' : ''}
+                        {vouchers.map((voucher) => (
+                          <option
+                            key={voucher.id}
+                            value={voucher.id}
+                            disabled={totalRoomPrice < voucher.minBookingAmount}
+                          >
+                            {voucher.code} -{' '}
+                            {voucher.discountType === 'Percentage'
+                              ? `${voucher.discountValue}%`
+                              : `${voucher.discountValue.toLocaleString('vi-VN')}VND`}{' '}
+                            {totalRoomPrice < voucher.minBookingAmount ? '(Don chua du DK)' : ''}
                           </option>
                         ))}
                       </select>
@@ -339,13 +498,17 @@ const Booking: React.FC = () => {
                         className="input-luxury w-full"
                         min={0}
                         max={finalTotal}
-                        value={formData.depositAmount}
-                        onChange={(e) => setFormData({ ...formData, depositAmount: Number(e.target.value) })}
+                        value={depositInput}
+                        onChange={(e) => handleDepositChange(e.target.value)}
+                        onBlur={(e) => commitDepositAmount(e.target.value)}
                       />
+                      <p className="text-xs text-muted">
+                        Nhap tien coc tu 0 den {finalTotal.toLocaleString('vi-VN')} VND. He thong se tu dong gioi han theo tong gia tri booking.
+                      </p>
                     </div>
                   </div>
 
-                  <div className="space-y-6 pt-6 border-t border-[var(--border-color)]">
+                  <div className="space-y-6 pt-6 border-t border-luxury">
                     <h3 className="text-xl font-bold text-title">Contact Information</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
@@ -384,6 +547,7 @@ const Booking: React.FC = () => {
               </div>
 
               <button
+                type="button"
                 onClick={() => setStep(2)}
                 disabled={!canContinue}
                 className="btn-gold w-full py-4 text-lg flex items-center justify-center disabled:opacity-50 disabled:pointer-events-none"
@@ -436,11 +600,15 @@ const Booking: React.FC = () => {
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted">Total Nights</span>
-                        <span className="font-semibold text-primary">{nights} Night{nights > 1 ? 's' : ''}</span>
+                        <span className="font-semibold text-primary">
+                          {nights} Night{nights > 1 ? 's' : ''}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted">Total Rooms</span>
-                        <span className="font-semibold text-primary">{totalRoomsCount} Room{totalRoomsCount > 1 ? 's' : ''}</span>
+                        <span className="font-semibold text-primary">
+                          {totalRoomsCount} Room{totalRoomsCount > 1 ? 's' : ''}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -448,49 +616,74 @@ const Booking: React.FC = () => {
 
                 <div className="space-y-6">
                   <div className="admin-card !p-6 bg-primary/5 border-primary/20">
-                    <h3 className="text-sm font-bold text-muted uppercase mb-4 tracking-widest text-primary">Price Summary</h3>
+                    <h3 className="text-sm font-bold text-muted uppercase mb-4 tracking-widest text-primary">
+                      Price Summary
+                    </h3>
                     <div className="space-y-4">
                       {selectedRooms.map((sr, idx) => {
-                        const rt = allRoomTypes.find(x => x.id === sr.roomTypeId);
+                        const rt = allRoomTypes.find((x) => x.id === sr.roomTypeId);
                         if (!rt) return null;
                         const lineTotal = nights * sr.quantity * rt.displayPrice;
                         return (
-                          <div key={idx} className="flex justify-between text-sm border-b border-[var(--border-color)] pb-2">
-                            <span className="text-muted">{rt.name} x {nights} nights x {sr.quantity} rooms</span>
-                            <span className="font-semibold text-title">{lineTotal.toLocaleString('vi-VN')} ₫</span>
+                          <div key={idx} className="flex justify-between text-sm border-b border-luxury pb-2">
+                            <span className="text-muted">
+                              {rt.name} x {nights} nights x {sr.quantity} rooms
+                            </span>
+                            <span className="font-semibold text-title">{lineTotal.toLocaleString('vi-VN')} VND</span>
                           </div>
                         );
                       })}
                       <div className="flex justify-between text-sm pt-2">
                         <span className="font-bold text-title">Rooms Total</span>
-                        <span className="font-bold text-title">{totalRoomPrice.toLocaleString('vi-VN')} ₫</span>
+                        <span className="font-bold text-title">{totalRoomPrice.toLocaleString('vi-VN')} VND</span>
                       </div>
                       {discountAmount > 0 && (
-                        <div className="flex justify-between text-sm text-green-600">
+                        <div className="flex justify-between text-sm text-success">
                           <span>Voucher Discount</span>
-                          <span className="font-semibold">-{discountAmount.toLocaleString('vi-VN')} ₫</span>
+                          <span className="font-semibold">-{discountAmount.toLocaleString('vi-VN')} VND</span>
                         </div>
                       )}
-                      <div className="flex justify-between text-sm text-amber-600">
-                        <span>Deposit Paid</span>
-                        <span className="font-semibold">-{formData.depositAmount.toLocaleString('vi-VN')} ₫</span>
+                      <div className="flex justify-between text-sm text-warning">
+                        <span>Deposit Planned</span>
+                        <span className="font-semibold">-{normalizedDepositAmount.toLocaleString('vi-VN')} VND</span>
                       </div>
                       <div className="pt-4 border-t border-primary/10 flex justify-between items-center">
                         <span className="text-lg font-bold text-title">Amount Due</span>
                         <span className="text-2xl font-display font-bold text-primary">
-                          {remainingAmount.toLocaleString('vi-VN')} ₫
+                          {remainingAmount.toLocaleString('vi-VN')} VND
                         </span>
                       </div>
                       <p className="text-[10px] text-muted text-center italic">
-                        Prices include taxes and fees. You will pay the remaining amount at the hotel.
+                        Booking se duoc tao truoc. Ban tu chon cach thanh toan o buoc tiep theo.
                       </p>
+                    </div>
+                  </div>
+
+                  <div className="admin-card !p-6">
+                    <h3 className="text-sm font-bold text-muted uppercase mb-4 tracking-widest">Payment Preference</h3>
+                    <div className="space-y-3">
+                      {PAYMENT_METHOD_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setPaymentMethod(option.value)}
+                          className={`w-full rounded-2xl border p-4 text-left transition ${
+                            paymentMethod === option.value
+                              ? 'border-primary bg-primary/10 shadow-sm'
+                              : 'border-luxury bg-[var(--card-bg)] hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="font-semibold text-title">{option.title}</div>
+                          <div className="mt-1 text-sm text-muted">{option.description}</div>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
 
               {error && (
-                <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                <div className="mb-6 rounded-xl text-sm status-error">
                   {error}
                 </div>
               )}
@@ -499,7 +692,12 @@ const Booking: React.FC = () => {
                 <button type="button" onClick={() => setStep(1)} className="btn-outline-gold flex-grow py-4">
                   BACK
                 </button>
-                <button type="submit" disabled={submitting} className="btn-gold flex-grow py-4">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  onClick={() => commitDepositAmount(depositInput)}
+                  className="btn-gold flex-grow py-4"
+                >
                   {submitting ? 'CREATING BOOKING...' : 'CONFIRM BOOKING'}
                 </button>
               </div>
@@ -517,15 +715,89 @@ const Booking: React.FC = () => {
                 <CheckCircle2 size={48} />
               </div>
               <h2 className="text-4xl font-display font-bold text-title mb-4">Booking Confirmed</h2>
-              <p className="text-muted text-lg mb-10 max-w-md mx-auto">
-                Reservation for <strong>{totalRoomsCount} rooms</strong> has been created successfully in the backend system.
+              <p className="text-muted text-lg mb-10 max-w-2xl mx-auto">
+                Reservation for <strong>{totalRoomsCount} rooms</strong> has been created successfully. Ban da chon{' '}
+                <strong>{selectedPaymentOption.title}</strong> cho buoc thanh toan tiep theo.
               </p>
-              <div className="admin-card !p-6 mb-10 text-left space-y-3">
-                <div className="flex justify-between text-sm"><span className="text-muted">Booking Code:</span> <span className="text-primary font-bold">{bookingCode}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted">Check-in:</span> <span className="text-title">{formData.checkIn}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-muted">Check-out:</span> <span className="text-title">{formData.checkOut}</span></div>
+
+              <div className="admin-card !p-6 mb-6 text-left space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">Booking Code:</span>
+                  <span className="text-primary font-bold">{bookingCode}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">Booking ID:</span>
+                  <span className="text-title">{createdBookingId ?? '-'}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">Check-in:</span>
+                  <span className="text-title">{formData.checkIn}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">Check-out:</span>
+                  <span className="text-title">{formData.checkOut}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">Tong gia tri:</span>
+                  <span className="text-title">{finalTotal.toLocaleString('vi-VN')} VND</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">Tien coc:</span>
+                  <span className="text-title">{normalizedDepositAmount.toLocaleString('vi-VN')} VND</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">Con lai:</span>
+                  <span className="text-title font-bold">{remainingAmount.toLocaleString('vi-VN')} VND</span>
+                </div>
               </div>
-              <button onClick={() => navigate('/profile')} className="btn-gold px-10 py-4">VIEW MY PROFILE</button>
+
+              <div className="admin-card !p-6 mb-10 text-left">
+                <h3 className="text-lg font-bold text-title mb-3">Thanh toan sau khi tao booking</h3>
+                <p className="text-sm text-muted mb-4">{selectedPaymentOption.description}</p>
+
+                {normalizedDepositAmount <= 0 ? (
+                  <div className="status-success">
+                    Booking nay khong co tien coc bat buoc, ban co the thanh toan phan con lai sau.
+                  </div>
+                ) : paymentMethod === 'momo' ? (
+                  <div className="space-y-4">
+                    <div className="status-warning">
+                      MoMo dang chua on dinh cho demo, nen he thong chi mo trang thanh toan khi ban bam nut ben duoi.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleProceedToMoMo()}
+                      disabled={launchingPayment || !createdInvoiceId}
+                      className="btn-gold w-full py-4 disabled:opacity-60"
+                    >
+                      {launchingPayment ? 'OPENING MOMO...' : `THANH TOAN MOMO ${normalizedDepositAmount.toLocaleString('vi-VN')} VND`}
+                    </button>
+                  </div>
+                ) : paymentMethod === 'bank_transfer' ? (
+                  <div className="status-info">
+                    Booking da duoc tao. Khi demo, ban co the thong bao khach chuyen khoan thu cong va nhan vien xac nhan sau.
+                  </div>
+                ) : (
+                  <div className="bg-subtle border border-luxury p-4 rounded-xl text-muted text-sm">
+                    Booking da duoc tao. Ban co the thu tien coc tai quay hoac bo qua buoc thanh toan online trong luc demo.
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div className="mb-6 rounded-xl text-sm status-error">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button onClick={() => navigate('/profile')} className="btn-gold px-10 py-4">
+                  VIEW MY PROFILE
+                </button>
+                <button onClick={() => navigate('/rooms')} className="btn-outline-gold px-10 py-4">
+                  BOOK ANOTHER ROOM
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

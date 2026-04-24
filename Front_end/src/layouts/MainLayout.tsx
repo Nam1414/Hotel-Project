@@ -4,12 +4,32 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/slices/authSlice';
 import { useThemeStore } from '../store/themeStore';
-import { Menu, X, Sun, Moon } from 'lucide-react';
+import { Menu, X, Sun, Moon, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAuthorizedHomePath } from '../utils/authNavigation';
 
 import NotificationBell from '../components/notification/NotificationBell';
 import Footer from '../components/common/Footer';
+
+const NAV_ITEMS = [
+  { to: '/', label: 'Trang chủ' },
+  { to: '/rooms', label: 'Phòng' },
+  { to: '/services', label: 'Dịch vụ' },
+  { to: '/news', label: 'Tin tức' },
+  { to: '/attractions', label: 'Khám phá' },
+  { to: '/about', label: 'Giới thiệu' },
+  { to: '/contact', label: 'Liên hệ' },
+];
+
+const getMembershipBadgeClass = (membershipName?: string | null) => {
+  const label = membershipName?.toLowerCase() ?? '';
+  if (label.includes('platinum')) return 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white';
+  if (label.includes('gold')) return 'bg-gradient-to-r from-amber-400 to-orange-500 text-white';
+  if (label.includes('silver')) return 'bg-gradient-to-r from-slate-300 to-slate-500 text-white';
+  return 'bg-primary/10 text-primary';
+};
+
+const getMembershipDisplayName = (membershipName?: string | null) => membershipName || 'Chưa có';
 
 const MainLayout: React.FC = () => {
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -40,20 +60,22 @@ const MainLayout: React.FC = () => {
             </div>
 
             <nav className="hidden md:flex items-center space-x-12">
-              <Link to="/" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">HOME</Link>
-              <Link to="/rooms" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">ROOMS</Link>
-              <Link to="/services" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">SERVICES</Link>
-              <Link to="/news" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">NEWS</Link>
-              <Link to="/attractions" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">EXPLORE</Link>
-              <Link to="/about" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">ABOUT</Link>
-              <Link to="/contact" className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors">CONTACT</Link>
+              {NAV_ITEMS.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="text-xs font-bold !text-[var(--text-muted)] hover:!text-primary tracking-[0.2em] transition-colors"
+                >
+                  {item.label}
+                </Link>
+              ))}
             </nav>
 
             <div className="hidden md:flex items-center space-x-6">
               <button
                 onClick={toggleTheme}
                 className="p-2.5 rounded-xl border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-primary/5 transition-all shadow-sm"
-                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                title={isDarkMode ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
               >
                 {isDarkMode ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} className="text-indigo-500" />}
               </button>
@@ -66,19 +88,39 @@ const MainLayout: React.FC = () => {
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                         {user?.name?.charAt(0)}
                       </div>
-                      <span className="text-xs font-bold text-gray-800 tracking-wider">{user?.name}</span>
+                      <div className="flex flex-col items-start leading-tight">
+                        <span className="text-xs font-bold text-title tracking-wider">{user?.name}</span>
+                        {user?.membershipName && (
+                          <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getMembershipBadgeClass(user.membershipName)}`}>
+                            <Crown size={10} />
+                            {getMembershipDisplayName(user.membershipName)}
+                          </span>
+                        )}
+                      </div>
                     </button>
-                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2">
-                      <Link to="/profile" className="block px-4 py-2 text-xs font-bold !text-gray-500 hover:bg-gray-50 hover:!text-primary">Profile</Link>
-                      {canOpenDashboard && (
-                        <Link to={dashboardPath} className="block px-4 py-2 text-xs font-bold !text-gray-500 hover:bg-gray-50 hover:!text-primary">Dashboard</Link>
+                    <div className="absolute right-0 mt-2 w-56 bg-[var(--card-bg)] border border-luxury rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2">
+                      {user?.membershipName && (
+                        <div className="px-4 pb-2 mb-2 border-b border-luxury">
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-muted">Membership</div>
+                          <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${getMembershipBadgeClass(user.membershipName)}`}>
+                            <Crown size={12} />
+                            {getMembershipDisplayName(user.membershipName)}
+                          </div>
+                          {user.membershipDiscountPercent != null && (
+                            <div className="mt-2 text-[11px] text-muted">Giảm giá: {user.membershipDiscountPercent}%</div>
+                          )}
+                        </div>
                       )}
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-50">Logout</button>
+                      <Link to="/profile" className="block px-4 py-2 text-xs font-bold text-muted hover:bg-primary/5 hover:!text-primary transition-colors">Hồ sơ cá nhân</Link>
+                      {canOpenDashboard && (
+                        <Link to={dashboardPath} className="block px-4 py-2 text-xs font-bold text-muted hover:bg-primary/5 hover:!text-primary transition-colors">Bảng điều khiển</Link>
+                      )}
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-xs font-bold text-error hover:bg-error/10 transition-colors">Đăng xuất</button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <Link to="/login" className="btn-gold px-8 py-2 text-xs">LOGIN</Link>
+                <Link to="/login" className="btn-gold px-8 py-2 text-xs">Đăng nhập</Link>
               )}
             </div>
 
@@ -103,33 +145,45 @@ const MainLayout: React.FC = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-white dark:bg-dark-base border-b border-gray-100 dark:border-white/5 overflow-hidden"
+              className="md:hidden bg-[var(--card-bg)] border-b border-luxury overflow-hidden"
             >
               <div className="px-4 pt-2 pb-6 space-y-1">
-                <Link to="/" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">HOME</Link>
-                <Link to="/rooms" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ROOMS</Link>
-                <Link to="/services" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">SERVICES</Link>
-                <Link to="/news" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">NEWS</Link>
-                <Link to="/attractions" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">EXPLORE</Link>
-                <Link to="/about" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">ABOUT</Link>
-                <Link to="/contact" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">CONTACT</Link>
+                <Link to="/" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Trang chủ</Link>
+                <Link to="/rooms" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Phòng</Link>
+                <Link to="/services" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Dịch vụ</Link>
+                <Link to="/news" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Tin tức</Link>
+                <Link to="/attractions" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Khám phá</Link>
+                <Link to="/about" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Giới thiệu</Link>
+                <Link to="/contact" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Liên hệ</Link>
                 {isAuthenticated && (
                   <>
+                    {user?.membershipName && (
+                      <div className="px-3 py-2 mx-1 mb-2 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]">
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Membership</div>
+                        <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${getMembershipBadgeClass(user.membershipName)}`}>
+                          <Crown size={11} />
+                          {getMembershipDisplayName(user.membershipName)}
+                        </div>
+                        {user.membershipDiscountPercent != null && (
+                          <div className="mt-2 text-[11px] text-[var(--text-muted)]">Giảm giá: {user.membershipDiscountPercent}%</div>
+                        )}
+                      </div>
+                    )}
                     {canOpenDashboard && (
-                      <Link to={dashboardPath} onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">
-                        DASHBOARD
+                      <Link to={dashboardPath} onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">
+                        Bảng điều khiển
                       </Link>
                     )}
-                    <Link to="/profile" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary tracking-widest">
-                      PROFILE
+                    <Link to="/profile" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">
+                      Hồ sơ cá nhân
                     </Link>
-                    <button onClick={handleLogout} className="block w-full text-left px-3 py-4 text-xs font-bold text-red-400 tracking-widest">
-                      LOGOUT
+                    <button onClick={handleLogout} className="block w-full text-left px-3 py-4 text-xs font-bold text-error tracking-widest hover:bg-error/10">
+                      Đăng xuất
                     </button>
                   </>
                 )}
                 {!isAuthenticated && (
-                  <Link to="/login" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-primary tracking-widest">LOGIN</Link>
+                  <Link to="/login" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-primary tracking-widest">Đăng nhập</Link>
                 )}
               </div>
             </motion.div>

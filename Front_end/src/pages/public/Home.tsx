@@ -1,13 +1,20 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, Star, Shield, Coffee, Wifi, MapPin } from 'lucide-react';
-import { MOCK_ROOMS } from '../../constants/mockData';
-
+import { ArrowRight, Star, Shield, Coffee, Wifi, MapPin, Users } from 'lucide-react';
+import { publicHotelApi, type PublicRoomType } from '../../services/publicHotelApi';
 import WhyChooseKant from '../../components/home/WhyChooseKant';
 import GuestExperiences from '../../components/home/GuestExperiences';
 
 const Home: React.FC = () => {
+  const [rooms, setRooms] = React.useState<PublicRoomType[]>([]);
+
+  React.useEffect(() => {
+    publicHotelApi.getRoomTypes()
+      .then(setRooms)
+      .catch(console.error);
+  }, []);
+
   return (
     <div className="overflow-hidden">
       {/* Hero Section */}
@@ -80,38 +87,39 @@ const Home: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
-            {MOCK_ROOMS.slice(0, 3).map((room) => (
+            {rooms.slice(0, 3).map((room) => (
               <motion.div 
                 key={room.id}
                 whileHover={{ y: -10 }}
-                className="group relative bg-[var(--card-bg)] rounded-2xl overflow-hidden border border-[var(--border-color)] shadow-sm"
+                className="group relative bg-[var(--card-bg)] rounded-2xl overflow-hidden border border-[var(--border-color)] shadow-sm flex flex-col h-full"
               >
-                <div className="relative h-64 sm:h-72 overflow-hidden">
+                <div className="relative h-64 sm:h-72 overflow-hidden shrink-0">
                   <img 
-                    src={room.image} 
+                    src={room.primaryImage || 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&q=80&w=1600'} 
                     alt={room.name} 
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute top-4 right-4 bg-primary text-white px-4 py-1 rounded-full font-bold text-sm">
-                    ${room.price}/night
+                    {room.displayPrice.toLocaleString('vi-VN')} đ/đêm
                   </div>
                 </div>
-                <div className="p-5 sm:p-6 lg:p-8">
+                <div className="p-5 sm:p-6 lg:p-8 flex flex-col flex-1">
                   <div className="flex items-center text-primary mb-4">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={14} fill={i < Math.floor(room.rating) ? "currentColor" : "none"} />
+                      <Star key={i} size={14} fill="currentColor" />
                     ))}
-                    <span className="ml-2 text-xs font-bold text-[var(--text-muted)]">{room.rating} Rating</span>
+                    <span className="ml-2 text-xs font-bold text-[var(--text-muted)]">5.0 Rating</span>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-title)] mb-4">{room.name}</h3>
                   <div className="flex flex-wrap gap-3 sm:gap-4 text-[var(--text-muted)] text-sm mb-6 sm:mb-8">
-                    <span className="flex items-center"><Wifi size={14} className="mr-1" /> Wifi</span>
-                    <span className="flex items-center"><Coffee size={14} className="mr-1" /> Breakfast</span>
+                    <span className="flex items-center"><Users size={14} className="mr-1" /> {room.capacityLabel}</span>
                   </div>
-                  <Link to={`/rooms/${room.id}`} className="btn-outline-gold w-full block text-center">
-                    VIEW DETAILS
-                  </Link>
+                  <div className="mt-auto">
+                    <Link to={`/rooms/${room.id}`} className="btn-outline-gold w-full block text-center">
+                      VIEW DETAILS
+                    </Link>
+                  </div>
                 </div>
               </motion.div>
             ))}

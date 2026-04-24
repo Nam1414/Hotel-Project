@@ -19,11 +19,13 @@ public class RolesController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IAuditLogService _auditLogService;
 
-    public RolesController(AppDbContext context, INotificationService notificationService)
+    public RolesController(AppDbContext context, INotificationService notificationService, IAuditLogService auditLogService)
     {
         _context = context;
         _notificationService = notificationService;
+        _auditLogService = auditLogService;
     }
 
     // --- QUẢN LÝ ROLE ---
@@ -83,6 +85,7 @@ public class RolesController : ControllerBase
 
         _context.Roles.Add(role);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("CREATE", "Role", new { roleId = role.Id, role.Name }, null, dto, $"Tạo role {role.Name}.");
 
         return CreatedAtAction(nameof(GetById), new { id = role.Id }, role);
     }
@@ -102,6 +105,7 @@ public class RolesController : ControllerBase
         role.Description = dto.Description;
 
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "Role", new { roleId = id, role.Name }, dto, role, $"Cập nhật role {role.Name}.");
         return Ok(role);
     }
 
@@ -120,6 +124,7 @@ public class RolesController : ControllerBase
 
         _context.Roles.Remove(role);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("DELETE", "Role", new { roleId = id, role.Name }, null, null, $"Xóa role {role.Name}.");
 
         return Ok(new { message = "Đã xóa Role thành công" });
     }
@@ -160,6 +165,7 @@ public class RolesController : ControllerBase
 
         _context.RolePermissions.Add(rolePermission);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("CREATE", "RolePermission", new { dto.RoleId, dto.PermissionId }, null, dto, $"Gán quyền cho role #{dto.RoleId}.");
 
         // Notify users
         try {
@@ -196,6 +202,7 @@ public class RolesController : ControllerBase
 
         _context.RolePermissions.Remove(rolePermission);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("DELETE", "RolePermission", new { dto.RoleId, dto.PermissionId }, null, null, $"Gỡ quyền khỏi role #{dto.RoleId}.");
 
         // Notify users
         try {

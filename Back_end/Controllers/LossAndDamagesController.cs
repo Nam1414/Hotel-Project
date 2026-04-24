@@ -14,11 +14,13 @@ public class LossAndDamagesController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly HotelManagementAPI.Services.IInvoiceService _invoiceService;
+    private readonly HotelManagementAPI.Services.IAuditLogService _auditLogService;
 
-    public LossAndDamagesController(AppDbContext context, HotelManagementAPI.Services.IInvoiceService invoiceService)
+    public LossAndDamagesController(AppDbContext context, HotelManagementAPI.Services.IInvoiceService invoiceService, HotelManagementAPI.Services.IAuditLogService auditLogService)
     {
         _context = context;
         _invoiceService = invoiceService;
+        _auditLogService = auditLogService;
     }
 
     [HttpGet]
@@ -117,6 +119,25 @@ public class LossAndDamagesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        await _auditLogService.LogAsync(
+            "CREATE",
+            nameof(LossAndDamage),
+            new
+            {
+                damageId = entity.Id,
+                roomNumber = roomInventory?.Room?.RoomNumber,
+                targetItem = entity.EquipmentId
+            },
+            null,
+            new
+            {
+                entity.Quantity,
+                entity.PenaltyAmount,
+                entity.Description
+            },
+            $"Ghi nhận hỏng {(roomInventory?.Equipment?.Name ?? entity.Equipment?.Name ?? "vật tư")} tại phòng {(roomInventory?.Room?.RoomNumber ?? "không xác định")}."
+        );
+
         if (entity.BookingDetailId.HasValue)
         {
             var bookingDetail = await _context.BookingDetails.FindAsync(entity.BookingDetailId.Value);
@@ -139,12 +160,40 @@ public class LossAndDamagesController : ControllerBase
         if (dto.Quantity <= 0)
             return BadRequest(new { message = "Số lượng phải lớn hơn 0" });
 
+        var previous = new
+        {
+            entity.Quantity,
+            entity.PenaltyAmount,
+            entity.Description,
+            entity.ImageUrl
+        };
+
         entity.Quantity = dto.Quantity;
         entity.PenaltyAmount = dto.PenaltyAmount;
         entity.Description = dto.Description;
         entity.ImageUrl = dto.ImageUrl;
 
         await _context.SaveChangesAsync();
+
+        await _auditLogService.LogAsync(
+            "UPDATE",
+            nameof(LossAndDamage),
+            new
+            {
+                damageId = entity.Id,
+                roomNumber = entity.RoomInventory?.Room?.RoomNumber,
+                targetItem = entity.Equipment?.Name ?? entity.RoomInventory?.Equipment?.Name
+            },
+            previous,
+            new
+            {
+                entity.Quantity,
+                entity.PenaltyAmount,
+                entity.Description,
+                entity.ImageUrl
+            },
+            $"Cập nhật báo hỏng #{entity.Id}."
+        );
 
         if (entity.BookingDetailId.HasValue)
         {

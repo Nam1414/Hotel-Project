@@ -19,19 +19,19 @@ const GlobalLoading = () => {
 
 const AppContent = () => {
   useScrollToTop();
-  const { isDarkMode } = useThemeStore();
+  const { isDarkMode, hydrated } = useThemeStore();
   const dispatch = useDispatch();
 
   useEffect(() => {
     const interval = setInterval(() => {
       const types: ('booking' | 'reminder' | 'update' | 'message')[] = ['booking', 'reminder', 'update', 'message'];
-      const titles = ['Room Update', 'Inventory Alert', 'Damage Report', 'New Message', 'Maintenance Alert'];
+      const titles = ['Cập nhật phòng', 'Cảnh báo tồn kho', 'Báo cáo hư hỏng', 'Tin nhắn mới', 'Thông báo bảo trì'];
       const descriptions = [
-        'Room 204 has been cleaned and is ready for check-in.',
-        'Low stock alert: Toiletries are below 20%.',
-        'New damage reported in Room 305: Broken lamp.',
-        'Guest in Room 102 requested extra towels.',
-        'Scheduled maintenance for elevator B in 1 hour.',
+        'Phòng 204 đã được dọn dẹp và sẵn sàng nhận khách.',
+        'Cảnh báo sắp hết hàng: đồ dùng vệ sinh còn dưới 20%.',
+        'Đã ghi nhận hư hỏng mới tại phòng 305: đèn bàn bị hỏng.',
+        'Khách ở phòng 102 đã yêu cầu thêm khăn tắm.',
+        'Lịch bảo trì thang máy B sẽ bắt đầu sau 1 giờ nữa.',
       ];
 
       const randomIndex = Math.floor(Math.random() * titles.length);
@@ -41,7 +41,7 @@ const AppContent = () => {
           addNotification({
             title: titles[randomIndex],
             description: descriptions[randomIndex],
-            time: 'Just now',
+            time: 'Vừa xong',
             type: types[Math.floor(Math.random() * types.length)],
           }),
         );
@@ -52,12 +52,13 @@ const AppContent = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
+    if (!hydrated) return;
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [hydrated, isDarkMode]);
+
+  if (!hydrated) {
+    return null;
+  }
 
   return (
     <ConfigProvider
@@ -69,13 +70,39 @@ const AppContent = () => {
           colorLinkHover: '#A6894B',
           colorLinkActive: '#A6894B',
           colorInfo: '#C6A96B',
-          borderRadius: 12,
+          colorSuccess: '#10B981',
+          colorWarning: '#F59E0B',
+          colorError: '#EF4444',
+          borderRadius: 16,
           colorBgContainer: isDarkMode ? '#111827' : '#FFFFFF',
           colorBgElevated: isDarkMode ? '#1F2937' : '#FFFFFF',
-          colorText: isDarkMode ? '#F8FAFC' : '#1E293B',
-          colorTextSecondary: isDarkMode ? '#94A3B8' : '#64748B',
-          fontFamily: 'Outfit, sans-serif',
+          colorBgLayout: isDarkMode ? '#0B0F19' : '#FDFCFB',
+          colorText: isDarkMode ? '#F8FAFC' : '#0F172A',
+          colorTextSecondary: isDarkMode ? '#94A3B8' : '#334155',
+          colorBorder: isDarkMode ? '#1E2937' : '#E2E8F0',
+          fontFamily: '"Plus Jakarta Sans", "Inter", sans-serif',
         },
+        components: {
+          Button: {
+            borderRadius: 12,
+            controlHeight: 44,
+            fontWeight: 600,
+          },
+          Input: {
+            borderRadius: 12,
+            controlHeight: 44,
+          },
+          Select: {
+            borderRadius: 12,
+            controlHeight: 44,
+          },
+          Card: {
+            borderRadius: 20,
+          },
+          Table: {
+            borderRadius: 16,
+          }
+        }
       }}
     >
       <AntdApp>

@@ -1,20 +1,39 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
+import { App, Button, Card, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Statistic, Switch, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { BadgePercent, CheckCircle2, Edit3, Percent, Plus, RefreshCw, Search, Ticket, Trash2 } from 'lucide-react';
 import dayjs from 'dayjs';
 import { voucherApi, type UpsertVoucherDto, type VoucherResponseDto } from '../../services/voucherApi';
+import { membershipApi, type MembershipDto } from '../../services/membershipApi';
+
+const ALL_MEMBERSHIP_VALUE = -1;
 
 const { Title, Paragraph, Text } = Typography;
 
+const VOUCHER_STATUS_LABELS = {
+  all: 'Tất cả trạng thái',
+  active: 'Đang áp dụng',
+  inactive: 'Đang tắt',
+  expired: 'Hết hạn',
+} as const;
+
 const formatMoney = (value?: number | null) =>
   value !== undefined && value !== null ? `${value.toLocaleString('vi-VN')} đ` : '—';
+
+const getVoucherStatus = (voucher: VoucherResponseDto) => {
+  const expired = dayjs(voucher.endDate).isBefore(dayjs(), 'day');
+  if (!voucher.isActive) return { label: 'Đang tắt', color: undefined };
+  if (expired) return { label: 'Hết hạn', color: 'red' as const };
+  return { label: 'Đang áp dụng', color: 'green' as const };
+};
 
 const VoucherManagement: React.FC = () => {
   const { message } = App.useApp();
   const [form] = Form.useForm();
   const [items, setItems] = useState<VoucherResponseDto[]>([]);
+  const [membershipOptions, setMembershipOptions] = useState<MembershipDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const [membershipLoading, setMembershipLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<VoucherResponseDto | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,9 +51,22 @@ const VoucherManagement: React.FC = () => {
     }
   }, [message]);
 
+  const loadMemberships = useCallback(async () => {
+    setMembershipLoading(true);
+    try {
+      const data = await membershipApi.getAll();
+      setMembershipOptions(data);
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || 'Không thể tải danh sách hạng thành viên');
+    } finally {
+      setMembershipLoading(false);
+    }
+  }, [message]);
+
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    void loadData();
+    void loadMemberships();
+  }, [loadData, loadMemberships]);
 
   const filteredItems = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -56,6 +88,11 @@ const VoucherManagement: React.FC = () => {
     });
   }, [items, searchTerm, statusFilter]);
 
+  const membershipSelectOptions = useMemo(() => [
+    { value: ALL_MEMBERSHIP_VALUE, label: 'Tất cả thành viên' },
+    ...membershipOptions.map((item) => ({ value: item.id, label: item.tierName })),
+  ], [membershipOptions]);
+
   const stats = useMemo(() => ({
     total: items.length,
     active: items.filter((item) => item.isActive && !dayjs(item.endDate).isBefore(dayjs(), 'day')).length,
@@ -69,6 +106,8 @@ const VoucherManagement: React.FC = () => {
     form.setFieldsValue({
       discountType: 'Percentage',
       minBookingAmount: 0,
+      eligibleMemberOnly: false,
+      eligibleMembershipId: ALL_MEMBERSHIP_VALUE,
       isActive: true,
       dateRange: [dayjs(), dayjs().add(30, 'day')],
     });
@@ -86,6 +125,8 @@ const VoucherManagement: React.FC = () => {
       minBookingAmount: voucher.minBookingAmount,
       maxDiscountAmount: voucher.maxDiscountAmount ?? undefined,
       usageLimit: voucher.usageLimit ?? undefined,
+      eligibleMemberOnly: voucher.eligibleMemberOnly,
+      eligibleMembershipId: voucher.eligibleMembershipId ?? ALL_MEMBERSHIP_VALUE,
       isActive: voucher.isActive,
       dateRange: [dayjs(voucher.startDate), dayjs(voucher.endDate)],
     });
@@ -112,6 +153,11 @@ const VoucherManagement: React.FC = () => {
       minBookingAmount: values.minBookingAmount || 0,
       maxDiscountAmount: values.maxDiscountAmount ?? null,
       usageLimit: values.usageLimit ?? null,
+      eligibleMemberOnly: values.eligibleMemberOnly ?? false,
+      eligibleMembershipId:
+        values.eligibleMemberOnly && values.eligibleMembershipId !== ALL_MEMBERSHIP_VALUE
+          ? values.eligibleMembershipId
+          : null,
       isActive: values.isActive,
       startDate: values.dateRange[0].startOf('day').toISOString(),
       endDate: values.dateRange[1].endOf('day').toISOString(),
@@ -183,13 +229,27 @@ const VoucherManagement: React.FC = () => {
       ),
     },
     {
+      title: 'Phạm vi',
+      key: 'scope',
+      render: (_, record) => (
+        <Space direction="vertical" size={0}>
+          <Tag color={record.eligibleMemberOnly ? 'gold' : 'blue'}>
+            {record.eligibleMemberOnly ? 'Chỉ VIP' : 'Tất cả khách'}
+          </Tag>
+          {record.eligibleMemberOnly && (
+            <Text type="secondary">
+              Hạng áp dụng: {membershipSelectOptions.find((item) => item.value === record.eligibleMembershipId)?.label ?? `ID ${record.eligibleMembershipId ?? '—'}`}
+            </Text>
+          )}
+        </Space>
+      ),
+    },
+    {
       title: 'Trạng thái',
       key: 'status',
       render: (_, record) => {
-        const expired = dayjs(record.endDate).isBefore(dayjs(), 'day');
-        if (!record.isActive) return <Tag>Đang tắt</Tag>;
-        if (expired) return <Tag color="red">Hết hạn</Tag>;
-        return <Tag color="green">Đang áp dụng</Tag>;
+        const status = getVoucherStatus(record);
+        return <Tag color={status.color}>{status.label}</Tag>;
       },
     },
     {
@@ -241,9 +301,9 @@ const VoucherManagement: React.FC = () => {
           { label: 'Giảm giá TB', value: `${stats.avgDiscount}%`, icon: <Percent size={20} />, color: '#d97706' },
         ].map((stat, index) => (
           <Col key={index} xs={24} sm={12} lg={6}>
-            <Card className="glass-card text-center" bodyStyle={{ padding: 16 }}>
+            <Card className="glass-card text-center" styles={{ body: { padding: 16 } }}>
               <div style={{ color: stat.color }} className="flex justify-center mb-2">{stat.icon}</div>
-              <Statistic title={stat.label} value={stat.value as any} valueStyle={{ color: stat.color }} />
+              <Statistic title={stat.label} value={stat.value as any} styles={{ content: { color: stat.color } }} />
             </Card>
           </Col>
         ))}
@@ -266,10 +326,10 @@ const VoucherManagement: React.FC = () => {
               value={statusFilter}
               onChange={setStatusFilter}
               options={[
-                { value: 'all', label: 'Tất cả trạng thái' },
-                { value: 'active', label: 'Đang áp dụng' },
-                { value: 'inactive', label: 'Đang tắt' },
-                { value: 'expired', label: 'Hết hạn' },
+                { value: 'all', label: VOUCHER_STATUS_LABELS.all },
+                { value: 'active', label: VOUCHER_STATUS_LABELS.active },
+                { value: 'inactive', label: VOUCHER_STATUS_LABELS.inactive },
+                { value: 'expired', label: VOUCHER_STATUS_LABELS.expired },
               ]}
             />
           </Col>
@@ -349,6 +409,45 @@ const VoucherManagement: React.FC = () => {
             <Col span={8}>
               <Form.Item name="usageLimit" label="Giới hạn lượt dùng">
                 <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="eligibleMemberOnly" label="Áp dụng cho VIP" valuePropName="checked">
+                <Switch
+                  checkedChildren="Có"
+                  unCheckedChildren="Không"
+                  onChange={(checked) => {
+                    if (!checked) {
+                      form.setFieldValue('eligibleMembershipId', ALL_MEMBERSHIP_VALUE);
+                    }
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="eligibleMembershipId"
+                label="Hạng thành viên"
+                dependencies={["eligibleMemberOnly"]}
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!getFieldValue('eligibleMemberOnly') || value !== ALL_MEMBERSHIP_VALUE) return Promise.resolve();
+                      return Promise.reject(new Error('Chọn hạng thành viên cho voucher VIP'));
+                    },
+                  }),
+                ]}
+              >
+                <Select
+                  allowClear
+                  placeholder="Chọn hạng áp dụng"
+                  options={membershipSelectOptions.filter((item) => item.value !== ALL_MEMBERSHIP_VALUE)}
+                  loading={membershipLoading}
+                  disabled={!form.getFieldValue('eligibleMemberOnly')}
+                />
               </Form.Item>
             </Col>
           </Row>

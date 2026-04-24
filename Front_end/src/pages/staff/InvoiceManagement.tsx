@@ -54,7 +54,15 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
   Cancelled: 'Đã hủy',
 };
 
-const PAYMENT_METHODS = ['Cash', 'Card', 'BankTransfer', 'MoMo', 'VNPay'];
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  Cash: 'Tiền mặt',
+  Card: 'Thẻ',
+  BankTransfer: 'Chuyển khoản',
+  MoMo: 'MoMo',
+  VNPay: 'VNPay',
+};
+
+const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS);
 
 const MOMO_LOGO = 'https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-MoMo-Square.png';
 
@@ -113,7 +121,7 @@ const InvoiceManagementPage: React.FC = () => {
 
   // ── Xử lý redirect từ MoMo (sau khi khách thanh toán) ──
   useEffect(() => {
-    const { paymentStatus, invoiceId: retInvoiceId } = parseMoMoReturnParams();
+    const { paymentStatus, invoiceId: retInvoiceId, message: momoMessage } = parseMoMoReturnParams();
     if (paymentStatus === 'success') {
       message.success({
         content: '✅ Thanh toán MoMo thành công! Đang cập nhật hóa đơn...',
@@ -128,6 +136,12 @@ const InvoiceManagementPage: React.FC = () => {
           openInvoice(selectedBooking);
         }
       }, 2000);
+    } else if (paymentStatus === 'failed') {
+      message.error({
+        content: momoMessage || 'Thanh toán MoMo chưa hoàn tất hoặc đã thất bại.',
+        duration: 5,
+      });
+      clearMoMoReturnParams();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -139,7 +153,7 @@ const InvoiceManagementPage: React.FC = () => {
       setBookings(bk);
       setRooms(rm);
     } catch {
-      message.error('Không thể tải dữ liệu hóa đơn');
+      message.error('Không thể tải dữ liệu hóa đơn. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
@@ -213,10 +227,10 @@ const InvoiceManagementPage: React.FC = () => {
       if (inv.lossDamages) {
         setInvoiceDamages(inv.lossDamages);
       }
-      message.success('Tạo hóa đơn thành công');
+      message.success('Tạo hóa đơn thành công.');
       loadData();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Không thể tạo hóa đơn');
+      message.error(err.response?.data?.message || 'Không thể tạo hóa đơn. Vui lòng kiểm tra lại thông tin booking.');
     }
   };
 
@@ -237,7 +251,7 @@ const InvoiceManagementPage: React.FC = () => {
         amountPaid: values.amountPaid,
         transactionCode: values.transactionCode || undefined,
       });
-      message.success('Ghi nhận thanh toán thành công');
+      message.success('Đã ghi nhận thanh toán thành công.');
       paymentForm.resetFields();
       setPaymentOpen(false);
       if (selectedBooking) {
@@ -248,7 +262,7 @@ const InvoiceManagementPage: React.FC = () => {
       }
       loadData();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Thanh toán thất bại');
+      message.error(err.response?.data?.message || 'Không thể ghi nhận thanh toán. Vui lòng thử lại.');
     }
   };
 
@@ -269,7 +283,7 @@ const InvoiceManagementPage: React.FC = () => {
         duration: 8,
       });
     } catch (err: any) {
-      message.error(err?.response?.data?.message || err?.message || 'Không thể tạo thanh toán MoMo');
+      message.error(err?.response?.data?.message || err?.message || 'Không thể tạo liên kết thanh toán MoMo. Vui lòng thử lại.');
     } finally {
       setMomoLoading(false);
     }
@@ -280,7 +294,7 @@ const InvoiceManagementPage: React.FC = () => {
   };
 
   const remainingAmount = selectedInvoice
-    ? selectedInvoice.finalTotal - (selectedInvoice.depositAmount || 0) - selectedInvoice.payments.reduce((sum, p) => sum + p.amountPaid, 0)
+    ? selectedInvoice.finalTotal - (selectedInvoice.depositPaidAmount || 0) - selectedInvoice.payments.reduce((sum, p) => sum + p.amountPaid, 0)
     : 0;
 
   const columns = [
@@ -306,16 +320,24 @@ const InvoiceManagementPage: React.FC = () => {
       key: 'invoice',
       width: 150,
       render: (_: any, r: BookingResponseDto) =>
-        r.invoiceId ? <Tag color="green">Có hóa đơn</Tag> : <Tag>Chưa có</Tag>,
+        r.invoiceId ? <Tag color="green">Đã xuất hóa đơn</Tag> : <Tag>Chưa xuất hóa đơn</Tag>,
     },
     {
       title: 'Tiền cọc',
       key: 'deposit',
       width: 120,
       render: (_: any, r: BookingResponseDto) => (
-        <Text strong style={{ color: r.depositAmount > 0 ? '#16a34a' : 'inherit' }}>
-          {formatMoney(r.depositAmount)}
-        </Text>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Text strong style={{ color: r.depositAmount > 0 ? '#16a34a' : 'inherit' }}>
+            {formatMoney(r.depositAmount)}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Đã thu: {formatMoney(r.depositPaidAmount)}
+          </Text>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            Còn thiếu: {formatMoney(r.depositRemainingAmount)}
+          </Text>
+        </div>
       ),
     },
     {
@@ -325,7 +347,7 @@ const InvoiceManagementPage: React.FC = () => {
       render: (_: any, r: BookingResponseDto) => (
         <Space wrap size="small">
           <Button size="small" icon={<FileText size={14} />} onClick={() => openInvoice(r)}>
-            Hóa đơn
+            Xem hóa đơn
           </Button>
         </Space>
       ),
@@ -427,7 +449,7 @@ const InvoiceManagementPage: React.FC = () => {
           <div style={{ padding: '48px 0', textAlign: 'center', color: '#9ca3af' }}>Đang tải hóa đơn...</div>
         ) : !selectedInvoice ? (
           <div style={{ padding: '48px 0', textAlign: 'center', color: '#9ca3af' }}>
-            <div style={{ marginBottom: 12 }}>Chưa có hóa đơn.</div>
+            <div style={{ marginBottom: 12 }}>Booking này chưa có hóa đơn.</div>
             {selectedBooking?.status !== 'Cancelled' && (
               <Button type="primary" icon={<Plus size={14} />} onClick={createInvoice}>
                 Tạo hóa đơn
@@ -462,6 +484,14 @@ const InvoiceManagementPage: React.FC = () => {
                   <span>TỔNG CỘNG (Chưa Thuế):</span>
                   <span>{formatMoney(selectedInvoice.totalRoomAmount + selectedInvoice.totalServiceAmount)}</span>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#d97706' }}>
+                  <span>Đã đặt cọc:</span>
+                  <span>-{formatMoney(selectedInvoice.depositPaidAmount)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: selectedInvoice.depositRemainingAmount > 0 ? '#dc2626' : '#16a34a' }}>
+                  <span>Cọc còn thiếu:</span>
+                  <span>{formatMoney(selectedInvoice.depositRemainingAmount)}</span>
+                </div>
               </div>
 
               {/* Deductions */}
@@ -473,7 +503,7 @@ const InvoiceManagementPage: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#d97706' }}>
                   <span>Tiền đã cọc:</span>
-                  <span>-{formatMoney(selectedInvoice.depositAmount)}</span>
+                  <span>{formatMoney(selectedInvoice.depositAmount)}</span>
                 </div>
               </div>
 
@@ -485,7 +515,7 @@ const InvoiceManagementPage: React.FC = () => {
                     <tr style={{ backgroundColor: '#f3f4f6' }}>
                       <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Phòng</th>
                       <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Số đêm</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Thành tiền</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Tổng tiền</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -514,7 +544,7 @@ const InvoiceManagementPage: React.FC = () => {
                       <tr style={{ backgroundColor: '#f0f9ff' }}>
                         <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Sản phẩm/Dịch vụ</th>
                         <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Số lượng</th>
-                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Thành tiền</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Tổng tiền</th>
                       </tr>
                     </thead>
                     <tbody>

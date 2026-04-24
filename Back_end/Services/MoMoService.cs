@@ -4,8 +4,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using HotelManagementAPI.Configurations;
 using HotelManagementAPI.DTOs;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace HotelManagementAPI.Services
 {
@@ -17,20 +18,12 @@ namespace HotelManagementAPI.Services
 
     public class MoMoService : IMoMoService
     {
-        private readonly IConfiguration _config;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly MoMoApiOptions _options;
 
-        private string MomoApiUrl => _config["MoMoAPI:MomoApiUrl"] ?? "https://test-payment.momo.vn/v2/gateway/api/create";
-        private string SecretKey => _config["MoMoAPI:SecretKey"] ?? "";
-        private string AccessKey => _config["MoMoAPI:AccessKey"] ?? "";
-        private string PartnerCode => _config["MoMoAPI:PartnerCode"] ?? "";
-        private string RequestType => _config["MoMoAPI:RequestType"] ?? "captureWallet";
-        private string ReturnUrl => _config["MoMoAPI:ReturnUrl"] ?? "";
-        private string NotifyUrl => _config["MoMoAPI:NotifyUrl"] ?? "";
-
-        public MoMoService(IConfiguration config, IHttpClientFactory httpClientFactory)
+        public MoMoService(IOptions<MoMoApiOptions> options, IHttpClientFactory httpClientFactory)
         {
-            _config = config;
+            _options = options.Value;
             _httpClientFactory = httpClientFactory;
         }
 
@@ -40,48 +33,50 @@ namespace HotelManagementAPI.Services
             var requestId = Guid.NewGuid().ToString("N");
             var amountLong = (long)Math.Round(amount);
             var extraData = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{{\"invoiceId\":{invoiceId}}}"));
+            var returnUrl = AppendQueryParameter(_options.ReturnUrl, "invoiceId", invoiceId.ToString());
 
-            // Build returnUrl với invoiceId để frontend biết reload invoice nào
-            var returnUrl = $"{ReturnUrl}&invoiceId={invoiceId}";
-
-            // Tạo raw signature string theo đúng thứ tự MoMo yêu cầu
             var rawSignature =
-                $"accessKey={AccessKey}" +
+                $"accessKey={_options.AccessKey}" +
                 $"&amount={amountLong}" +
                 $"&extraData={extraData}" +
-                $"&ipnUrl={NotifyUrl}" +
+                $"&ipnUrl={_options.NotifyUrl}" +
                 $"&orderId={orderId}" +
                 $"&orderInfo={orderInfo}" +
-                $"&partnerCode={PartnerCode}" +
+                $"&partnerCode={_options.PartnerCode}" +
                 $"&redirectUrl={returnUrl}" +
                 $"&requestId={requestId}" +
-                $"&requestType={RequestType}";
+                $"&requestType={_options.RequestType}";
 
-            var signature = ComputeHmacSha256(rawSignature, SecretKey);
+            var signature = ComputeHmacSha256(rawSignature, _options.SecretKey);
 
             var requestBody = new
             {
-                partnerCode = PartnerCode,
+                partnerCode = _options.PartnerCode,
                 partnerName = "Kant Hotel",
                 storeId = "KantHotel",
-                requestId = requestId,
+                requestId,
                 amount = amountLong,
-                orderId = orderId,
-                orderInfo = orderInfo,
+                orderId,
+                orderInfo,
                 redirectUrl = returnUrl,
-                ipnUrl = NotifyUrl,
+                ipnUrl = _options.NotifyUrl,
                 lang = "vi",
-                extraData = extraData,
-                requestType = RequestType,
-                signature = signature
+                extraData,
+                requestType = _options.RequestType,
+                signature
             };
 
             var json = JsonSerializer.Serialize(requestBody);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var client = _httpClientFactory.CreateClient("MoMo");
-            var response = await client.PostAsync(MomoApiUrl, content);
+            var response = await client.PostAsync(_options.MomoApiUrl, content);
             var responseBody = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception($"MoMo HTTP Error [{(int)response.StatusCode}]: {responseBody}");
+            }
 
             using var doc = JsonDocument.Parse(responseBody);
             var root = doc.RootElement;
@@ -111,9 +106,8 @@ namespace HotelManagementAPI.Services
 
         public bool VerifyIpnSignature(MoMoNotifyDto notify)
         {
-            // Raw signature theo thứ tự MoMo IPN spec
             var rawSignature =
-                $"accessKey={AccessKey}" +
+                $"accessKey={_options.AccessKey}" +
                 $"&amount={notify.Amount}" +
                 $"&extraData={notify.ExtraData}" +
                 $"&message={notify.Message}" +
@@ -127,7 +121,7 @@ namespace HotelManagementAPI.Services
                 $"&resultCode={notify.ResultCode}" +
                 $"&transId={notify.TransId}";
 
-            var expectedSig = ComputeHmacSha256(rawSignature, SecretKey);
+            var expectedSig = ComputeHmacSha256(rawSignature, _options.SecretKey);
             return string.Equals(expectedSig, notify.Signature, StringComparison.OrdinalIgnoreCase);
         }
 
@@ -137,7 +131,18 @@ namespace HotelManagementAPI.Services
             var msgBytes = Encoding.UTF8.GetBytes(message);
             using var hmac = new HMACSHA256(keyBytes);
             var hashBytes = hmac.ComputeHash(msgBytes);
-            return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+            return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+        }
+
+        private static string AppendQueryParameter(string baseUrl, string key, string value)
+        {
+            if (string.IsNullOrWhiteSpace(baseUrl))
+            {
+                return string.Empty;
+            }
+
+            var separator = baseUrl.Contains('?') ? "&" : "?";
+            return $"{baseUrl}{separator}{key}={Uri.EscapeDataString(value)}";
         }
     }
 }

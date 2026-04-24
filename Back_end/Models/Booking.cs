@@ -50,6 +50,10 @@ namespace HotelManagementAPI.Models
         [Column("deposit_amount", TypeName = "decimal(18,2)")]
         public decimal DepositAmount { get; set; } = 0;
 
+        [Column("deposit_status")]
+        [StringLength(50)]
+        public string? DepositStatus { get; set; } = "Unpaid";
+
         // Navigation properties
         public User? User { get; set; }
         public Voucher? Voucher { get; set; }

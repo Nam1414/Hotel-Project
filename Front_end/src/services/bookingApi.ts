@@ -3,6 +3,7 @@ import axiosClient from '../api/axiosClient';
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type BookingStatus = 'Pending' | 'Confirmed' | 'CheckedIn' | 'CheckedOut' | 'Cancelled';
 export type InvoiceStatus = 'Unpaid' | 'PartiallyPaid' | 'Paid' | 'Cancelled';
+export type DepositStatus = 'NotRequired' | 'Unpaid' | 'Paid';
 
 export interface BookingDetailDto {
   id: number;
@@ -26,6 +27,9 @@ export interface BookingResponseDto {
   details: BookingDetailDto[];
   invoiceId?: number | null;
   depositAmount: number;
+  depositPaidAmount: number;
+  depositRemainingAmount: number;
+  depositStatus: DepositStatus;
 }
 
 export interface CreateBookingDetailDto {
@@ -71,6 +75,9 @@ export interface InvoiceResponseDto {
   serviceOrders?: any[];
   lossDamages?: any[];
   depositAmount: number;
+  depositPaidAmount: number;
+  depositRemainingAmount: number;
+  depositStatus: DepositStatus;
 }
 
 export interface AddPaymentDto {
@@ -116,6 +123,9 @@ export const bookingApi = {
   addPayment: async (invoiceId: number, dto: AddPaymentDto): Promise<PaymentResponseDto> =>
     (await axiosClient.post(`/api/Invoice/${invoiceId}/payment`, dto)) as unknown as PaymentResponseDto,
 
+  createMoMoPayment: async (invoiceId: number, amount: number, orderInfo: string): Promise<{ payUrl: string }> =>
+    (await axiosClient.post(`/api/invoices/${invoiceId}/momo-create`, { amount, orderInfo })) as unknown as { payUrl: string },
+
   /** Đổi phòng — phòng chưa sẵn sàng / khách trước chưa trả / nâng hạng */
   reassignRoom: async (bookingId: number, dto: ReassignRoomDto): Promise<BookingResponseDto> =>
     (await axiosClient.put(`/api/Booking/${bookingId}/reassign-room`, dto)) as unknown as BookingResponseDto,
@@ -123,6 +133,8 @@ export const bookingApi = {
   /** Tách phòng — tạo booking mới + hóa đơn riêng cho phòng được tách */
   splitBooking: async (bookingId: number, dto: SplitBookingDto): Promise<SplitBookingResultDto> =>
     (await axiosClient.post(`/api/Booking/${bookingId}/split`, dto)) as unknown as SplitBookingResultDto,
+
+  getSystemSettings: async () => (await axiosClient.get('/api/SystemSettings')) as unknown as any[],
 };
 
 // ─── Extra DTOs ─────────────────────────────────────────────────────────────

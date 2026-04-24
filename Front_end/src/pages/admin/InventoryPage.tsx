@@ -42,9 +42,16 @@ const InventoryPage: React.FC = () => {
         adminApi.getEquipments(nextFilters),
         adminApi.getEquipmentStats(),
       ]);
-      setItems(equipmentData);
-      setStats(stockSummary.overall);
+      setItems(Array.isArray(equipmentData) ? equipmentData : []);
+      setStats({
+        total: Number(stockSummary?.overall?.total || 0),
+        inUse: Number(stockSummary?.overall?.inUse || 0),
+        damaged: Number(stockSummary?.overall?.damaged || 0),
+        inStock: Number(stockSummary?.overall?.inStock || 0),
+      });
     } catch (err: any) {
+      setItems([]);
+      setStats({ total: 0, inUse: 0, damaged: 0, inStock: 0 });
       message.error(err.response?.data?.message || 'Không thể tải vật tư');
     } finally {
       setLoading(false);
@@ -80,7 +87,17 @@ const InventoryPage: React.FC = () => {
   const submitForm = async (values: any) => {
     try {
       if (editingItem) {
-        await adminApi.updateEquipment(editingItem.id, values);
+        await adminApi.updateEquipment(editingItem.id, {
+          name: values.name,
+          category: values.category,
+          unit: values.unit,
+          totalQuantity: values.totalQuantity,
+          supplier: values.supplier,
+          basePrice: editingItem.basePrice,
+          defaultPriceIfLost: editingItem.defaultPriceIfLost,
+          imageUrl: editingItem.imageUrl,
+          isActive: editingItem.isActive,
+        } as any);
         message.success('Đã cập nhật vật tư');
       } else {
         await adminApi.createEquipment(values);
@@ -133,6 +150,22 @@ const InventoryPage: React.FC = () => {
     }
   };
 
+  const downloadTemplate = async () => {
+    try {
+      const blob = await adminApi.downloadEquipmentImportTemplate();
+      const url = window.URL.createObjectURL(blob as Blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'equipment-import-template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'KhÃ´ng thá»ƒ táº£i file máº«u');
+    }
+  };
+
   const uploadImage = async (file?: File) => {
     if (!file || !editingItem) return;
 
@@ -158,7 +191,10 @@ const InventoryPage: React.FC = () => {
         </div>
 
         <Space wrap>
-          <input ref={importFileRef} type="file" hidden accept=".xlsx" onChange={(event) => importExcel(event.target.files?.[0])} />
+          <input ref={importFileRef} type="file" hidden accept=".xlsx,.csv" onChange={(event) => importExcel(event.target.files?.[0])} />
+          <Button onClick={downloadTemplate}>
+            Xuất file mẫu
+          </Button>
           <Button icon={<FileUp size={16} />} onClick={() => importFileRef.current?.click()}>
             Import Excel
           </Button>
@@ -282,8 +318,8 @@ const InventoryPage: React.FC = () => {
             { title: 'Trong kho', dataIndex: 'inStockQuantity' },
             { title: 'Đang dùng', dataIndex: 'inUseQuantity' },
             { title: 'Hỏng', dataIndex: 'damagedQuantity', render: (value: number) => <Tag color={value > 0 ? 'red' : 'green'}>{value}</Tag> },
-            { title: 'Giá gốc', dataIndex: 'basePrice', render: (value: number) => value.toLocaleString('vi-VN') + ' đ' },
-            { title: 'Đền bù', dataIndex: 'defaultPriceIfLost', render: (value: number) => value.toLocaleString('vi-VN') + ' đ' },
+            { title: 'Giá gốc', dataIndex: 'basePrice', render: (value: number) => Number(value || 0).toLocaleString('vi-VN') + ' đ' },
+            { title: 'Đền bù', dataIndex: 'defaultPriceIfLost', render: (value: number) => Number(value || 0).toLocaleString('vi-VN') + ' đ' },
             { title: 'Trạng thái', dataIndex: 'isActive', render: (value: boolean) => <Tag color={value ? 'green' : 'red'}>{value ? 'Đang dùng' : 'Đã ẩn'}</Tag> },
             {
               title: 'Thao tác',
@@ -361,7 +397,7 @@ const InventoryPage: React.FC = () => {
                 </Col>
                 <Col span={8}>
                   <Form.Item name="defaultPriceIfLost" label="Giá đền bù" rules={[{ required: true }]}>
-                    <InputNumber min={0} style={{ width: '100%' }} />
+                    <InputNumber min={0} style={{ width: '100%' }} disabled readOnly />
                   </Form.Item>
                 </Col>
               </>
@@ -410,7 +446,7 @@ const InventoryPage: React.FC = () => {
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="defaultPriceIfLost" label="Giá đền bù" rules={[{ required: true }]}>
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber min={0} style={{ width: '100%' }} disabled readOnly />
           </Form.Item>
           <div className="flex justify-end gap-3">
             <Button onClick={() => setOpenPriceForm(false)}>Hủy</Button>

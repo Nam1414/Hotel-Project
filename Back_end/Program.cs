@@ -1,5 +1,6 @@
 using System.Text;
 using CloudinaryDotNet;
+using HotelManagementAPI.Configurations;
 using HotelManagementAPI.Data;
 using HotelManagementAPI.Middleware;
 using HotelManagementAPI.Services;
@@ -10,20 +11,20 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHttpContextAccessor();
 
-// =============================================
-// 1. DATABASE
-// =============================================
+builder.Services.Configure<MoMoApiOptions>(
+    builder.Configuration.GetSection(MoMoApiOptions.SectionName));
+
+// 1. Database
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// =============================================
-// 2. JWT AUTHENTICATION
-// =============================================
+// 2. JWT authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["Secret"]
-    ?? throw new InvalidOperationException("JWT Secret không được để trống!");
+    ?? throw new InvalidOperationException("JWT Secret khong duoc de trong!");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -56,32 +57,37 @@ builder.Services.AddAuthentication(options =>
             {
                 context.Token = token;
             }
+
             return Task.CompletedTask;
         },
         OnAuthenticationFailed = ctx =>
         {
             if (ctx.Exception is SecurityTokenExpiredException)
+            {
                 ctx.Response.Headers.Append("Token-Expired", "true");
+            }
+
             return Task.CompletedTask;
         },
         OnChallenge = async ctx =>
         {
-            // Tắt response mặc định của JWT Bearer
             ctx.HandleResponse();
             ctx.Response.StatusCode = 401;
             ctx.Response.ContentType = "application/json";
-            await ctx.Response.WriteAsJsonAsync(new { 
-                statusCode = 401, 
-                message = "Bạn chưa đăng nhập hoặc Token không hợp lệ!" 
+            await ctx.Response.WriteAsJsonAsync(new
+            {
+                statusCode = 401,
+                message = "Ban chua dang nhap hoac Token khong hop le!"
             });
         },
         OnForbidden = async ctx =>
         {
             ctx.Response.StatusCode = 403;
             ctx.Response.ContentType = "application/json";
-            await ctx.Response.WriteAsJsonAsync(new { 
-                statusCode = 403, 
-                message = "Bạn không có quyền truy cập vào chức năng này!" 
+            await ctx.Response.WriteAsJsonAsync(new
+            {
+                statusCode = 403,
+                message = "Ban khong co quyen truy cap vao chuc nang nay!"
             });
         }
     };
@@ -89,9 +95,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// =============================================
-// 3. CLOUDINARY — SINGLETON
-// =============================================
+// 3. Cloudinary
 var cloudinarySection = builder.Configuration.GetSection("Cloudinary");
 var cloudinaryAccount = new Account(
     cloudinarySection["CloudName"],
@@ -99,10 +103,8 @@ var cloudinaryAccount = new Account(
     cloudinarySection["ApiSecret"]);
 builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 
-// =============================================
-// 4. SERVICES
-// =============================================
-builder.Services.AddSignalR(); // Bổ sung SignalR
+// 4. Services
+builder.Services.AddSignalR();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ISlugService, SlugService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
@@ -111,18 +113,18 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAttractionService, AttractionService>();
 builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<INotificationService, PersistedNotificationService>();
-builder.Services.AddScoped<INotificationService, NotificationService>(); // Đăng ký NotificationService
-builder.Services.AddScoped<IEmailService, EmailService>(); // Đăng ký EmailService
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IMembershipService, MembershipService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
-builder.Services.AddScoped<IMoMoService, MoMoService>(); // MoMo Payment
-builder.Services.AddHttpClient("MoMo");                  // Named HttpClient cho MoMo
+builder.Services.AddScoped<IMoMoService, MoMoService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddHttpClient("MoMo");
 
-// =============================================
-// 5. CONTROLLERS & JSON OPTIONS
-// =============================================
+// 5. Controllers and JSON options
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -130,23 +132,20 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 
-// =============================================
-// 6. SWAGGER + JWT BUTTON
-// =============================================
+// 6. Swagger + JWT button
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Hotel Management API",
         Version = "v1",
-        Description = "ERP System cho Khách Sạn — Kant"
+        Description = "ERP System cho Khach San - Kant"
     });
 
-    // Thêm nút Authorize 🔒 trên Swagger UI
     var securityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Nhập: Bearer {token}",
+        Description = "Nhap: Bearer {token}",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
@@ -165,9 +164,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// =============================================
 // 7. CORS
-// =============================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -175,36 +172,36 @@ builder.Services.AddCors(options =>
             .WithOrigins("http://localhost:5173", "http://localhost:5174", "http://localhost:5175")
             .AllowAnyMethod()
             .AllowAnyHeader()
-            .AllowCredentials() // BẮT BUỘC cho SignalR
+            .AllowCredentials()
             .WithExposedHeaders("Token-Expired"));
 });
 
-// =============================================
-// BUILD APP
-// =============================================
-builder.Services.AddScoped<INotificationService, PersistedNotificationService>();
+// Build app
 var app = builder.Build();
 
+await DatabaseSchemaInitializer.EnsureMembershipSchemaAsync(app.Services);
 await DatabaseSchemaInitializer.EnsureVoucherSchemaAsync(app.Services);
 await DatabaseSchemaInitializer.EnsureEquipmentDamageSchemaAsync(app.Services);
+if (app.Environment.IsDevelopment())
+{
+    await DemoPresentationSeeder.SeedAsync(app.Services);
+}
 
-// =============================================
-// MIDDLEWARE PIPELINE
-// =============================================
+// Middleware pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Hotel Management API v1");
-        c.RoutePrefix = string.Empty; // Swagger tại localhost:PORT/
+        c.RoutePrefix = string.Empty;
         c.DisplayRequestDuration();
         c.EnableDeepLinking();
     });
 }
 
 app.UseCors("AllowAll");
-// app.UseHttpsRedirection(); // Tắt khi dev local tránh warning
+// app.UseHttpsRedirection();
 
 app.UseRefreshTokenMiddleware();
 
@@ -213,6 +210,6 @@ app.UsePermissionMiddleware();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<HotelManagementAPI.Hubs.NotificationHub>("/notificationHub"); // Map SignalR Hub
+app.MapHub<HotelManagementAPI.Hubs.NotificationHub>("/notificationHub");
 
 app.Run();

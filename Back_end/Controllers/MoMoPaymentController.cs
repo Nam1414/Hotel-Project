@@ -1,12 +1,11 @@
 using System;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using HotelManagementAPI.Data;
 using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Enums;
-using HotelManagementAPI.Middleware;
-using HotelManagementAPI.Models;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,25 +17,21 @@ namespace HotelManagementAPI.Controllers
     [Route("api/invoices")]
     public class InvoicesController : ControllerBase
     {
-        private readonly IInvoiceService _invoiceService;
         private readonly IMoMoService _momoService;
         private readonly AppDbContext _context;
+        private readonly IInvoiceService _invoiceService;
+        private readonly INotificationService _notificationService;
 
-        public InvoicesController(IInvoiceService invoiceService, IMoMoService momoService, AppDbContext context)
+        public InvoicesController(IInvoiceService invoiceService, IMoMoService momoService, AppDbContext context, INotificationService notificationService)
         {
             _invoiceService = invoiceService;
             _momoService = momoService;
             _context = context;
+            _notificationService = notificationService;
         }
 
-        // ── 1. TẠO LINK THANH TOÁN MOMO ──────────────────────────────────────
-        /// <summary>
-        /// Tạo yêu cầu thanh toán MoMo cho một hóa đơn.
-        /// Trả về payUrl để frontend mở tab mới.
-        /// </summary>
         [HttpPost("{id}/momo-create")]
-        [Authorize]
-        [RequirePermission("MANAGE_INVOICES")]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateMoMoPayment(int id, [FromBody] MoMoCreateRequestDto dto)
         {
             try
@@ -46,125 +41,131 @@ namespace HotelManagementAPI.Controllers
                     .FirstOrDefaultAsync(i => i.Id == id);
 
                 if (invoice == null)
-                    return NotFound(new { message = "Không tìm thấy hóa đơn" });
+                {
+                    return NotFound(new { message = "Invoice not found" });
+                }
 
-                if (invoice.Status == InvoiceStatus.Paid)
-                    return BadRequest(new { message = "Hóa đơn đã được thanh toán đầy đủ" });
+                var booking = invoice.BookingId.HasValue
+                    ? await _context.Bookings.FindAsync(invoice.BookingId.Value)
+                    : null;
 
-                // Tính số tiền còn lại (có thể dùng amount từ request nếu muốn thanh toán một phần)
-                var booking = await _context.Bookings.FindAsync(invoice.BookingId);
-                var deposit = booking?.DepositAmount ?? 0m;
-                var totalPaid = (invoice.Payments?.Sum(p => p.AmountPaid) ?? 0m) + deposit;
-                var remaining = (invoice.FinalTotal ?? 0m) - totalPaid;
+                var depositAmount = IsDepositPaid(booking) ? booking!.DepositAmount : 0m;
+                var paidAmount = (invoice.Payments?.Sum(p => p.AmountPaid) ?? 0m) + depositAmount;
+                var invoiceTotal = invoice.FinalTotal ?? 0m;
+                var remainingAmount = Math.Max(0m, invoiceTotal - paidAmount);
 
-                if (remaining <= 0)
-                    return BadRequest(new { message = "Hóa đơn đã được thanh toán đầy đủ" });
+                var requestedAmount = dto.Amount.GetValueOrDefault();
+                var amountToPay = requestedAmount > 0 ? requestedAmount : remainingAmount;
 
-                // Dùng số tiền từ request hoặc mặc định là số còn lại
-                var amountToPay = dto.Amount.HasValue && dto.Amount.Value > 0 && dto.Amount.Value <= remaining
-                    ? dto.Amount.Value
-                    : remaining;
+                if (amountToPay <= 0)
+                {
+                    return BadRequest(new { message = "Invoice is already fully paid or payment amount is invalid" });
+                }
 
-                var result = await _momoService.CreatePaymentAsync(
-                    invoiceId: id,
-                    amount: amountToPay,
-                    orderInfo: dto.OrderInfo
-                );
+                if (remainingAmount > 0 && requestedAmount > remainingAmount)
+                {
+                    return BadRequest(new
+                    {
+                        message = "Requested amount exceeds the remaining payable amount",
+                        remainingAmount
+                    });
+                }
 
+                var result = await _momoService.CreatePaymentAsync(id, amountToPay, dto.OrderInfo);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Không thể tạo thanh toán MoMo", error = ex.Message });
+                return StatusCode(500, new { message = "Error creating MoMo payment", error = ex.Message });
             }
         }
 
-        // ── 2. IPN WEBHOOK TỪ MOMO ───────────────────────────────────────────
-        /// <summary>
-        /// Endpoint nhận IPN từ MoMo server (không cần JWT).
-        /// MoMo gọi POST tới NotifyUrl ngay sau khi giao dịch hoàn tất.
-        /// </summary>
         [HttpPost("momo-notify")]
         [AllowAnonymous]
         public async Task<IActionResult> MoMoNotify([FromBody] MoMoNotifyDto notify)
         {
             try
             {
-                // 1. Xác thực chữ ký
                 if (!_momoService.VerifyIpnSignature(notify))
                 {
-                    return Ok(new { message = "Invalid signature" }); // MoMo yêu cầu trả 200 dù lỗi
+                    return BadRequest(new { resultCode = 5, message = "Invalid signature" });
                 }
 
-                // 2. Chỉ xử lý giao dịch thành công (resultCode == 0)
                 if (notify.ResultCode != 0)
                 {
-                    return Ok(new { message = $"Transaction failed: {notify.Message}" });
+                    return Ok(new { resultCode = 0, message = "Payment not completed" });
                 }
 
-                // 3. Parse invoiceId từ orderId: "INVOICE-{invoiceId}-{timestamp}"
-                var parts = notify.OrderId.Split('-');
-                if (parts.Length < 2 || !int.TryParse(parts[1], out var invoiceId))
+                var invoiceId = ExtractInvoiceId(notify);
+                if (!invoiceId.HasValue)
                 {
-                    return Ok(new { message = "Cannot parse invoiceId from orderId" });
+                    return BadRequest(new { resultCode = 6, message = "InvoiceId not found in MoMo payload" });
                 }
 
-                // 4. Tránh duplicate (kiểm tra transactionCode đã tồn tại chưa)
-                var txnCode = $"MOMO-{notify.TransId}";
-                var exists = await _context.Payments.AnyAsync(p => p.TransactionCode == txnCode);
-                if (exists)
-                {
-                    return Ok(new { message = "Already processed" });
-                }
+                var transactionCode = notify.TransId > 0
+                    ? $"MOMO-{notify.TransId}"
+                    : notify.OrderId;
 
-                // 5. Lấy invoice
+                var existedPayment = await _context.Payments
+                    .AnyAsync(p => p.TransactionCode == transactionCode);
+
                 var invoice = await _context.Invoices
-                    .Include(i => i.Payments)
-                    .FirstOrDefaultAsync(i => i.Id == invoiceId);
+                    .FirstOrDefaultAsync(i => i.Id == invoiceId.Value);
 
                 if (invoice == null)
-                    return Ok(new { message = "Invoice not found" });
-
-                // 6. Tạo Payment record
-                var payment = new Payment
                 {
-                    InvoiceId = invoiceId,
-                    PaymentMethod = "MoMo",
-                    AmountPaid = (decimal)notify.Amount,
-                    TransactionCode = txnCode,
-                    PaymentDate = DateTime.Now
-                };
-                await _context.Payments.AddAsync(payment);
+                    return BadRequest(new { resultCode = 7, message = "Invoice not found" });
+                }
 
-                // 7. Cập nhật trạng thái invoice
-                var bookingRecord = await _context.Bookings.FindAsync(invoice.BookingId);
-                var depositAmt = bookingRecord?.DepositAmount ?? 0m;
-                var totalWithNew = (invoice.Payments?.Sum(p => p.AmountPaid) ?? 0m)
-                                   + (decimal)notify.Amount
-                                   + depositAmt;
+                var booking = invoice.BookingId.HasValue
+                    ? await _context.Bookings.FindAsync(invoice.BookingId.Value)
+                    : null;
 
-                if (totalWithNew >= (invoice.FinalTotal ?? 0m))
-                    invoice.Status = InvoiceStatus.Paid;
-                else if (totalWithNew > 0)
-                    invoice.Status = InvoiceStatus.PartiallyPaid;
+                var isDepositPayment = notify.OrderInfo.Contains("coc", StringComparison.OrdinalIgnoreCase);
 
-                await _context.SaveChangesAsync();
+                var shouldMarkDepositAsPaid =
+                    booking != null
+                    && booking.DepositAmount > 0
+                    && !IsDepositPaid(booking)
+                    && isDepositPayment
+                    && notify.Amount == (long)Math.Round(booking.DepositAmount);
 
-                return Ok(new { message = "Success" });
+                if (shouldMarkDepositAsPaid)
+                {
+                    booking!.DepositStatus = "Paid";
+                    await _context.SaveChangesAsync();
+
+                    if (invoice.BookingId.HasValue)
+                    {
+                        await _invoiceService.RecalculateInvoiceAsync(invoice.BookingId.Value);
+                    }
+
+                    await NotifyPaymentAsync(booking, invoiceId.Value, notify.Amount, true);
+                }
+                else if (booking != null && IsDepositPaid(booking) && isDepositPayment)
+                {
+                    return Ok(new { resultCode = 0, message = "Success" });
+                }
+                else if (!existedPayment)
+                {
+                    await _invoiceService.AddPaymentAsync(invoiceId.Value, new AddPaymentDto
+                    {
+                        PaymentMethod = "MoMo",
+                        AmountPaid = notify.Amount,
+                        TransactionCode = transactionCode
+                    });
+
+                    await NotifyPaymentAsync(booking, invoiceId.Value, notify.Amount, false);
+                }
+
+                return Ok(new { resultCode = 0, message = "Success" });
             }
             catch (Exception ex)
             {
-                // Luôn trả 200 để MoMo không retry vô hạn
-                Console.Error.WriteLine($"[MoMo IPN Error] {ex.Message}");
-                return Ok(new { message = "Internal error, logged." });
+                return StatusCode(500, new { resultCode = 99, message = ex.Message });
             }
         }
 
-        // ── 3. RETURN URL (REDIRECT SAU KHI THANH TOÁN) ──────────────────────
-        /// <summary>
-        /// MoMo redirect về đây sau khi khách thanh toán xong (hoặc huỷ).
-        /// Không cần xử lý nghiệp vụ (đã xử lý ở IPN), chỉ redirect về frontend.
-        /// </summary>
         [HttpGet("momo-return")]
         [AllowAnonymous]
         public IActionResult MoMoReturn(
@@ -172,9 +173,99 @@ namespace HotelManagementAPI.Controllers
             [FromQuery] int resultCode = -1,
             [FromQuery] string? message = null)
         {
-            // Kết quả được đọc ở phía frontend từ query params của ReturnUrl
-            // Backend chỉ log, không xử lý nghiệp vụ (đã có IPN)
             return Ok(new { orderId, resultCode, message });
+        }
+
+        private static int? ExtractInvoiceId(MoMoNotifyDto notify)
+        {
+            var fromExtraData = TryParseInvoiceIdFromExtraData(notify.ExtraData);
+            if (fromExtraData.HasValue)
+            {
+                return fromExtraData.Value;
+            }
+
+            if (string.IsNullOrWhiteSpace(notify.OrderId))
+            {
+                return null;
+            }
+
+            var parts = notify.OrderId.Split('-', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2 && int.TryParse(parts[1], out var invoiceId))
+            {
+                return invoiceId;
+            }
+
+            return null;
+        }
+
+        private static int? TryParseInvoiceIdFromExtraData(string extraData)
+        {
+            if (string.IsNullOrWhiteSpace(extraData))
+            {
+                return null;
+            }
+
+            try
+            {
+                var json = Encoding.UTF8.GetString(Convert.FromBase64String(extraData));
+                using var doc = JsonDocument.Parse(json);
+
+                if (doc.RootElement.TryGetProperty("invoiceId", out var invoiceIdElement)
+                    && invoiceIdElement.TryGetInt32(out var invoiceId))
+                {
+                    return invoiceId;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+
+            return null;
+        }
+
+        private static bool IsDepositPaid(Models.Booking? booking)
+        {
+            return booking != null
+                && string.Equals(booking.DepositStatus, "Paid", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task NotifyPaymentAsync(Models.Booking? booking, int invoiceId, decimal amount, bool isDepositPayment)
+        {
+            try
+            {
+                var bookingCode = booking?.BookingCode ?? $"Invoice #{invoiceId}";
+                var paymentLabel = isDepositPayment ? "thanh toan coc" : "thanh toan hoa don";
+                var amountText = amount.ToString("N0");
+
+                if (booking?.UserId != null)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        booking.UserId.Value,
+                        "Thanh toan thanh cong",
+                        $"He thong da ghi nhan {paymentLabel} cho {bookingCode} voi so tien {amountText} VND.",
+                        NotificationType.Success,
+                        "/profile");
+                }
+
+                await _notificationService.SendToRoleByNameAsync(
+                    "Admin",
+                    "Da nhan thanh toan",
+                    $"MoMo da xac nhan {paymentLabel} cho {bookingCode} voi so tien {amountText} VND.",
+                    NotificationType.Success,
+                    "/admin/invoices");
+
+                await _notificationService.SendToRoleByNameAsync(
+                    "Staff",
+                    "Da nhan thanh toan",
+                    $"MoMo da xac nhan {paymentLabel} cho {bookingCode} voi so tien {amountText} VND.",
+                    NotificationType.Success,
+                    "/staff/invoices");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Payment Notification Error]: {ex.Message}");
+            }
         }
     }
 }

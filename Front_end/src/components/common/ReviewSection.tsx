@@ -54,11 +54,11 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({ targetType, targetId }) =
   };
 
   return (
-    <div className="mt-12 bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5 rounded-2xl p-6 md:p-8">
-      <div className="flex items-center gap-4 border-b border-black/5 dark:border-white/5 pb-6 mb-6">
+    <div className="mt-12 bg-[var(--card-bg)] border border-luxury rounded-2xl p-6 md:p-8">
+      <div className="flex items-center gap-4 border-b border-luxury pb-6 mb-6">
         <h3 className="text-2xl font-bold font-display text-title">Đánh giá & Bình luận</h3>
-        <div className="flex items-center gap-2 bg-yellow-100 dark:bg-yellow-900/30 px-3 py-1 rounded-full text-yellow-700 dark:text-yellow-500 font-bold">
-          ⭐ {average.toFixed(1)} <span className="text-sm font-normal">({total})</span>
+        <div className="flex items-center gap-2 bg-warning/10 px-3 py-1 rounded-full text-warning font-bold">
+          ⭐ {average.toFixed(1)} <span className="text-sm font-normal text-muted">({total})</span>
         </div>
       </div>
 
@@ -68,42 +68,42 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({ targetType, targetId }) =
         ) : (
           reviews.map(review => (
             <div key={review.id} className="flex gap-4">
-              <div className="w-10 h-10 shrink-0 bg-primary/20 text-primary rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 shrink-0 bg-primary/10 text-primary rounded-full flex items-center justify-center">
                 <UserCircle size={24} />
               </div>
-              <div className="bg-gray-50 dark:bg-white/5 rounded-2xl rounded-tl-none p-4 w-full">
+              <div className="bg-subtle rounded-2xl rounded-tl-none p-4 w-full border border-luxury/50">
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <p className="font-bold text-title">{review.authorName}</p>
                     <p className="text-xs text-muted">{new Date(review.createdAt).toLocaleDateString('vi-VN')}</p>
                   </div>
-                  <Rate disabled defaultValue={review.rating} className="text-sm text-yellow-500" />
+                  <Rate disabled defaultValue={review.rating} className="text-sm text-warning" />
                 </div>
-                <p className="text-body mt-2 leading-relaxed">{review.comment}</p>
+                <p className="text-body mt-2 leading-relaxed whitespace-pre-line">{review.comment}</p>
               </div>
             </div>
           ))
         )}
       </div>
 
-      <div className="bg-gray-50 dark:bg-white/5 p-6 rounded-xl">
+      <div className="bg-subtle p-6 rounded-xl border border-luxury">
         <h4 className="font-bold text-lg text-title mb-4">Viết đánh giá của bạn</h4>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           {!user && (
-            <Form.Item name="guestName" label="Tên của bạn" rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
-              <Input placeholder="Nguyễn Văn A" className="h-11" />
+            <Form.Item name="guestName" label={<span className="text-muted font-semibold">Tên của bạn</span>} rules={[{ required: true, message: 'Vui lòng nhập tên!' }]}>
+              <Input placeholder="Nguyễn Văn A" className="input-luxury" />
             </Form.Item>
           )}
           
-          <Form.Item name="rating" label="Số điểm" rules={[{ required: true, message: 'Vui lòng chọn số sao!' }]} initialValue={5}>
-            <Rate className="text-yellow-500 text-xl" />
+          <Form.Item name="rating" label={<span className="text-muted font-semibold">Số điểm</span>} rules={[{ required: true, message: 'Vui lòng chọn số sao!' }]} initialValue={5}>
+            <Rate className="text-warning text-xl" />
           </Form.Item>
           
-          <Form.Item name="comment" label="Cảm nghĩ của bạn">
-            <Input.TextArea rows={4} placeholder="Chia sẻ trải nghiệm..." className="rounded-xl" />
+          <Form.Item name="comment" label={<span className="text-muted font-semibold">Cảm nghĩ của bạn</span>}>
+            <Input.TextArea rows={4} placeholder="Chia sẻ trải nghiệm..." className="input-luxury" />
           </Form.Item>
           
-          <Button type="primary" htmlType="submit" loading={loading} className="btn-gold px-8 h-11">
+          <Button type="primary" htmlType="submit" loading={loading} className="btn-gold px-12 h-12 shadow-lg shadow-primary/20">
             Gửi đánh giá
           </Button>
         </Form>

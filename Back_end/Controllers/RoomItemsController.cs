@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using HotelManagementAPI.Models;
 using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 
 namespace HotelManagementAPI.Controllers;
@@ -12,10 +13,12 @@ namespace HotelManagementAPI.Controllers;
 public class RoomItemsController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IAuditLogService _auditLogService;
 
-    public RoomItemsController(AppDbContext context)
+    public RoomItemsController(AppDbContext context, IAuditLogService auditLogService)
     {
         _context = context;
+        _auditLogService = auditLogService;
     }
 
     [HttpGet]
@@ -47,6 +50,7 @@ public class RoomItemsController : ControllerBase
 
         _context.RoomItems.Add(item);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("CREATE", "RoomItem", new { roomItemId = item.Id, dto.RoomId }, null, dto, $"Tạo vật tư phòng {dto.ItemName}.");
         return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
     }
 
@@ -62,6 +66,7 @@ public class RoomItemsController : ControllerBase
         item.PriceIfLost = dto.PriceIfLost;
 
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("UPDATE", "RoomItem", new { roomItemId = id }, dto, item, $"Cập nhật vật tư phòng #{id}.");
         return Ok(item);
     }
 
@@ -74,6 +79,7 @@ public class RoomItemsController : ControllerBase
 
         _context.RoomItems.Remove(item);
         await _context.SaveChangesAsync();
+        await _auditLogService.LogAsync("DELETE", "RoomItem", new { roomItemId = id }, null, null, $"Xóa vật tư phòng #{id}.");
         return Ok(new { message = "Đã xóa vật tư thành công" });
     }
 }

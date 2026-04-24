@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Enums;
 using HotelManagementAPI.Middleware;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -13,10 +14,14 @@ namespace HotelManagementAPI.Controllers
     public class BookingController : ControllerBase
     {
         private readonly IBookingService _bookingService;
+        private readonly INotificationService _notificationService;
+        private readonly IAuditLogService _auditLogService;
 
-        public BookingController(IBookingService bookingService)
+        public BookingController(IBookingService bookingService, INotificationService notificationService, IAuditLogService auditLogService)
         {
             _bookingService = bookingService;
+            _notificationService = notificationService;
+            _auditLogService = auditLogService;
         }
 
         /// <summary>Lấy tất cả booking — chỉ Staff/Admin có quyền MANAGE_BOOKINGS</summary>
@@ -84,7 +89,19 @@ namespace HotelManagementAPI.Controllers
             try
             {
                 if (!ModelState.IsValid) return BadRequest(ModelState);
+
+                if (!requestDto.UserId.HasValue && User.Identity?.IsAuthenticated == true)
+                {
+                    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(userIdClaim, out var currentUserId))
+                    {
+                        requestDto.UserId = currentUserId;
+                    }
+                }
+
                 var newBooking = await _bookingService.CreateBookingAsync(requestDto);
+                await NotifyBookingCreatedAsync(newBooking);
+                await _auditLogService.LogAsync("CREATE", "Booking", new { bookingId = newBooking.Id, code = newBooking.BookingCode }, null, requestDto, $"Tạo booking mới {newBooking.BookingCode} cho {newBooking.GuestName}.");
                 return CreatedAtAction(nameof(GetBookingById), new { id = newBooking.Id }, newBooking);
             }
             catch (Exception ex)
@@ -105,6 +122,8 @@ namespace HotelManagementAPI.Controllers
             {
                 var updatedBooking = await _bookingService.UpdateBookingStatusAsync(id, statusDto.Status);
                 if (updatedBooking == null) return NotFound(new { message = "Booking not found" });
+                await NotifyBookingStatusChangedAsync(updatedBooking);
+                await _auditLogService.LogAsync("UPDATE", "BookingStatus", new { bookingId = id, code = updatedBooking.BookingCode }, new { statusDto.Status }, updatedBooking, $"Cập nhật trạng thái booking {updatedBooking.BookingCode} sang {statusDto.Status}.");
                 return Ok(updatedBooking);
             }
             catch (Exception ex)
@@ -123,6 +142,7 @@ namespace HotelManagementAPI.Controllers
             {
                 var result = await _bookingService.ReassignRoomAsync(id, dto);
                 if (result == null) return NotFound(new { message = "Booking not found" });
+                await _auditLogService.LogAsync("UPDATE", "BookingRoom", new { bookingId = id, code = result.BookingCode }, dto, result, $"Đổi phòng cho booking {result.BookingCode}.");
                 return Ok(result);
             }
             catch (Exception ex)
@@ -140,11 +160,127 @@ namespace HotelManagementAPI.Controllers
             try
             {
                 var result = await _bookingService.SplitBookingAsync(id, dto);
+                await _auditLogService.LogAsync("CREATE", "BookingSplit", new { originalBookingId = id }, dto, result, $"Tách booking #{id} thành booking mới #{result.NewBooking.Id}.");
                 return Ok(result);
             }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        private async Task NotifyBookingCreatedAsync(BookingResponseDto booking)
+        {
+            var bookingCode = booking.BookingCode ?? $"#{booking.Id}";
+            var guestName = booking.GuestName ?? booking.GuestEmail ?? "Guest";
+            var checkIn = booking.Details.Count > 0 ? booking.Details[0].CheckInDate.ToString("dd/MM/yyyy") : "N/A";
+
+            try
+            {
+                await _notificationService.SendToRoleByNameAsync(
+                    "Admin",
+                    "Booking moi",
+                    $"Co booking moi {bookingCode} cua {guestName}, check-in {checkIn}.",
+                    NotificationType.Info,
+                    "/admin/bookings");
+
+                await _notificationService.SendToRoleByNameAsync(
+                    "Manager",
+                    "Booking moi",
+                    $"Co booking moi {bookingCode} cua {guestName}, check-in {checkIn}.",
+                    NotificationType.Info,
+                    "/admin/bookings");
+
+                await _notificationService.SendToRoleByNameAsync(
+                    "Staff",
+                    "Booking moi",
+                    $"Co booking moi {bookingCode} cua {guestName}, check-in {checkIn}.",
+                    NotificationType.Info,
+                    "/staff/bookings/manage");
+
+                if (booking.UserId.HasValue)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        booking.UserId.Value,
+                        "Dat phong thanh cong",
+                        $"Booking {bookingCode} da duoc tao thanh cong. Chung toi se sớm xac nhan cho ban.",
+                        NotificationType.Success,
+                        "/profile");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Booking Created Notification Error]: {ex.Message}");
+            }
+        }
+
+        private async Task NotifyBookingStatusChangedAsync(BookingResponseDto booking)
+        {
+            var bookingCode = booking.BookingCode ?? $"#{booking.Id}";
+            var status = booking.Status.ToString();
+            var guestName = booking.GuestName ?? booking.GuestEmail ?? "Guest";
+
+            try
+            {
+                switch (status)
+                {
+                    case "CheckedIn":
+                        await _notificationService.SendToRoleByNameAsync(
+                            "Admin",
+                            "Khach da check-in",
+                            $"{guestName} da check-in cho booking {bookingCode}.",
+                            NotificationType.Success,
+                            "/admin/bookings/in-house");
+                        await _notificationService.SendToRoleByNameAsync(
+                            "Staff",
+                            "Khach da check-in",
+                            $"{guestName} da check-in cho booking {bookingCode}.",
+                            NotificationType.Success,
+                            "/staff/bookings/in-house");
+                        break;
+                    case "CheckedOut":
+                        await _notificationService.SendToRoleByNameAsync(
+                            "Admin",
+                            "Khach da check-out",
+                            $"{guestName} da check-out cho booking {bookingCode}.",
+                            NotificationType.Info,
+                            "/admin/bookings/check-out");
+                        await _notificationService.SendToRoleByNameAsync(
+                            "Staff",
+                            "Khach da check-out",
+                            $"{guestName} da check-out cho booking {bookingCode}.",
+                            NotificationType.Info,
+                            "/staff/bookings/check-out");
+                        break;
+                    case "Cancelled":
+                        await _notificationService.SendToRoleByNameAsync(
+                            "Admin",
+                            "Booking bi huy",
+                            $"Booking {bookingCode} cua {guestName} da bi huy.",
+                            NotificationType.Warning,
+                            "/admin/bookings");
+                        await _notificationService.SendToRoleByNameAsync(
+                            "Staff",
+                            "Booking bi huy",
+                            $"Booking {bookingCode} cua {guestName} da bi huy.",
+                            NotificationType.Warning,
+                            "/staff/bookings/manage");
+                        break;
+                }
+
+                if (booking.UserId.HasValue)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        booking.UserId.Value,
+                        "Cap nhat booking",
+                        $"Booking {bookingCode} cua ban da chuyen sang trang thai {status}.",
+                        status == "Cancelled" ? NotificationType.Warning : NotificationType.Info,
+                        "/profile");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Booking Status Notification Error]: {ex.Message}");
             }
         }
     }

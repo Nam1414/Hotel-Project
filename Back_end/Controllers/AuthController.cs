@@ -14,12 +14,14 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _context;
     private readonly ITokenService _tokenService;
     private readonly IConfiguration _config;
+    private readonly IAuditLogService _auditLogService;
 
-    public AuthController(AppDbContext context, ITokenService tokenService, IConfiguration config)
+    public AuthController(AppDbContext context, ITokenService tokenService, IConfiguration config, IAuditLogService auditLogService)
     {
         _context = context;
         _tokenService = tokenService;
         _config = config;
+        _auditLogService = auditLogService;
     }
 
     // POST /api/Auth/login
@@ -56,14 +58,16 @@ public class AuthController : ControllerBase
 
         SetRefreshTokenCookie(refreshToken);
 
-        return Ok(new
-        {
+        await _auditLogService.LogAsync("LOGIN", nameof(User), new { user.Id, user.Email }, null, null, $"Đăng nhập thành công: {user.Email}");
+
+        return Ok(new LoginResponseDto(
+            user.Id,
             accessToken,
-            fullName = user.FullName,
-            email = user.Email,
-            role = user.Role?.Name ?? "",
+            user.FullName,
+            user.Email,
+            user.Role?.Name ?? "",
             permissions
-        });
+        ));
     }
 
     // ⚠️ CHỈ DÙNG ĐỂ LẤY HASH — XÓA SAU KHI DÙNG
@@ -108,6 +112,8 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Refresh token không hợp lệ hoặc đã hết hạn" });
         }
 
+        await _auditLogService.LogAsync("REFRESH_TOKEN", nameof(User), new { user.Id, user.Email }, null, null, "Gia hạn phiên đăng nhập.");
+
         var permissions = user.Role?.RolePermissions
             .Select(rp => rp.Permission!.Name)
             .ToList() ?? new List<string>();
@@ -141,6 +147,7 @@ public class AuthController : ControllerBase
                 await _context.SaveChangesAsync();
 
                 Response.Cookies.Delete("refreshToken");
+                await _auditLogService.LogAsync("LOGOUT", nameof(User), new { user.Id, user.Email }, null, null, $"Đăng xuất: {user.Email}");
             }
         }
         return Ok(new { message = "Đăng xuất thành công" });

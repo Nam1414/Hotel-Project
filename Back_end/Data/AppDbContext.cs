@@ -37,6 +37,10 @@ public class AppDbContext : DbContext
     public DbSet<Service> Services { get; set; }
     public DbSet<OrderService> OrderServices { get; set; }
     public DbSet<OrderServiceDetail> OrderServiceDetails { get; set; }
+    public DbSet<RoomCleaning> RoomCleanings { get; set; }
+    public DbSet<RoomTransferLog> RoomTransferLogs { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<SystemSetting> SystemSettings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -223,6 +227,10 @@ public class AppDbContext : DbContext
             .HasForeignKey(d => d.ServiceId);
 
         // ─── Decimal precision ───────────────────────────────────────────────────
+        modelBuilder.Entity<Membership>()
+            .Property(m => m.DiscountPercent)
+            .HasColumnType("decimal(5, 2)");
+
         modelBuilder.Entity<RoomType>()
             .Property(rt => rt.BasePrice)
             .HasColumnType("decimal(18, 2)");

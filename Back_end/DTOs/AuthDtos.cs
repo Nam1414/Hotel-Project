@@ -3,6 +3,7 @@ namespace HotelManagementAPI.DTOs;
 public record LoginDto(string Email, string Password);
 
 public record LoginResponseDto(
+    int UserId,
     string AccessToken,
     string FullName,
     string Email,

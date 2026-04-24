@@ -21,6 +21,9 @@ namespace HotelManagementAPI.DTOs
         public List<BookingDetailResponseDto> Details { get; set; } = new List<BookingDetailResponseDto>();
         public int? InvoiceId { get; set; }
         public decimal DepositAmount { get; set; }
+        public decimal DepositPaidAmount { get; set; }
+        public decimal DepositRemainingAmount { get; set; }
+        public string DepositStatus { get; set; } = "NotRequired";
     }
 
     public class BookingDetailResponseDto

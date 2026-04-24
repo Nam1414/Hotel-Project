@@ -36,7 +36,7 @@ const RoomTypeManagement: React.FC = () => {
       const data = await amenityApi.getAll();
       setAmenities(data);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the tai danh sach tien nghi');
+      message.error(err.response?.data?.message || 'Không thể tải danh sách tiện nghi');
     }
   };
 
@@ -137,7 +137,7 @@ const RoomTypeManagement: React.FC = () => {
 
       await loadRoomTypes();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the cap nhat tien nghi');
+      message.error(err.response?.data?.message || 'Không thể cập nhật tiện nghi');
     }
   };
 
@@ -147,10 +147,10 @@ const RoomTypeManagement: React.FC = () => {
     try {
       await amenityApi.create({ name: newAmenityName.trim() });
       setNewAmenityName('');
-      message.success('Da tao tien nghi moi');
+      message.success('Đã tạo tiện nghi mới');
       await loadAmenities();
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'Khong the tao tien nghi');
+      message.error(err.response?.data?.message || 'Không thể tạo tiện nghi');
     }
   };
 

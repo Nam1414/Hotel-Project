@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using HotelManagementAPI.Data;
 using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Middleware;
+using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
@@ -14,10 +15,12 @@ namespace HotelManagementAPI.Controllers;
 public class ServicesController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IAuditLogService _auditLogService;
 
-    public ServicesController(AppDbContext context)
+    public ServicesController(AppDbContext context, IAuditLogService auditLogService)
     {
         _context = context;
+        _auditLogService = auditLogService;
     }
 
     [HttpGet("categories")]
@@ -50,4 +53,3 @@ public class ServicesController : ControllerBase
         return Ok(data);
     }
 }
-
