@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using HotelManagementAPI.Models;
+
 namespace HotelManagementAPI.Controllers;
 
 [ApiController]
@@ -22,6 +24,40 @@ public class AuthController : ControllerBase
         _tokenService = tokenService;
         _config = config;
         _auditLogService = auditLogService;
+    }
+
+    // POST /api/Auth/register
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
+            return BadRequest(new { message = "Email này đã được sử dụng" });
+
+        var guestRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "Guest");
+        if (guestRole == null)
+            return StatusCode(500, new { message = "Lỗi hệ thống: Không tìm thấy quyền mặc định (Guest)" });
+
+        var user = new User
+        {
+            FullName = dto.FullName,
+            Email = dto.Email,
+            Phone = dto.Phone,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            RoleId = guestRole.Id,
+            Status = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        await _auditLogService.LogAsync("REGISTER", nameof(User), new { user.Id, user.Email }, null, null, $"Người dùng đăng ký mới: {user.Email}");
+
+        return Ok(new { message = "Đăng ký thành công" });
     }
 
     // POST /api/Auth/login

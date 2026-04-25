@@ -601,8 +601,8 @@ const InvoiceManagementPage: React.FC = () => {
                 </div>
 
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px', marginBottom: 20, color: '#111827' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Tổng cần thu</div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a' }}>{formatMoney(remainingAmount)}</div>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Tổng thanh toán</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a' }}>{formatMoney(selectedInvoice.finalTotal)}</div>
                   
                   <Divider style={{ margin: '12px 0' }} />
                   

@@ -9,7 +9,6 @@ namespace HotelManagementAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    [RequirePermission("MANAGE_BOOKINGS")]
     public class MembershipsController : ControllerBase
     {
         private readonly IMembershipService _membershipService;
@@ -36,6 +35,7 @@ namespace HotelManagementAPI.Controllers
         }
 
         [HttpPost]
+        [RequirePermission("MANAGE_BOOKINGS")]
         public async Task<IActionResult> Create([FromBody] CreateMembershipDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -46,6 +46,7 @@ namespace HotelManagementAPI.Controllers
         }
 
         [HttpPut("{id:int}")]
+        [RequirePermission("MANAGE_BOOKINGS")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateMembershipDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -57,6 +58,7 @@ namespace HotelManagementAPI.Controllers
         }
 
         [HttpDelete("{id:int}")]
+        [RequirePermission("MANAGE_BOOKINGS")]
         public async Task<IActionResult> Delete(int id)
         {
             try

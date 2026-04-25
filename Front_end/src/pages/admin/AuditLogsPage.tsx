@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, DatePicker, Empty, Input, Select, Space, Spin, Tag, Typography, message, Table, ConfigProvider } from 'antd';
-import { Download, History, User as UserIcon, Calendar, Filter } from 'lucide-react';
+import { Download, History, User as UserIcon, Calendar, Filter, Search, RefreshCw } from 'lucide-react';
 import dayjs, { Dayjs } from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/vi';
 import { adminApi } from '../../services/adminApi';
+
+dayjs.extend(relativeTime);
+dayjs.locale('vi');
 
 interface AuditLogEvent {
   eventId: string;
@@ -42,7 +47,8 @@ interface GroupedRow {
 const AuditLogsPage: React.FC = () => {
   const [data, setData] = useState<AuditLogExport>({ totalEvents: 0, events: [] });
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [userFilter, setUserFilter] = useState<string | undefined>();
   const [entityType, setEntityType] = useState<string | undefined>();
   const [actionType, setActionType] = useState<string | undefined>();
   const [usersList, setUsersList] = useState<any[]>([]);
@@ -53,23 +59,30 @@ const AuditLogsPage: React.FC = () => {
     setLoading(true);
     try {
       const query: any = {};
-      if (search) query.search = search;
+      const finalSearch = [userFilter, searchText].filter(Boolean).join(' ').trim();
+      if (finalSearch) query.search = finalSearch;
       if (entityType) query.entityType = entityType;
       if (actionType) query.actionType = actionType;
       
       // Ensure "To" date includes the full day (23:59:59)
-      if (range?.[0]) query.from = range[0].toISOString();
+      if (range?.[0]) query.from = range[0].startOf('day').toISOString();
       if (range?.[1]) query.to = range[1].endOf('day').toISOString();
       
-      const [result, users] = await Promise.all([
+      const [result, usersResult] = await Promise.allSettled([
         adminApi.getAuditLogs(query),
         adminApi.getUsers()
       ]);
 
+      if (result.status === 'rejected') {
+        throw result.reason;
+      }
+
+      const users = usersResult.status === 'fulfilled' ? usersResult.value : [];
+
       // Handle both PascalCase and camelCase response from backend
       const normalized = {
-        totalEvents: (result as any).totalEvents ?? (result as any).TotalEvents ?? 0,
-        events: (result as any).events ?? (result as any).Events ?? []
+        totalEvents: (result.value as any).totalEvents ?? (result.value as any).TotalEvents ?? 0,
+        events: (result.value as any).events ?? (result.value as any).Events ?? []
       };
       setData(normalized);
       setUsersList(users);
@@ -81,22 +94,36 @@ const AuditLogsPage: React.FC = () => {
     }
   };
 
+  const resetFilters = () => {
+    setSearchText('');
+    setUserFilter(undefined);
+    setEntityType(undefined);
+    setActionType(undefined);
+    setRange([dayjs().subtract(7, 'day').startOf('day'), dayjs().endOf('day')]);
+    message.info('Đã đặt lại bộ lọc');
+  };
+
+  // Reactive loading
   useEffect(() => {
-    load();
-  }, []);
+    const timer = setTimeout(() => {
+      load();
+    }, 400); // Debounce
+    return () => clearTimeout(timer);
+  }, [searchText, userFilter, entityType, actionType, range]);
 
   const eventsList = Array.isArray(data?.events) ? data.events : [];
 
   const groupedData = useMemo<GroupedRow[]>(() => {
     const map = new Map<string, AuditLogEvent[]>();
     
-    [...eventsList].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).forEach(event => {
-      const date = dayjs(event.timestamp).format('DD/MM/YYYY');
+    [...eventsList].sort((a, b) => new Date(b.timestamp.endsWith('Z') ? b.timestamp : `${b.timestamp}Z`).getTime() - new Date(a.timestamp.endsWith('Z') ? a.timestamp : `${a.timestamp}Z`).getTime()).forEach(event => {
+      const utcTimestamp = event.timestamp.endsWith('Z') ? event.timestamp : `${event.timestamp}Z`;
+      const date = dayjs(utcTimestamp).format('DD/MM/YYYY');
       const user = event.userName || 'System';
       const key = `${date}-${user}`;
       
       const existing = map.get(key) || [];
-      existing.push(event);
+      existing.push({ ...event, timestamp: utcTimestamp });
       map.set(key, existing);
     });
 
@@ -169,7 +196,21 @@ const AuditLogsPage: React.FC = () => {
 
   const expandedRowRender = (record: GroupedRow) => {
     const subColumns = [
-      { title: 'Giờ', dataIndex: 'timestamp', key: 'time', render: (t: string) => dayjs(t).format('HH:mm:ss'), width: 150 },
+      { 
+        title: 'Giờ', 
+        dataIndex: 'timestamp', 
+        key: 'time', 
+        render: (t: string) => {
+          const utcTime = t.endsWith('Z') ? t : `${t}Z`;
+          return (
+            <div className="flex flex-col">
+              <span className="font-medium text-title">{dayjs(utcTime).format('HH:mm:ss')}</span>
+              <span className="text-[10px] text-muted">{dayjs(utcTime).fromNow()}</span>
+            </div>
+          );
+        }, 
+        width: 150 
+      },
       { 
         title: 'Hành động', 
         dataIndex: 'actionType', 
@@ -229,64 +270,124 @@ const AuditLogsPage: React.FC = () => {
         </div>
 
         {/* Filter Bar */}
-        <Card className="glass-card !border-none !shadow-sm" styles={{ body: { padding: 16 } }}>
-          <div className="flex flex-wrap items-center gap-4">
-            <Select
-              placeholder="Lọc theo nhân viên"
-              style={{ width: 200 }}
-              allowClear
-              value={search || undefined}
-              onChange={setSearch}
-              options={[
-                { label: 'Tất cả nhân viên', value: '' },
-                ...usersList.map(u => ({ label: u.fullName || u.userName, value: u.userName }))
-              ]}
-              className="custom-select-luxury"
-            />
-
-            <div className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-elevated)] rounded-xl border border-luxury">
-              <Calendar size={16} className="text-muted" />
-              <Typography.Text type="secondary" className="text-xs uppercase font-bold tracking-wider">Lọc theo ngày:</Typography.Text>
-              <RangePicker
-                variant="borderless"
-                value={range as unknown as [Dayjs, Dayjs] | null}
-                onChange={(values) => setRange(values as [Dayjs | null, Dayjs | null] | null)}
-                placeholder={['Từ ngày', 'Đến ngày']}
-                className="audit-range-picker"
+        <Card className="glass-card !border-none !shadow-sm" styles={{ body: { padding: '16px 20px' } }}>
+          <div className="flex flex-col gap-4">
+            {/* Top Row: Main Filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <Input
+                placeholder="Tìm kiếm nội dung..."
+                style={{ width: 260 }}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                allowClear
+                className="custom-input-luxury"
+                prefix={<Search size={16} className="text-muted" />}
               />
+
+              <Select
+                placeholder="Nhân viên thực hiện"
+                style={{ width: 220 }}
+                allowClear
+                value={userFilter}
+                onChange={setUserFilter}
+                options={[
+                  { label: 'Tất cả nhân viên', value: undefined },
+                  ...usersList.map(u => ({ label: u.fullName || u.email, value: u.fullName }))
+                ]}
+                className="custom-select-luxury"
+              />
+
+              <Select
+                placeholder="Hành động"
+                style={{ width: 160 }}
+                allowClear
+                value={actionType}
+                onChange={setActionType}
+                options={[
+                  { label: 'Tạo (CREATE)', value: 'CREATE' },
+                  { label: 'Cập nhật (UPDATE)', value: 'UPDATE' },
+                  { label: 'Xóa (DELETE)', value: 'DELETE' },
+                  { label: 'Đăng nhập (LOGIN)', value: 'LOGIN' },
+                ]}
+                className="custom-select-luxury"
+              />
+
+              <Select
+                placeholder="Phân loại đối tượng"
+                style={{ width: 180 }}
+                allowClear
+                value={entityType}
+                onChange={setEntityType}
+                options={[
+                  { label: 'Phòng (Room)', value: 'Room' },
+                  { label: 'Loại phòng', value: 'RoomType' },
+                  { label: 'Đơn đặt phòng', value: 'Booking' },
+                  { label: 'Hóa đơn', value: 'Invoice' },
+                  { label: 'Vật tư/Thiết bị', value: 'Equipment' },
+                  { label: 'Tài khoản (User)', value: 'User' },
+                  { label: 'Dịch vụ', value: 'Service' },
+                ]}
+                className="custom-select-luxury"
+              />
+
+              <Button 
+                type="text" 
+                icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />} 
+                onClick={resetFilters} 
+                className="text-primary hover:bg-primary/5 font-bold ml-auto flex items-center gap-2"
+              >
+                Đặt lại & Làm mới
+              </Button>
             </div>
 
-            <Select
-              placeholder="Tháng"
-              style={{ width: 140 }}
-              className="custom-select-luxury"
-              value={range?.[0] ? dayjs(range[0]).month() + 1 : undefined}
-              options={Array.from({ length: 12 }, (_, i) => ({ label: `Tháng ${i + 1}`, value: i + 1 }))}
-              onChange={(month) => {
-                const currentYear = range?.[0] ? dayjs(range[0]).year() : dayjs().year();
-                const start = dayjs().year(currentYear).month(month - 1).startOf('month');
-                const end = start.endOf('month');
-                setRange([start, end]);
-              }}
-            />
+            {/* Bottom Row: Time Filters */}
+            <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-luxury/30">
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/5 rounded-xl border border-primary/20">
+                <Calendar size={14} className="text-primary" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary/70">Khoảng thời gian:</span>
+                <RangePicker
+                  variant="borderless"
+                  value={range as unknown as [Dayjs, Dayjs] | null}
+                  onChange={(values) => setRange(values as [Dayjs | null, Dayjs | null] | null)}
+                  placeholder={['Từ ngày', 'Đến ngày']}
+                  className="audit-range-picker !w-[220px]"
+                />
+              </div>
 
-            <Select
-              placeholder="Năm"
-              style={{ width: 120 }}
-              className="custom-select-luxury"
-              value={range?.[0] ? dayjs(range[0]).year() : dayjs().year()}
-              options={[2024, 2025, 2026].map(y => ({ label: y.toString(), value: y }))}
-              onChange={(year) => {
-                const currentMonth = range?.[0] ? dayjs(range[0]).month() : dayjs().month();
-                const start = dayjs().year(year).month(currentMonth).startOf('month');
-                const end = start.endOf('month');
-                setRange([start, end]);
-              }}
-            />
-            
-            <Button type="text" icon={<Filter size={16} />} onClick={load} className="text-primary hover:bg-primary/5 font-bold">
-              Áp dụng
-            </Button>
+              <div className="flex items-center gap-2">
+                <Select
+                  placeholder="Tháng"
+                  style={{ width: 110 }}
+                  className="custom-select-luxury"
+                  value={range?.[0] ? dayjs(range[0]).month() + 1 : undefined}
+                  options={Array.from({ length: 12 }, (_, i) => ({ label: `Tháng ${i + 1}`, value: i + 1 }))}
+                  onChange={(month) => {
+                    const currentYear = range?.[0] ? dayjs(range[0]).year() : dayjs().year();
+                    const start = dayjs().year(currentYear).month(month - 1).startOf('month');
+                    const end = start.endOf('month');
+                    setRange([start, end]);
+                  }}
+                />
+
+                <Select
+                  placeholder="Năm"
+                  style={{ width: 100 }}
+                  className="custom-select-luxury"
+                  value={range?.[0] ? dayjs(range[0]).year() : dayjs().year()}
+                  options={[2024, 2025, 2026].map(y => ({ label: y.toString(), value: y }))}
+                  onChange={(year) => {
+                    const currentMonth = range?.[0] ? dayjs(range[0]).month() : dayjs().month();
+                    const start = dayjs().year(year).month(currentMonth).startOf('month');
+                    const end = start.endOf('month');
+                    setRange([start, end]);
+                  }}
+                />
+              </div>
+
+              <div className="ml-auto text-[11px] text-muted font-medium italic">
+                * Tự động cập nhật sau 0.4s khi thay đổi bộ lọc
+              </div>
+            </div>
           </div>
         </Card>
 

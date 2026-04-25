@@ -40,10 +40,7 @@ axiosClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config || {};
 
-    if (error.response?.status === 403) {
-      window.location.href = '/401';
-      return Promise.reject(error);
-    }
+    // Removed aggressive global 403 redirect. Let components handle 403 errors individually.
 
     if (error.response?.status === 401) {
       if (originalRequest._retry) {

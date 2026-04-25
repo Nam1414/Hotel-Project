@@ -20,6 +20,11 @@ export const authApi = {
     };
   },
 
+  register: async (dto: any) => {
+    const res = await plainAxios.post('/Auth/register', dto);
+    return res.data;
+  },
+
   logout: async () => {
     const token = localStorage.getItem('token');
     await plainAxios.post(

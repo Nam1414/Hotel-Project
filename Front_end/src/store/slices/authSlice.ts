@@ -31,14 +31,17 @@ const storedUser = JSON.parse(localStorage.getItem('user') || 'null') as User | 
 const storedToken = localStorage.getItem('token');
 
 const persistAuth = (user: User | null, token: string | null) => {
-  if (user && token) {
-    localStorage.setItem('user', JSON.stringify(user));
+  if (token) {
     localStorage.setItem('token', token);
-    return;
+  } else {
+    localStorage.removeItem('token');
   }
 
-  localStorage.removeItem('user');
-  localStorage.removeItem('token');
+  if (user) {
+    localStorage.setItem('user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('user');
+  }
 };
 
 const initialState: AuthState = {
@@ -60,6 +63,11 @@ export const loginThunk = createAsyncThunk(
 
     try {
       const response = await authApi.login(dto);
+      
+      // Save the token IMMEDIATELY so that subsequent API calls (like getProfile)
+      // will use this new token instead of failing with 401 and redirecting to login.
+      dispatch(setAccessToken(response.accessToken));
+
       const profile = await userProfileApi.getProfile().catch(() => null);
       const user: User = {
         id: String(response.userId ?? 0),

@@ -34,10 +34,17 @@ const HotelInvoicePrint: React.FC<HotelInvoicePrintProps> = ({
   return (
     <div id="hotel-invoice-print" className="print-only">
       <style>{`
+        @media screen {
+          #hotel-invoice-print {
+            display: none !important;
+          }
+        }
+
         @media print {
           body * { visibility: hidden; }
           #hotel-invoice-print, #hotel-invoice-print * { visibility: visible; }
           #hotel-invoice-print {
+            display: block !important;
             position: absolute;
             left: 0;
             top: 0;
@@ -198,7 +205,14 @@ const HotelInvoicePrint: React.FC<HotelInvoicePrintProps> = ({
           <h3>Chi tiết lưu trú</h3>
           <div className="info-item"><span className="info-label">Ngày đến:</span> <span>{dayjs(booking.details?.[0]?.checkInDate).format('DD/MM/YYYY')}</span></div>
           <div className="info-item"><span className="info-label">Ngày đi:</span> <span>{dayjs(booking.details?.[0]?.checkOutDate).format('DD/MM/YYYY')}</span></div>
-          <div className="info-item"><span className="info-label">Trạng thái:</span> <span>ĐÃ THANH TOÁN</span></div>
+          <div className="info-item">
+            <span className="info-label">Trạng thái:</span> 
+            <span>
+              {invoice.status === 'Paid' ? 'ĐÃ THANH TOÁN' : 
+               invoice.status === 'PartiallyPaid' ? 'THANH TOÁN MỘT PHẦN' : 
+               invoice.status === 'Cancelled' ? 'ĐÃ HỦY' : 'CHƯA THANH TOÁN'}
+            </span>
+          </div>
           <div className="info-item"><span className="info-label">Nhân viên lập:</span> <span>{cashierName || 'Admin'}</span></div>
         </div>
       </div>
@@ -262,21 +276,39 @@ const HotelInvoicePrint: React.FC<HotelInvoicePrintProps> = ({
           <span>Tiền dịch vụ:</span>
           <span>{formatMoney(invoice.totalServiceAmount)}</span>
         </div>
+        {invoice.discountAmount > 0 && (
+          <div className="total-row">
+            <span>Giảm giá (Voucher):</span>
+            <span style={{ color: '#16a34a' }}>-{formatMoney(invoice.discountAmount)}</span>
+          </div>
+        )}
         <div className="total-row">
-          <span>Giảm giá (Voucher):</span>
-          <span style={{ color: '#16a34a' }}>-{formatMoney(invoice.discountAmount)}</span>
-        </div>
-        <div className="total-row">
-          <span>Tiền đặt cọc:</span>
-          <span style={{ color: '#d97706' }}>-{formatMoney(invoice.depositAmount)}</span>
+          <span>Tổng Cộng (Chưa Thuế):</span>
+          <span>{formatMoney(invoice.totalRoomAmount + invoice.totalServiceAmount - invoice.discountAmount)}</span>
         </div>
         <div className="total-row">
           <span>Thuế (10% VAT):</span>
           <span>{formatMoney(invoice.taxAmount)}</span>
         </div>
-        <div className="total-row grand-total">
+        <div className="total-row grand-total" style={{ color: '#A6894B' }}>
           <span>TỔNG THANH TOÁN:</span>
           <span>{formatMoney(invoice.finalTotal)}</span>
+        </div>
+        {invoice.depositPaidAmount > 0 && (
+          <div className="total-row" style={{ fontSize: '14px' }}>
+            <span>Đã cọc:</span>
+            <span style={{ color: '#16a34a' }}>-{formatMoney(invoice.depositPaidAmount)}</span>
+          </div>
+        )}
+        {invoice.payments?.length > 0 && (
+          <div className="total-row" style={{ fontSize: '14px' }}>
+            <span>Đã thanh toán thêm:</span>
+            <span style={{ color: '#16a34a' }}>-{formatMoney(invoice.payments.reduce((sum, p) => sum + p.amountPaid, 0))}</span>
+          </div>
+        )}
+        <div className="total-row grand-total" style={{ borderTop: '1px dashed #ccc', marginTop: '5px', paddingTop: '10px', color: '#dc2626' }}>
+          <span>CẦN THU THÊM:</span>
+          <span>{formatMoney(Math.max(0, invoice.finalTotal - (invoice.depositPaidAmount || 0) - (invoice.payments?.reduce((sum, p) => sum + p.amountPaid, 0) || 0)))}</span>
         </div>
       </div>
 

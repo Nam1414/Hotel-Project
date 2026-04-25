@@ -3,6 +3,12 @@ import { useDispatch } from 'react-redux';
 import { markAsRead } from '../../store/slices/notificationSlice';
 import { AlertCircle, CheckCircle2, Clock3, CreditCard, Info, MessageSquare, ShoppingBag, CalendarClock } from 'lucide-react';
 import { notificationApi } from '../../services/notificationApi';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/vi';
+
+dayjs.extend(relativeTime);
+dayjs.locale('vi');
 
 const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => {
   const dispatch = useDispatch();
@@ -41,7 +47,9 @@ const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => 
             <h4 className={`text-sm font-semibold ${!notification.isRead ? 'text-gray-900' : 'text-gray-600'}`}>
               {notification.title}
             </h4>
-            <span className="text-[10px] text-gray-400">{notification.time}</span>
+            <span className="text-[10px] text-gray-400 min-w-[70px] text-right">
+              {dayjs(notification.createdAt).fromNow()}
+            </span>
           </div>
           <p className="text-xs text-gray-500 mt-1 line-clamp-2">
             {notification.description}

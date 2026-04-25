@@ -57,10 +57,10 @@ namespace HotelManagementAPI.Services
             decimal totalRoom = booking.BookingDetails.Sum(bd =>
                 Math.Max(1, (decimal)(bd.CheckOutDate.Date - bd.CheckInDate.Date).Days) * bd.PricePerNight);
 
-            // Chỉ tính dịch vụ đã Delivered để lên hóa đơn
+            // Chỉ tính dịch vụ đã Delivered (bao gồm giá trị '1' hoặc 'Delivered' trong CSDL) để lên hóa đơn
             var deliveredServiceTotal = await _context.OrderServices
                 .Include(o => o.BookingDetail)
-                .Where(o => o.BookingDetail != null && o.BookingDetail.BookingId == bookingId && o.StatusString == OrderServiceStatus.Delivered.ToString())
+                .Where(o => o.BookingDetail != null && o.BookingDetail.BookingId == bookingId && (o.StatusString == OrderServiceStatus.Delivered.ToString() || o.StatusString == "1"))
                 .SumAsync(o => (decimal?)(o.TotalAmount ?? 0)) ?? 0m;
 
             // Tính tiền phạt hỏng hóc vật tư
@@ -128,7 +128,7 @@ namespace HotelManagementAPI.Services
 
             var deliveredServiceTotal = await _context.OrderServices
                 .Include(o => o.BookingDetail)
-                .Where(o => o.BookingDetail != null && o.BookingDetail.BookingId == bookingId && o.StatusString == OrderServiceStatus.Delivered.ToString())
+                .Where(o => o.BookingDetail != null && o.BookingDetail.BookingId == bookingId && (o.StatusString == OrderServiceStatus.Delivered.ToString() || o.StatusString == "1"))
                 .SumAsync(o => (decimal?)(o.TotalAmount ?? 0)) ?? 0m;
 
             var detailIds = booking.BookingDetails.Select(bd => bd.Id).ToList();
@@ -153,6 +153,8 @@ namespace HotelManagementAPI.Services
             decimal deposit = GetEffectiveDepositAmount(booking);
             decimal totalPaid = (invoice.Payments?.Sum(p => p.AmountPaid) ?? 0m) + deposit;
             
+            var oldStatus = invoice.Status;
+
             if (invoice.FinalTotal == 0)
             {
                 invoice.Status = InvoiceStatus.Paid;
@@ -168,6 +170,14 @@ namespace HotelManagementAPI.Services
             else
             {
                 invoice.Status = InvoiceStatus.Unpaid;
+            }
+
+            if (oldStatus != InvoiceStatus.Paid && invoice.Status == InvoiceStatus.Paid)
+            {
+                if (booking?.UserId != null && booking.UserId > 0)
+                {
+                    await AddLoyaltyPointsInternalAsync(booking.Id, invoice.FinalTotal ?? 0m);
+                }
             }
 
             if (isNew)
@@ -204,10 +214,20 @@ namespace HotelManagementAPI.Services
             decimal depositAmt = GetEffectiveDepositAmount(bookingRecord);
             var totalWithDeposit = invoice.Payments.Sum(p => p.AmountPaid) + payment.AmountPaid + depositAmt;
             
+            var oldStatus = invoice.Status;
+
             if (totalWithDeposit >= invoice.FinalTotal)
                 invoice.Status = InvoiceStatus.Paid;
             else if (totalWithDeposit > 0)
                 invoice.Status = InvoiceStatus.PartiallyPaid;
+
+            if (oldStatus != InvoiceStatus.Paid && invoice.Status == InvoiceStatus.Paid)
+            {
+                if (bookingRecord?.UserId != null && bookingRecord.UserId > 0)
+                {
+                    await AddLoyaltyPointsInternalAsync(bookingRecord.Id, invoice.FinalTotal ?? 0m);
+                }
+            }
 
             await _context.SaveChangesAsync();
 
@@ -229,23 +249,36 @@ namespace HotelManagementAPI.Services
 
             if (invoice == null) return null;
 
+            var oldStatus = invoice.Status;
             invoice.Status = InvoiceStatus.Paid;
 
-            var booking = await _context.Bookings.Include(b => b.User).FirstOrDefaultAsync(b => b.Id == bookingId);
-            if (booking?.UserId != null && booking.UserId > 0)
+            if (oldStatus != InvoiceStatus.Paid)
             {
-                var loyaltyPointsToAdd = Math.Max(1, (int)Math.Floor((invoice.FinalTotal ?? 0m) / 100000m));
-                booking.User!.LoyaltyPoints += loyaltyPointsToAdd;
-                booking.User.MembershipId = await _context.Memberships
-                    .Where(m => m.MinPoints == null || m.MinPoints <= booking.User.LoyaltyPoints)
-                    .OrderByDescending(m => m.MinPoints ?? 0)
-                    .ThenByDescending(m => m.Id)
-                    .Select(m => (int?)m.Id)
-                    .FirstOrDefaultAsync();
+                var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId);
+                if (booking?.UserId != null && booking.UserId > 0)
+                {
+                    await AddLoyaltyPointsInternalAsync(bookingId, invoice.FinalTotal ?? 0m);
+                }
             }
 
             await _context.SaveChangesAsync();
             return await GetInvoiceByBookingIdAsync(bookingId);
+        }
+
+        private async Task AddLoyaltyPointsInternalAsync(int bookingId, decimal finalTotal)
+        {
+            var booking = await _context.Bookings.Include(b => b.User).FirstOrDefaultAsync(b => b.Id == bookingId);
+            if (booking?.User == null) return;
+
+            var loyaltyPointsToAdd = Math.Max(1, (int)Math.Floor(finalTotal / 100000m));
+            booking.User.LoyaltyPoints += loyaltyPointsToAdd;
+            
+            booking.User.MembershipId = await _context.Memberships
+                .Where(m => m.MinPoints == null || m.MinPoints <= booking.User.LoyaltyPoints)
+                .OrderByDescending(m => m.MinPoints ?? 0)
+                .ThenByDescending(m => m.Id)
+                .Select(m => (int?)m.Id)
+                .FirstOrDefaultAsync();
         }
 
         private async Task<InvoiceResponseDto> MapToDtoAsync(Invoice invoice)

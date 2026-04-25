@@ -1363,8 +1363,15 @@ const BookingPage: React.FC = () => {
                 <Divider />
 
                 <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '16px', marginBottom: 16 }}>
-                  <div style={{ fontSize: 13, color: '#1d4ed8', marginBottom: 4 }}>Tổng tiền phải thu</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#1d4ed8' }}>{formatMoney(remainingAmount)}</div>
+                  <div style={{ fontSize: 13, color: '#1d4ed8', marginBottom: 4 }}>Tổng thanh toán</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#1d4ed8' }}>{formatMoney(selectedInvoice.finalTotal)}</div>
+                  
+                  <Divider style={{ margin: '12px 0' }} />
+                  
+                  <div style={{ fontSize: 13, color: '#1d4ed8', marginBottom: 4 }}>Còn lại (Cần thu thêm)</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: remainingAmount > 0 ? '#dc2626' : '#16a34a' }}>
+                    {formatMoney(Math.max(0, remainingAmount))}
+                  </div>
                 </div>
 
                 {selectedInvoice.status !== 'Paid' ? (

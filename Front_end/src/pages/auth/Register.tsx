@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Phone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { authApi } from '../../services/authApi';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -14,13 +15,29 @@ const Register: React.FC = () => {
     confirmPassword: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (formData.password !== formData.confirmPassword) {
+      alert('Mật khẩu xác nhận không khớp!');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await authApi.register({
+        fullName: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password
+      });
+      alert('Đăng ký tài khoản thành công!');
       navigate('/login');
-    }, 1500);
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Có lỗi xảy ra khi đăng ký!');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -90,6 +90,19 @@ const RoleManagement: React.FC = () => {
         message.success('Đã gỡ quyền thành công');
       }
       // Cập nhật local state để UI phản hồi nhanh
+      const permName = allPermissions.find(p => p.id === permissionId)?.name;
+      if (permName) {
+        setSelectedRole((prev: any) => {
+          if (!prev) return prev;
+          let updatedPermissions = prev.permissions || [];
+          if (!hasPermission) {
+            updatedPermissions = [...updatedPermissions, permName];
+          } else {
+            updatedPermissions = updatedPermissions.filter((p: string) => p !== permName);
+          }
+          return { ...prev, permissions: updatedPermissions };
+        });
+      }
       fetchRoles(); // Reload to get updated permissions list
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Thao tác thất bại');

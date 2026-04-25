@@ -22,34 +22,7 @@ const AppContent = () => {
   const { isDarkMode, hydrated } = useThemeStore();
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const types: ('booking' | 'reminder' | 'update' | 'message')[] = ['booking', 'reminder', 'update', 'message'];
-      const titles = ['Cập nhật phòng', 'Cảnh báo tồn kho', 'Báo cáo hư hỏng', 'Tin nhắn mới', 'Thông báo bảo trì'];
-      const descriptions = [
-        'Phòng 204 đã được dọn dẹp và sẵn sàng nhận khách.',
-        'Cảnh báo sắp hết hàng: đồ dùng vệ sinh còn dưới 20%.',
-        'Đã ghi nhận hư hỏng mới tại phòng 305: đèn bàn bị hỏng.',
-        'Khách ở phòng 102 đã yêu cầu thêm khăn tắm.',
-        'Lịch bảo trì thang máy B sẽ bắt đầu sau 1 giờ nữa.',
-      ];
-
-      const randomIndex = Math.floor(Math.random() * titles.length);
-
-      if (Math.random() > 0.8) {
-        dispatch(
-          addNotification({
-            title: titles[randomIndex],
-            description: descriptions[randomIndex],
-            time: 'Vừa xong',
-            type: types[Math.floor(Math.random() * types.length)],
-          }),
-        );
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [dispatch]);
+  // Removed dummy notification generator
 
   useEffect(() => {
     if (!hydrated) return;
