@@ -195,7 +195,7 @@ const Services: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] pb-24">
+    <div className="min-h-screen bg-[var(--bg-main)] pb-24">
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden bg-dark-base">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80')] bg-cover bg-center opacity-10"></div>
@@ -218,7 +218,7 @@ const Services: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-gray-400 max-w-2xl mx-auto text-lg font-light leading-relaxed mb-16"
+            className="text-white/60 max-w-2xl mx-auto text-lg font-light leading-relaxed mb-16"
           >
             Chúng tôi tận tâm mang đến những dịch vụ đẳng cấp nhất, đảm bảo mỗi giây phút lưu trú của quý khách đều trở nên đáng nhớ và trọn vẹn.
           </motion.p>
@@ -239,7 +239,7 @@ const Services: React.FC = () => {
                     <Icon size={28} strokeWidth={1.5} />
                   </div>
                   <h3 className="text-xl font-display font-bold text-white mb-4">{service.title}</h3>
-                  <p className="text-gray-400 font-light leading-relaxed text-sm">{service.description}</p>
+                  <p className="text-white/50 font-light leading-relaxed text-sm">{service.description}</p>
                 </motion.div>
               );
             })}
@@ -252,14 +252,14 @@ const Services: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Order Selector */}
-          <div className="lg:col-span-2 bg-white rounded-[2.5rem] shadow-2xl shadow-black/5 border border-luxury/5 p-8 md:p-10">
+          <div className="lg:col-span-2 glass-card p-8 md:p-10">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                 <ShoppingBag size={24} />
               </div>
               <div>
-                <h2 className="text-2xl font-display font-bold text-title">Đặt dịch vụ tại phòng</h2>
-                <p className="text-muted text-sm mt-1">Yêu cầu dịch vụ nhanh chóng cho phòng bạn đang ở.</p>
+                <h2 className="text-2xl font-display font-bold text-[var(--text-title)]">Đặt dịch vụ tại phòng</h2>
+                <p className="text-[var(--text-muted)] text-sm mt-1">Yêu cầu dịch vụ nhanh chóng cho phòng bạn đang ở.</p>
               </div>
             </div>
 
@@ -275,10 +275,10 @@ const Services: React.FC = () => {
             ) : bookingLoading ? (
               <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" size={32} /></div>
             ) : activeBookings.length === 0 ? (
-              <div className="bg-subtle rounded-3xl p-8 text-center border border-dashed border-luxury/20">
+              <div className="bg-[var(--bg-subtle)] rounded-3xl p-8 text-center border border-dashed border-[var(--border-color)]">
                 <Hotel className="mx-auto mb-4 text-primary/40" size={40} />
-                <p className="text-title font-bold mb-2">Không tìm thấy thông tin lưu trú</p>
-                <p className="text-muted text-sm mb-6">Tính năng đặt dịch vụ chỉ khả dụng sau khi quý khách đã làm thủ tục nhận phòng.</p>
+                <p className="text-[var(--text-title)] font-bold mb-2">Không tìm thấy thông tin lưu trú</p>
+                <p className="text-[var(--text-muted)] text-sm mb-6">Tính năng đặt dịch vụ chỉ khả dụng sau khi quý khách đã làm thủ tục nhận phòng.</p>
                 <Button type="primary" className="btn-gold h-11 px-8" onClick={() => navigate('/profile')}>Xem lịch sử đặt phòng</Button>
               </div>
             ) : (
@@ -310,12 +310,12 @@ const Services: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-[#FDFCFB] rounded-3xl p-6 border border-luxury/5 flex items-center justify-between">
+                <div className="bg-[var(--bg-main)] rounded-3xl p-6 border border-[var(--border-color)] flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <CheckCircle2 className="text-green-500" size={24} />
                     <div>
-                      <p className="text-title font-bold text-sm">Trạng thái: Đang lưu trú</p>
-                      <p className="text-muted text-xs mt-0.5">Phí dịch vụ sẽ được cộng vào hóa đơn cuối cùng.</p>
+                      <p className="text-[var(--text-title)] font-bold text-sm">Trạng thái: Đang lưu trú</p>
+                      <p className="text-[var(--text-muted)] text-xs mt-0.5">Phí dịch vụ sẽ được cộng vào hóa đơn cuối cùng.</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -328,9 +328,9 @@ const Services: React.FC = () => {
           </div>
 
           {/* Cart Summary */}
-          <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-black/5 border border-luxury/5 p-8 flex flex-col">
+          <div className="glass-card p-8 flex flex-col">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-display font-bold text-title">Yêu cầu của bạn</h3>
+              <h3 className="text-xl font-display font-bold text-[var(--text-title)]">Yêu cầu của bạn</h3>
               <Badge count={cartCount} className="bg-primary" />
             </div>
 
@@ -346,11 +346,11 @@ const Services: React.FC = () => {
                       initial={{ opacity: 0, x: -10 }} 
                       animate={{ opacity: 1, x: 0 }}
                       key={serviceId} 
-                      className="flex items-center justify-between p-4 bg-subtle rounded-2xl"
+                      className="flex items-center justify-between p-4 bg-[var(--bg-subtle)] rounded-2xl"
                     >
                       <div className="flex-1">
-                        <p className="font-bold text-sm text-title">{service.name}</p>
-                        <p className="text-xs text-muted mt-1">{quantity} x {formatCurrency(service.price)}</p>
+                        <p className="font-bold text-sm text-[var(--text-title)]">{service.name}</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">{quantity} x {formatCurrency(service.price)}</p>
                       </div>
                       <p className="font-bold text-primary text-sm">{formatCurrency(service.price * quantity)}</p>
                     </motion.div>
@@ -361,7 +361,7 @@ const Services: React.FC = () => {
 
             <div className="pt-6 border-t border-luxury/5">
               <div className="flex items-center justify-between mb-6">
-                <span className="text-muted font-bold uppercase text-[10px] tracking-widest">Tạm tính</span>
+                <span className="text-[var(--text-muted)] font-bold uppercase text-[10px] tracking-widest">Tạm tính</span>
                 <span className="text-2xl font-display font-bold text-primary">{formatCurrency(cartTotal)}</span>
               </div>
               <Button
@@ -383,7 +383,7 @@ const Services: React.FC = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
         <div className="text-center mb-16">
           <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-4 block">Thực đơn & Tiện ích</span>
-          <h2 className="text-3xl md:text-5xl font-display font-bold text-title">Menu Dịch vụ</h2>
+          <h2 className="text-3xl md:text-5xl font-display font-bold text-[var(--text-title)]">Menu Dịch vụ</h2>
           <div className="w-20 h-0.5 bg-primary mx-auto mt-6" />
         </div>
 
@@ -399,34 +399,34 @@ const Services: React.FC = () => {
                 <div key={category.id}>
                   <div className="flex items-center gap-6 mb-10">
                     <h3 className="text-2xl font-display font-bold text-primary shrink-0">{category.name}</h3>
-                    <div className="h-px bg-luxury/10 flex-1" />
+                    <div className="h-px bg-[var(--border-color)] flex-1" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {categoryServices.map((service) => (
                       <motion.div
                         whileHover={{ y: -4 }}
                         key={service.id}
-                        className="bg-white border border-luxury/5 p-6 rounded-3xl flex items-center justify-between group hover:shadow-xl hover:shadow-black/5 transition-all duration-300"
+                        className="bg-[var(--card-bg)] border border-[var(--border-color)] p-6 rounded-3xl flex items-center justify-between group hover:shadow-xl hover:shadow-black/5 transition-all duration-300"
                       >
                         <div className="flex-1">
-                          <h4 className="font-bold text-title group-hover:text-primary transition-colors">{service.name}</h4>
-                          <p className="text-xs text-muted mt-2 font-light">
+                          <h4 className="font-bold text-[var(--text-title)] group-hover:text-primary transition-colors">{service.name}</h4>
+                          <p className="text-xs text-[var(--text-muted)] mt-2 font-light">
                             {service.unit ? `Đơn vị: ${service.unit}` : 'Dịch vụ lẻ'}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-3">
                           <p className="font-bold text-primary">{formatCurrency(service.price)}</p>
-                          <div className="flex items-center gap-3 bg-subtle p-1 rounded-xl">
+                          <div className="flex items-center gap-3 bg-[var(--bg-subtle)] p-1 rounded-xl">
                             <button 
                               onClick={() => addToCart(service.id, -1)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-muted transition-colors"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--card-bg)] text-[var(--text-muted)] transition-colors"
                             >
                               <Minus size={14} />
                             </button>
-                            <span className="w-6 text-center font-bold text-sm text-title">{cart[service.id] || 0}</span>
+                            <span className="w-6 text-center font-bold text-sm text-[var(--text-title)]">{cart[service.id] || 0}</span>
                             <button 
                               onClick={() => addToCart(service.id, 1)}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-muted transition-colors"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[var(--card-bg)] text-[var(--text-muted)] transition-colors"
                             >
                               <Plus size={14} />
                             </button>

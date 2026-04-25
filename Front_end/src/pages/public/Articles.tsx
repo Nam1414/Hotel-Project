@@ -48,7 +48,7 @@ const Articles: React.FC = () => {
   }, [filteredArticles, featuredArticle, activeCategoryId]);
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] pt-32 pb-24">
+    <div className="min-h-screen bg-[var(--bg-main)] pt-32 pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Page Header */}
@@ -63,7 +63,7 @@ const Articles: React.FC = () => {
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-[#1a1a1a] tracking-tight"
+            className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-[var(--text-title)] tracking-tight"
           >
             KANT Journal
           </motion.h1>
@@ -80,8 +80,8 @@ const Articles: React.FC = () => {
             onClick={() => setActiveCategoryId(null)}
             className={`px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border ${
               activeCategoryId === null 
-                ? 'bg-[#1a1a1a] border-[#1a1a1a] text-white shadow-xl shadow-black/10 scale-105' 
-                : 'bg-white border-[#e5e5e5] text-[#666666] hover:border-[#C6A96B] hover:text-[#C6A96B]'
+                ? 'bg-[var(--text-title)] border-[var(--text-title)] text-[var(--card-bg)] shadow-xl shadow-black/10 scale-105' 
+                : 'bg-[var(--card-bg)] border-[var(--border-color)] text-[var(--text-muted)] hover:border-primary hover:text-primary'
             }`}
           >
             Tất cả
@@ -92,8 +92,8 @@ const Articles: React.FC = () => {
               onClick={() => setActiveCategoryId(category.id)}
               className={`px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300 border ${
                 activeCategoryId === category.id 
-                  ? 'bg-[#1a1a1a] border-[#1a1a1a] text-white shadow-xl shadow-black/10 scale-105' 
-                  : 'bg-white border-[#e5e5e5] text-[#666666] hover:border-[#C6A96B] hover:text-[#C6A96B]'
+                  ? 'bg-[var(--text-title)] border-[var(--text-title)] text-[var(--card-bg)] shadow-xl shadow-black/10 scale-105' 
+                  : 'bg-[var(--card-bg)] border-[var(--border-color)] text-[var(--text-muted)] hover:border-primary hover:text-primary'
               }`}
             >
               {category.name}
@@ -115,7 +115,7 @@ const Articles: React.FC = () => {
               <motion.div 
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl shadow-black/[0.03] border border-[#f0f0f0]"
+                className="group relative bg-[var(--card-bg)] rounded-[2.5rem] overflow-hidden shadow-2xl shadow-black/[0.03] border border-[var(--border-color)]"
               >
                 <div className="grid grid-cols-1 lg:grid-cols-2">
                   <div className="relative h-80 lg:h-[500px] overflow-hidden bg-[#f8f8f8]">
@@ -135,22 +135,22 @@ const Articles: React.FC = () => {
                     </div>
                   </div>
                   <div className="p-8 lg:p-16 flex flex-col justify-center">
-                    <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest text-[#999999] mb-6">
-                      <span className="flex items-center gap-2"><Calendar size={14} className="text-[#C6A96B]"/> {new Date(featuredArticle.publishedAt).toLocaleDateString('vi-VN')}</span>
-                      <span className="flex items-center gap-2"><User size={14} className="text-[#C6A96B]"/> {featuredArticle.author || 'ADMIN'}</span>
+                    <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-6">
+                      <span className="flex items-center gap-2"><Calendar size={14} className="text-primary"/> {new Date(featuredArticle.publishedAt).toLocaleDateString('vi-VN')}</span>
+                      <span className="flex items-center gap-2"><User size={14} className="text-primary"/> {featuredArticle.author || 'ADMIN'}</span>
                     </div>
-                    <h2 className="text-3xl lg:text-4xl font-display font-bold text-[#1a1a1a] mb-6 leading-tight group-hover:text-[#C6A96B] transition-colors">
+                    <h2 className="text-3xl lg:text-4xl font-display font-bold text-[var(--text-title)] mb-6 leading-tight group-hover:text-primary transition-colors">
                       {featuredArticle.title}
                     </h2>
-                    <p className="text-[#666666] leading-relaxed mb-10 line-clamp-3 text-lg font-light">
+                    <p className="text-[var(--text-body)] leading-relaxed mb-10 line-clamp-3 text-lg font-light">
                       {featuredArticle.title} — Khám phá những trải nghiệm độc bản và những câu chuyện thú vị chỉ có tại KANT Hotel. Chúng tôi mang đến cho bạn không gian của sự xa hoa và tinh tế nhất.
                     </p>
                     <Link 
                       to={`/news/${featuredArticle.slug}`}
-                      className="flex items-center gap-3 text-[#1a1a1a] font-black text-xs uppercase tracking-[0.2em] group/btn"
+                      className="flex items-center gap-3 text-[var(--text-title)] font-black text-xs uppercase tracking-[0.2em] group/btn"
                     >
                       Đọc tiếp
-                      <div className="w-10 h-10 rounded-full bg-[#f5f5f5] flex items-center justify-center transition-all group-hover/btn:bg-[#1a1a1a] group-hover/btn:text-white group-hover/btn:translate-x-2">
+                      <div className="w-10 h-10 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center transition-all group-hover/btn:bg-[var(--text-title)] group-hover/btn:text-[var(--card-bg)] group-hover/btn:translate-x-2">
                         <ArrowRight size={16} />
                       </div>
                     </Link>
@@ -170,7 +170,7 @@ const Articles: React.FC = () => {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="group bg-white rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border border-[#f0f0f0] flex flex-col"
+                    className="group bg-[var(--card-bg)] rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 border border-[var(--border-color)] flex flex-col"
                   >
                     <Link to={`/news/${article.slug}`} className="block relative aspect-[4/3] overflow-hidden bg-[#f8f8f8]">
                       {article.thumbnailUrl ? (
@@ -198,19 +198,19 @@ const Articles: React.FC = () => {
                       </div>
                       
                       <Link to={`/news/${article.slug}`}>
-                        <h3 className="text-xl font-display font-bold text-[#1a1a1a] leading-snug group-hover:text-[#C6A96B] transition-colors line-clamp-3 mb-6">
+                        <h3 className="text-xl font-display font-bold text-[var(--text-title)] leading-snug group-hover:text-primary transition-colors line-clamp-3 mb-6">
                           {article.title}
                         </h3>
                       </Link>
 
-                      <div className="mt-auto flex items-center justify-between pt-6 border-t border-[#f5f5f5]">
-                        <span className="text-[10px] font-bold text-[#999999] uppercase tracking-wider flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#C6A96B]" />
+                      <div className="mt-auto flex items-center justify-between pt-6 border-t border-[var(--border-color)]">
+                        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                           {article.author || 'ADMIN'}
                         </span>
                         <Link 
                           to={`/news/${article.slug}`}
-                          className="w-8 h-8 rounded-full bg-[#f8f8f8] flex items-center justify-center text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition-all"
+                          className="w-8 h-8 rounded-full bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--text-title)] hover:bg-[var(--text-title)] hover:text-[var(--card-bg)] transition-all"
                         >
                           <ArrowRight size={14} />
                         </Link>
@@ -222,12 +222,12 @@ const Articles: React.FC = () => {
             </div>
 
             {remainingArticles.length === 0 && !loading && (
-              <div className="text-center py-32 bg-white rounded-[3rem] shadow-sm border border-[#f0f0f0]">
-                <div className="w-20 h-20 bg-[#f9f9f9] rounded-full flex items-center justify-center mx-auto mb-6 text-[#C6A96B]/30">
+              <div className="text-center py-32 bg-[var(--card-bg)] rounded-[3rem] shadow-sm border border-[var(--border-color)]">
+                <div className="w-20 h-20 bg-[var(--bg-subtle)] rounded-full flex items-center justify-center mx-auto mb-6 text-primary/30">
                   <Bookmark size={32} />
                 </div>
-                <h3 className="text-2xl font-display font-bold text-[#1a1a1a] mb-2">Chưa có bài viết</h3>
-                <p className="text-[#666666] font-light">Danh mục này hiện đang được cập nhật nội dung mới.</p>
+                <h3 className="text-2xl font-display font-bold text-[var(--text-title)] mb-2">Chưa có bài viết</h3>
+                <p className="text-[var(--text-body)] font-light">Danh mục này hiện đang được cập nhật nội dung mới.</p>
               </div>
             )}
           </div>

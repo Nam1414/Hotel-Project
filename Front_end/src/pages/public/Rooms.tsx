@@ -83,7 +83,7 @@ const Rooms: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-5xl md:text-7xl font-display text-white mb-4"
           >
-            Our Accommodations
+            Phòng nghỉ của chúng tôi
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}

@@ -50,8 +50,8 @@
     
     /* Text Colors */
     --text-title: #0F172A;
-    --text-body: #334155;
-    --text-muted: #64748B;
+    --text-body: #1E293B;
+    --text-muted: #475569;
     
     /* Navigation */
     --nav-bg: #FFFFFF;
@@ -77,9 +77,9 @@
     --card-border: rgba(198, 169, 107, 0.15);
     
     /* Text Colors */
-    --text-title: #F8FAFC;
-    --text-body: #CBD5E1;
-    --text-muted: #94A3B8;
+    --text-title: #FFFFFF;
+    --text-body: #F1F5F9;
+    --text-muted: #CBD5E1;
     
     /* Navigation */
     --nav-bg: #0F172A;
@@ -218,7 +218,7 @@
 }
 
 /* Article prose – improved aesthetics */
-.prose { line-height: 1.8; color: var(--text-body); }
+.prose { line-height: 1.8; color: var(--text-body) !important; }
 .prose h1, .prose h2, .prose h3 { margin-top: 2em; margin-bottom: 0.5em; font-family: 'Playfair Display', serif; color: var(--text-title); }
 .prose p { margin-bottom: 1.5em; }
 .prose img { width: 100%; border-radius: 1rem; margin: 2.5em 0; shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }

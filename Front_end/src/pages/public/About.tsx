@@ -155,7 +155,7 @@ const About: React.FC = () => {
         </div>
       </section>
 
-      {/* Management Team */}
+      {/* Management Team - Temporarily hidden
       <section className="py-32 px-4 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-16">
           <div className="max-w-2xl">
@@ -192,6 +192,7 @@ const About: React.FC = () => {
           ))}
         </div>
       </section>
+      */}
 
       {/* Final CTA */}
       <section className="py-32 relative overflow-hidden bg-[#F9F7F2]">

@@ -1,17 +1,54 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock3, Mail, MapPin, Phone, Send, MessageSquare } from 'lucide-react';
+import { bookingApi } from '../../services/bookingApi';
+import { App } from 'antd';
 
 const Contact: React.FC = () => {
+  const { message } = App.useApp();
+  const [settings, setSettings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const data = await bookingApi.getSystemSettings();
+        setSettings(data);
+      } catch (error) {
+        console.error('Failed to fetch contact settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const getSetting = (key: string, defaultValue: string) => {
+    return settings.find(s => s.key === key)?.value || defaultValue;
+  };
+
+  const hotelName = getSetting('HotelName', 'KANT Luxury Hotel');
+  const address = getSetting('Address', '123 Ocean Avenue, Quận 1, Thành phố Hồ Chí Minh, Việt Nam');
+  const phone = getSetting('ContactPhone', '+84 28 1234 5678');
+  const email = getSetting('ContactEmail', 'hello@kanthotel.vn');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      message.success('Cảm ơn bạn! Lời nhắn của bạn đã được gửi thành công. Chúng tôi sẽ phản hồi sớm nhất.');
+      setLoading(false);
+      (e.target as HTMLFormElement).reset();
+    }, 1500);
+  };
+
   return (
     <div className="bg-[var(--bg-main)] min-h-screen py-24 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-20">
+        <div className="text-center max-w-4xl mx-auto mb-20 sm:mb-24">
           <motion.span 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-primary font-bold tracking-[0.3em] uppercase text-xs mb-4 block"
+            className="text-primary font-black tracking-[0.5em] uppercase text-[10px] sm:text-xs mb-6 block"
           >
             Liên hệ với chúng tôi
           </motion.span>
@@ -19,37 +56,44 @@ const Contact: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-display font-bold text-title mb-8 leading-tight"
+            className="text-5xl md:text-7xl lg:text-8xl font-display font-bold text-title mb-10 leading-[1.1]"
           >
-            Chúng tôi luôn sẵn lòng <span className="text-primary italic font-serif">hỗ trợ bạn</span>
+            Sẵn sàng mang đến <br/> <span className="text-primary italic font-serif">trải nghiệm hoàn mỹ</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-muted text-lg font-light leading-relaxed"
+            className="text-muted text-lg sm:text-xl font-light leading-relaxed max-w-2xl mx-auto"
           >
-            Cho dù bạn muốn đặt phòng, yêu cầu dịch vụ đặc biệt hay chỉ đơn giản là tìm hiểu thêm về KANT, 
-            đội ngũ của chúng tôi luôn sẵn sàng lắng nghe.
+            Dù là yêu cầu đặt phòng đặc biệt hay cần tư vấn về chuyến đi, đội ngũ chuyên gia của {hotelName} luôn sẵn sàng kiến tạo kỳ nghỉ trong mơ của bạn.
           </motion.p>
+          <motion.div 
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ delay: 0.4, duration: 1 }}
+            className="w-24 h-0.5 bg-primary/30 mx-auto mt-12"
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
           {/* Info Cards */}
-          <div className="lg:col-span-5 space-y-8">
+          <div className="lg:col-span-5 space-y-12">
             <motion.div 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="glass-card p-8 space-y-10 border border-luxury shadow-2xl"
+              className="glass-card p-10 sm:p-12 space-y-12 border border-luxury/10 shadow-2xl relative overflow-hidden"
             >
+              <div className="absolute -top-12 -right-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
+              <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
               <div className="flex gap-6 group">
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary transition-transform group-hover:scale-110">
                   <MapPin size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-display font-bold text-title mb-2">Địa chỉ</h3>
-                  <p className="text-muted font-light leading-relaxed">
-                    123 Ocean Avenue, Quận 1,<br /> Thành phố Hồ Chí Minh, Việt Nam
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">Địa chỉ</h3>
+                  <p className="text-lg font-display font-semibold text-title leading-relaxed">
+                    {address}
                   </p>
                 </div>
               </div>
@@ -59,9 +103,8 @@ const Contact: React.FC = () => {
                   <Phone size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-display font-bold text-title mb-2">Điện thoại</h3>
-                  <p className="text-muted font-light tracking-wide">+84 28 1234 5678</p>
-                  <p className="text-muted font-light tracking-wide">+84 90 9876 5432</p>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">Điện thoại</h3>
+                  <p className="text-lg font-display font-semibold text-title tracking-wide">{phone}</p>
                 </div>
               </div>
 
@@ -70,9 +113,8 @@ const Contact: React.FC = () => {
                   <Mail size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-display font-bold text-title mb-2">Email</h3>
-                  <p className="text-muted font-light">hello@kanthotel.vn</p>
-                  <p className="text-muted font-light">reservations@kanthotel.vn</p>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">Email</h3>
+                  <p className="text-lg font-display font-semibold text-title">{email}</p>
                 </div>
               </div>
 
@@ -81,9 +123,9 @@ const Contact: React.FC = () => {
                   <Clock3 size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-display font-bold text-title mb-2">Thời gian phục vụ</h3>
-                  <p className="text-muted font-light">Lễ tân & Hỗ trợ đặt phòng: 24/7</p>
-                  <p className="text-muted font-light">Dịch vụ Spa & Gym: 06:00 - 22:00</p>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">Thời gian phục vụ</h3>
+                  <p className="text-lg font-display font-semibold text-title">Lễ tân: 24/7</p>
+                  <p className="text-lg font-display font-semibold text-title">Spa & Gym: 06:00 - 22:00</p>
                 </div>
               </div>
             </motion.div>
@@ -107,13 +149,13 @@ const Contact: React.FC = () => {
             className="lg:col-span-7"
           >
             <div className="glass-card p-10 md:p-12 border border-luxury shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
-                <MessageSquare size={120} className="text-primary" />
+              <div className="absolute top-0 right-0 p-12 opacity-5">
+                <MessageSquare size={160} className="text-primary" />
               </div>
               
-              <h2 className="text-3xl font-display font-bold text-title mb-10">Gửi lời nhắn cho chúng tôi</h2>
+              <h2 className="text-3xl sm:text-4xl font-display font-bold text-title mb-12">Gửi lời nhắn riêng cho chúng tôi</h2>
               
-              <form className="space-y-8">
+              <form className="space-y-8" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
                     <label className="block text-xs font-bold text-muted uppercase tracking-widest">Họ và tên</label>
@@ -135,10 +177,14 @@ const Contact: React.FC = () => {
                   <textarea className="input-luxury w-full min-h-[160px] resize-none py-4" placeholder="Chúng tôi có thể giúp gì cho bạn?" />
                 </div>
                 
-                <div className="pt-4">
-                  <button type="button" className="btn-gold w-full md:w-auto px-12 py-4 flex items-center justify-center gap-3 group">
-                    GỬI LỜI NHẮN
-                    <Send size={18} className="transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
+                <div className="pt-6">
+                  <button 
+                    type="submit" 
+                    disabled={loading}
+                    className="btn-gold w-full md:w-auto px-16 py-5 flex items-center justify-center gap-4 group text-sm font-black tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'ĐANG GỬI...' : 'GỬI YÊU CẦU NGAY'}
+                    {!loading && <Send size={18} className="transition-all group-hover:translate-x-2 group-hover:-translate-y-2" />}
                   </button>
                 </div>
               </form>
@@ -155,12 +201,21 @@ const Contact: React.FC = () => {
         >
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1526772662000-3f88f10405ff?q=80&w=2034&auto=format&fit=crop')] bg-cover bg-center grayscale opacity-30 group-hover:grayscale-0 transition-all duration-1000 group-hover:scale-105" />
           <div className="absolute inset-0 bg-gradient-to-t from-var(--bg-main) to-transparent opacity-60" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="glass-card p-6 border border-luxury text-center backdrop-blur-xl">
-              <MapPin size={40} className="text-primary mx-auto mb-4" />
-              <h3 className="text-xl font-display font-bold text-title mb-2">Vị trí của chúng tôi</h3>
-              <p className="text-muted text-sm mb-6">Mở trong Google Maps để xem chỉ đường</p>
-              <button className="btn-gold px-8 py-2 text-xs">XEM BẢN ĐỒ</button>
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="glass-card p-10 md:p-12 border border-luxury/30 text-center backdrop-blur-2xl max-w-lg w-full shadow-3xl">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
+                <MapPin size={32} />
+              </div>
+              <h3 className="text-2xl md:text-3xl font-display font-bold text-title mb-3 tracking-tight">Tìm đường đến với chúng tôi</h3>
+              <p className="text-muted text-sm mb-10 font-light leading-relaxed">
+                Khám phá vị trí đắc địa của {hotelName} <br/> và bắt đầu hành trình nghỉ dưỡng của bạn.
+              </p>
+              <button 
+                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank')}
+                className="btn-gold mx-auto block px-12 py-4 text-xs font-black tracking-widest uppercase hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/20"
+              >
+                XEM BẢN ĐỒ CHI TIẾT
+              </button>
             </div>
           </div>
         </motion.section>

@@ -4,12 +4,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { App, Spin, Modal } from 'antd';
 import { MapPin, Navigation, ChevronRight, Globe, Maximize2, X, Clock, Info } from 'lucide-react';
 import { adminApi, type AttractionDto } from '../../services/adminApi';
+import { useThemeStore } from '../../store/themeStore';
+import ReviewSection from '../../components/common/ReviewSection';
 
 const CATEGORIES = ['Tất cả', 'Lịch sử - Văn hóa', 'Thiên nhiên', 'Ẩm thực - Trải nghiệm', 'Tâm linh'];
 
 const Attractions: React.FC = () => {
   const { message } = App.useApp();
   const [attractions, setAttractions] = useState<AttractionDto[]>([]);
+  const { isDarkMode } = useThemeStore();
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [mapReady, setMapReady] = useState(false);
@@ -17,6 +20,7 @@ const Attractions: React.FC = () => {
   const [selectedAttraction, setSelectedAttraction] = useState<AttractionDto | null>(null);
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<any>(null);
+  const tileLayer = useRef<any>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -71,7 +75,11 @@ const Attractions: React.FC = () => {
           zoomControl: false
         }).setView([10.9575, 106.8427], 13);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        const tileUrl = isDarkMode 
+          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+        tileLayer.current = L.tileLayer(tileUrl, {
           attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
@@ -126,6 +134,16 @@ const Attractions: React.FC = () => {
       }
     }
   }, [mapReady, attractions, filtered]);
+
+  // Update Tile Layer on Theme Change
+  useEffect(() => {
+    if (leafletMap.current && tileLayer.current && (window as any).L) {
+      const tileUrl = isDarkMode 
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+      tileLayer.current.setUrl(tileUrl);
+    }
+  }, [isDarkMode]);
 
   return (
     <div className="min-h-screen bg-[var(--bg-main)] transition-colors duration-300">
@@ -352,87 +370,113 @@ const Attractions: React.FC = () => {
         open={!!selectedAttraction}
         onCancel={() => setSelectedAttraction(null)}
         footer={null}
-        width={1000}
+        width={1100}
         centered
-        closeIcon={<X className="text-muted hover:text-primary transition-colors" />}
+        closeIcon={<X size={24} className="text-white md:text-muted hover:text-primary transition-colors" />}
         className="luxury-modal"
         styles={{
-          mask: { backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.6)' },
-          content: { padding: 0, borderRadius: 32, overflow: 'hidden', backgroundColor: 'var(--card-bg)' }
+          mask: { backdropFilter: 'blur(12px)', backgroundColor: 'rgba(0,0,0,0.7)' },
+          body: { padding: 0, borderRadius: 32, overflow: 'hidden', backgroundColor: 'var(--card-bg)' }
         }}
       >
         {selectedAttraction && (
           <div className="flex flex-col md:flex-row min-h-[600px]">
             {/* Left: Image & Quick Info */}
-            <div className="md:w-1/2 relative bg-subtle">
+            <div className="md:w-5/12 relative bg-subtle overflow-hidden">
               <img 
                 src={selectedAttraction.imageUrl || ''} 
                 alt={selectedAttraction.name}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-8 left-8 right-8 text-white">
-                <span className="bg-primary px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 inline-block">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none" />
+              <div className="absolute bottom-8 left-8 right-8 text-white z-10">
+                <span className="bg-primary px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em] mb-4 inline-block shadow-lg">
                   {selectedAttraction.category}
                 </span>
-                <h2 className="text-3xl md:text-4xl font-display font-bold mb-2 leading-tight">
+                <h2 className="text-3xl md:text-5xl font-display font-bold mb-4 leading-tight">
                   {selectedAttraction.name}
                 </h2>
-                <p className="text-white/80 flex items-center gap-2 text-sm font-light">
-                  <MapPin size={14} className="text-primary" />
-                  {selectedAttraction.address}
-                </p>
+                <div className="flex items-center gap-3 text-white/70 text-sm font-light">
+                   <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                     <MapPin size={14} className="text-primary" />
+                   </div>
+                   {selectedAttraction.address}
+                </div>
               </div>
             </div>
 
             {/* Right: Full Details */}
-            <div className="md:w-1/2 p-8 md:p-12 flex flex-col bg-[var(--card-bg)]">
-              <div className="mb-10">
-                <h3 className="text-xs font-bold text-primary uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                  <Info size={14} /> Giới thiệu địa điểm
-                </h3>
-                <p className="text-muted text-lg leading-relaxed font-light mb-8">
-                  {selectedAttraction.description}
-                </p>
-                <div className="grid grid-cols-2 gap-6 border-t border-luxury pt-8">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Khoảng cách</span>
-                    <span className="text-xl font-display font-bold text-title flex items-center gap-2">
-                      <Navigation size={18} className="text-primary" /> {selectedAttraction.distanceKm} km
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Thời gian di chuyển</span>
-                    <span className="text-xl font-display font-bold text-title flex items-center gap-2">
-                      <Clock size={18} className="text-primary" /> ~{Math.round((selectedAttraction.distanceKm || 0) * 3)} phút
-                    </span>
+            <div className="md:w-7/12 flex flex-col bg-[var(--card-bg)] max-h-[90vh] overflow-y-auto custom-scrollbar">
+              <div className="p-8 md:p-12">
+                <div className="mb-12">
+                  <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.4em] mb-6 flex items-center gap-2">
+                    <Info size={12} /> Giới thiệu địa điểm
+                  </h3>
+                  <p className="text-muted text-lg leading-relaxed font-light mb-10">
+                    {selectedAttraction.description}
+                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-subtle/50 p-6 rounded-[2rem] border border-luxury/30">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                        <Navigation size={20} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Khoảng cách</span>
+                        <span className="text-xl font-display font-bold text-title">{selectedAttraction.distanceKm} km</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                        <Clock size={20} />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Di chuyển</span>
+                        <span className="text-xl font-display font-bold text-title">~{Math.round((selectedAttraction.distanceKm || 0) * 3)} phút</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Map Section */}
-              <div className="mt-auto">
-                <h3 className="text-xs font-bold text-primary uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-                  <Globe size={14} /> Vị trí bản đồ
-                </h3>
-                {selectedAttraction.mapEmbedLink ? (
-                  <div 
-                    className="w-full h-48 rounded-2xl overflow-hidden border border-luxury shadow-inner"
-                    dangerouslySetInnerHTML={{
-                      __html: selectedAttraction.mapEmbedLink.replace(
-                        /width="[^"]*"/,
-                        'width="100%"'
-                      ).replace(
-                        /height="[^"]*"/,
-                        'height="192"'
-                      ),
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-48 rounded-2xl bg-subtle flex items-center justify-center text-muted border border-luxury border-dashed">
-                    <MapPin size={24} className="opacity-20" />
+                {/* Map Section */}
+                <div className="mb-12">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.4em] flex items-center gap-2">
+                      <Globe size={12} /> Vị trí bản đồ
+                    </h3>
+                    {selectedAttraction.latitude && selectedAttraction.longitude && (
+                      <button 
+                        onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${selectedAttraction.latitude},${selectedAttraction.longitude}`, '_blank')}
+                        className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1.5"
+                      >
+                        <Navigation size={12} /> CHỈ ĐƯỜNG NGAY
+                      </button>
+                    )}
                   </div>
-                )}
+                  {selectedAttraction.mapEmbedLink ? (
+                    <div 
+                      className="w-full h-56 rounded-[2rem] overflow-hidden border border-luxury shadow-inner"
+                      dangerouslySetInnerHTML={{
+                        __html: selectedAttraction.mapEmbedLink.replace(
+                          /width="[^"]*"/,
+                          'width="100%"'
+                        ).replace(
+                          /height="[^"]*"/,
+                          'height="224"'
+                        ),
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-56 rounded-[2rem] bg-subtle flex items-center justify-center text-muted border border-luxury border-dashed">
+                      <MapPin size={24} className="opacity-20" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Reviews Section */}
+                <div className="border-t border-luxury pt-12">
+                   <ReviewSection targetType="Attraction" targetId={selectedAttraction.id} />
+                </div>
               </div>
             </div>
           </div>
@@ -445,7 +489,7 @@ const Attractions: React.FC = () => {
         onCancel={() => setShowFullMap(false)}
         footer={null}
         width="90vw"
-        styles={{ content: { padding: 0, borderRadius: 24, overflow: 'hidden' } }}
+        styles={{ body: { padding: 0, borderRadius: 24, overflow: 'hidden' } }}
         centered
         className="luxury-modal-full"
       >

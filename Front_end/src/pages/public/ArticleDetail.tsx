@@ -66,7 +66,7 @@ const ArticleDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9F6F1] pb-24">
+    <div className="min-h-screen bg-[var(--bg-subtle)] pb-24">
       {/* Article Cover */}
       <div className="relative h-[40vh] md:h-[60vh] w-full bg-dark-navy overflow-hidden">
         {article.thumbnailUrl ? (
@@ -86,23 +86,23 @@ const ArticleDetail: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl p-8 md:p-12 shadow-xl shadow-black/5"
+          className="glass-card p-8 md:p-12"
         >
           <div className="flex flex-wrap items-center gap-4 mb-6">
             <span className="bg-primary/10 text-primary px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-widest">
               {article.category.name}
             </span>
-            <div className="flex items-center text-sm text-gray-500 font-medium">
+            <div className="flex items-center text-sm text-[var(--text-muted)] font-medium">
               <Calendar size={16} className="text-primary mr-2" />
               {new Date(article.publishedAt).toLocaleDateString('vi-VN')}
             </div>
-            <div className="flex items-center text-sm text-gray-500 font-medium">
+            <div className="flex items-center text-sm text-[var(--text-muted)] font-medium">
               <User size={16} className="text-primary mr-2" />
               {article.author}
             </div>
           </div>
           
-          <h1 className="text-3xl md:text-5xl font-display font-semibold text-gray-900 leading-tight mb-8">
+          <h1 className="text-3xl md:text-5xl font-display font-semibold text-[var(--text-title)] leading-tight mb-8">
             {article.title}
           </h1>
 
@@ -110,15 +110,15 @@ const ArticleDetail: React.FC = () => {
 
           {/* Article Content */}
           <div 
-            className="prose prose-lg max-w-none text-gray-700
-                      prose-headings:font-display prose-headings:font-semibold prose-headings:text-gray-900
+            className="prose prose-lg max-w-none text-[var(--text-body)]
+                      prose-headings:font-display prose-headings:font-semibold prose-headings:text-[var(--text-title)]
                       prose-a:text-primary hover:prose-a:text-primary-dark
                       prose-img:rounded-2xl prose-img:shadow-md"
             dangerouslySetInnerHTML={{ __html: article.content }}
           />
 
           {attraction && (
-            <div className="mt-12 bg-gray-50 border border-gray-100 rounded-2xl p-6">
+            <div className="mt-12 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-2xl p-6">
               <h3 className="flex items-center gap-2 font-display font-bold text-lg text-title mb-4">
                 <MapPin className="text-primary" /> Điểm đến nhắc tới trong bài
               </h3>
@@ -129,7 +129,7 @@ const ArticleDetail: React.FC = () => {
                 <div>
                   <h4 className="text-xl font-bold text-title">{attraction.name}</h4>
                   <p className="text-muted mt-1">{attraction.address}</p>
-                  <p className="mt-2 text-sm text-gray-600 line-clamp-2">{attraction.description}</p>
+                  <p className="mt-2 text-sm text-[var(--text-body)] line-clamp-2">{attraction.description}</p>
                 </div>
               </div>
             </div>
@@ -142,7 +142,7 @@ const ArticleDetail: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 mt-16 text-center">
         <Link 
           to="/news"
-          className="inline-flex items-center font-bold text-gray-500 hover:text-primary transition-colors tracking-wide uppercase text-sm"
+          className="inline-flex items-center font-bold text-[var(--text-muted)] hover:text-primary transition-colors tracking-wide uppercase text-sm"
         >
           <ChevronLeft size={18} className="mr-2" />
           Các bài viết khác

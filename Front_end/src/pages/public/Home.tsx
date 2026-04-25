@@ -26,7 +26,7 @@ const Home: React.FC = () => {
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-dark-base/60 via-dark-base/40 to-dark-base"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[var(--bg-main)]"></div>
         </div>
 
         <div className="relative z-10 text-center px-4 sm:px-6 max-w-4xl py-20 sm:py-24">
@@ -34,9 +34,9 @@ const Home: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-primary font-bold tracking-[0.2em] sm:tracking-[0.3em] uppercase text-xs sm:text-sm mb-4 sm:mb-6 block"
+            className="text-primary font-bold tracking-[0.2em] sm:tracking-[0.4em] uppercase text-xs sm:text-sm mb-4 sm:mb-6 block"
           >
-            Welcome to KANT Luxury Hotel
+            Chào mừng đến với KANT Luxury Hotel
           </motion.span>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -44,15 +44,15 @@ const Home: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-4xl sm:text-5xl md:text-7xl font-display font-bold text-white mb-6 sm:mb-8 leading-tight"
           >
-            Elegance in Every <span className="text-primary italic">Detail</span>
+            Sự Sang Trọng Trong Từng <span className="text-primary italic font-serif">Chi Tiết</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="text-base sm:text-lg text-gray-300 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed"
+            className="text-base sm:text-lg text-gray-300 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed font-light"
           >
-            Discover a world of refined luxury, where exceptional service meets timeless design. Your sanctuary of comfort awaits.
+            Khám phá thế giới của sự xa hoa thuần khiết, nơi dịch vụ đẳng cấp gặp gỡ thiết kế vượt thời gian. Thiên đường nghỉ dưỡng của bạn đang chờ đợi.
           </motion.p>
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
@@ -61,10 +61,10 @@ const Home: React.FC = () => {
             className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
           >
             <Link to="/rooms" className="btn-gold px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg w-full sm:w-auto">
-              EXPLORE ROOMS
+              KHÁM PHÁ PHÒNG
             </Link>
-            <Link to="/about" className="btn-outline-gold px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg w-full sm:w-auto">
-              OUR STORY
+            <Link to="/about" className="btn-outline-gold px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg w-full sm:w-auto hover:!text-white">
+              CÂU CHUYỆN CỦA CHÚNG TÔI
             </Link>
           </motion.div>
         </div>
@@ -74,15 +74,15 @@ const Home: React.FC = () => {
       <WhyChooseKant />
 
       {/* Featured Rooms */}
-      <section className="py-16 sm:py-20 lg:py-24 bg-slate-50 dark:bg-dark-navy transition-colors duration-300">
+      <section className="py-16 sm:py-20 lg:py-24 bg-subtle transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-12 sm:mb-16">
             <div className="max-w-2xl">
-              <span className="text-primary font-bold tracking-widest uppercase text-xs mb-4 block">Our Selection</span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-[var(--text-title)]">Featured Rooms</h2>
+              <span className="text-primary font-bold tracking-widest uppercase text-xs mb-4 block">Lựa chọn của chúng tôi</span>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-title">Phòng Nổi Bật</h2>
             </div>
             <Link to="/rooms" className="hidden md:flex items-center text-primary font-bold hover:text-gold-light transition-colors">
-              VIEW ALL <ArrowRight size={20} className="ml-2" />
+              XEM TẤT CẢ <ArrowRight size={20} className="ml-2" />
             </Link>
           </div>
 
@@ -109,15 +109,15 @@ const Home: React.FC = () => {
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} size={14} fill="currentColor" />
                     ))}
-                    <span className="ml-2 text-xs font-bold text-[var(--text-muted)]">5.0 Rating</span>
+                    <span className="ml-2 text-xs font-bold text-muted">5.0 Đánh giá</span>
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-display font-bold text-[var(--text-title)] mb-4">{room.name}</h3>
-                  <div className="flex flex-wrap gap-3 sm:gap-4 text-[var(--text-muted)] text-sm mb-6 sm:mb-8">
+                  <h3 className="text-xl sm:text-2xl font-display font-bold text-title mb-4">{room.name}</h3>
+                  <div className="flex flex-wrap gap-3 sm:gap-4 text-muted text-sm mb-6 sm:mb-8">
                     <span className="flex items-center"><Users size={14} className="mr-1" /> {room.capacityLabel}</span>
                   </div>
                   <div className="mt-auto">
                     <Link to={`/rooms/${room.id}`} className="btn-outline-gold w-full block text-center">
-                      VIEW DETAILS
+                      XEM CHI TIẾT
                     </Link>
                   </div>
                 </div>
@@ -142,10 +142,10 @@ const Home: React.FC = () => {
           <div className="absolute inset-0 bg-dark-base/80"></div>
         </div>
         <div className="relative z-10 max-w-4xl mx-auto text-center px-4 sm:px-6">
-          <h2 className="text-3xl sm:text-4xl md:text-6xl font-display font-bold text-white mb-6 sm:mb-8">Ready for an Unforgettable Experience?</h2>
-          <p className="text-lg sm:text-xl text-gray-300 mb-10 sm:mb-12">Book your stay today and enjoy exclusive benefits and the best rates guaranteed.</p>
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-display font-bold text-white mb-6 sm:mb-8">Sẵn sàng cho một trải nghiệm khó quên?</h2>
+          <p className="text-lg sm:text-xl text-gray-300 mb-10 sm:mb-12">Đặt phòng ngay hôm nay để tận hưởng những ưu đãi độc quyền và giá tốt nhất.</p>
           <Link to="/rooms" className="btn-gold px-8 sm:px-12 py-4 sm:py-5 text-lg sm:text-xl inline-flex">
-            BOOK YOUR STAY NOW
+            ĐẶT PHÒNG NGAY BÂY GIỜ
           </Link>
         </div>
       </section>

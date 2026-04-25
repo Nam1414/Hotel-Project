@@ -4,20 +4,20 @@ import { motion } from 'framer-motion';
 const WhyChooseKant: React.FC = () => {
   const features = [
     {
-      title: 'Exceptional Quality',
-      description: 'Every detail is carefully crafted to deliver excellence in every aspect of your stay.'
+      title: 'Chất lượng Vượt trội',
+      description: 'Mọi chi tiết đều được chăm chút tỉ mỉ để mang đến sự hoàn hảo trong mọi khía cạnh của kỳ lưu trú.'
     },
     {
-      title: 'Luxury Experience',
-      description: 'A perfect blend of elegance, comfort, and sophistication designed for the elite.'
+      title: 'Trải nghiệm Xa hoa',
+      description: 'Sự kết hợp hoàn hảo giữa sự sang trọng, thoải mái và tinh tế dành cho giới thượng lưu.'
     },
     {
-      title: 'Personalized Service',
-      description: 'Tailored experiences designed around your unique needs and preferences.'
+      title: 'Dịch vụ Cá nhân hóa',
+      description: 'Những trải nghiệm được thiết kế riêng biệt dựa trên nhu cầu và sở thích độc đáo của bạn.'
     },
     {
-      title: 'Prime Location',
-      description: 'Located in the heart of the city for your ultimate convenience and accessibility.'
+      title: 'Vị trí Đắc địa',
+      description: 'Tọa lạc tại trái tim của thành phố, mang lại sự thuận tiện và dễ dàng tiếp cận tối đa.'
     }
   ];
 
@@ -32,7 +32,7 @@ const WhyChooseKant: React.FC = () => {
               viewport={{ once: true }}
               className="text-xs font-bold text-primary tracking-[0.3em] uppercase mb-4"
             >
-              The KANT Distinction
+              Sự Khác Biệt Tại KANT
             </motion.h3>
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
@@ -41,7 +41,7 @@ const WhyChooseKant: React.FC = () => {
               transition={{ delay: 0.1 }}
               className="text-4xl md:text-6xl font-display font-bold text-title mb-8 leading-tight"
             >
-              Why Choose KANT?
+              Tại sao chọn KANT?
             </motion.h2>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -50,8 +50,7 @@ const WhyChooseKant: React.FC = () => {
               transition={{ delay: 0.2 }}
               className="text-muted text-lg leading-relaxed mb-10 max-w-xl"
             >
-              Experience refined luxury and exceptional service that goes beyond the ordinary. 
-              We create moments that last a lifetime.
+              Trải nghiệm sự sang trọng tinh tế và dịch vụ vượt trội hơn cả mong đợi. Chúng tôi kiến tạo những khoảnh khắc đáng nhớ suốt đời.
             </motion.p>
             <div className="w-20 h-1 bg-primary/30" />
           </div>
