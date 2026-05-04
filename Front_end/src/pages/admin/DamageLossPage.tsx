@@ -49,7 +49,7 @@ const DamageLossPage: React.FC = () => {
     return {
       totalIncidents,
       totalCompensation,
-      latestUpdatedAt: latestUpdatedAt ? formatVietnamTime(latestUpdatedAt as string) : 'Chua co du lieu',
+      latestUpdatedAt: latestUpdatedAt ? formatVietnamTime(latestUpdatedAt as string) : 'Chưa có dữ liệu',
     };
   }, [damages]);
 
@@ -141,7 +141,7 @@ const DamageLossPage: React.FC = () => {
         <Row gutter={[16, 16]}>
           <Col xs={24} md={8}>
             <AntCard className="glass-card">
-              <Statistic title="Tong su co" value={summary.totalIncidents} />
+              <Statistic title="Tổng sự cố" value={summary.totalIncidents} />
             </AntCard>
           </Col>
           <Col xs={24} md={8}>

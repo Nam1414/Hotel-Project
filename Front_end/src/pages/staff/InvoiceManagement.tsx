@@ -56,10 +56,8 @@ const INVOICE_STATUS_LABEL: Record<string, string> = {
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   Cash: 'Tiền mặt',
-  Card: 'Thẻ',
   BankTransfer: 'Chuyển khoản',
   MoMo: 'MoMo',
-  VNPay: 'VNPay',
 };
 
 const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS);
@@ -274,7 +272,7 @@ const InvoiceManagementPage: React.FC = () => {
       const result = await createMoMoPayment(
         selectedInvoice.id,
         customAmount,
-        `Thanh toan hoa don #${selectedInvoice.id} - Kant Hotel`
+        `Thanh toán hóa đơn #${selectedInvoice.id} - Kant Hotel`
       );
       // Mở tab mới với payUrl
       window.open(result.payUrl, '_blank', 'noopener,noreferrer');

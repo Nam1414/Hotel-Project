@@ -179,22 +179,22 @@ namespace HotelManagementAPI.Controllers
             {
                 await _notificationService.SendToRoleByNameAsync(
                     "Admin",
-                    "Booking moi",
-                    $"Co booking moi {bookingCode} cua {guestName}, check-in {checkIn}.",
+                    "Booking mới",
+                    $"Có booking mới {bookingCode} của {guestName}, check-in {checkIn}.",
                     NotificationType.Info,
                     "/admin/bookings");
 
                 await _notificationService.SendToRoleByNameAsync(
                     "Manager",
-                    "Booking moi",
-                    $"Co booking moi {bookingCode} cua {guestName}, check-in {checkIn}.",
+                    "Booking mới",
+                    $"Có booking mới {bookingCode} của {guestName}, check-in {checkIn}.",
                     NotificationType.Info,
                     "/admin/bookings");
 
                 await _notificationService.SendToRoleByNameAsync(
                     "Staff",
-                    "Booking moi",
-                    $"Co booking moi {bookingCode} cua {guestName}, check-in {checkIn}.",
+                    "Booking mới",
+                    $"Có booking mới {bookingCode} của {guestName}, check-in {checkIn}.",
                     NotificationType.Info,
                     "/staff/bookings/manage");
 
@@ -202,8 +202,8 @@ namespace HotelManagementAPI.Controllers
                 {
                     await _notificationService.SendNotificationAsync(
                         booking.UserId.Value,
-                        "Dat phong thanh cong",
-                        $"Booking {bookingCode} da duoc tao thanh cong. Chung toi se sớm xac nhan cho ban.",
+                        "Đặt phòng thành công",
+                        $"Booking {bookingCode} đã được tạo thành công. Chúng tôi sẽ sớm xác nhận cho bạn.",
                         NotificationType.Success,
                         "/profile");
                 }
@@ -227,42 +227,42 @@ namespace HotelManagementAPI.Controllers
                     case "CheckedIn":
                         await _notificationService.SendToRoleByNameAsync(
                             "Admin",
-                            "Khach da check-in",
-                            $"{guestName} da check-in cho booking {bookingCode}.",
+                            "Khách đã check-in",
+                            $"{guestName} đã check-in cho booking {bookingCode}.",
                             NotificationType.Success,
                             "/admin/bookings/in-house");
                         await _notificationService.SendToRoleByNameAsync(
                             "Staff",
-                            "Khach da check-in",
-                            $"{guestName} da check-in cho booking {bookingCode}.",
+                            "Khách đã check-in",
+                            $"{guestName} đã check-in cho booking {bookingCode}.",
                             NotificationType.Success,
                             "/staff/bookings/in-house");
                         break;
                     case "CheckedOut":
                         await _notificationService.SendToRoleByNameAsync(
                             "Admin",
-                            "Khach da check-out",
-                            $"{guestName} da check-out cho booking {bookingCode}.",
+                            "Khách đã check-out",
+                            $"{guestName} đã check-out cho booking {bookingCode}.",
                             NotificationType.Info,
                             "/admin/bookings/check-out");
                         await _notificationService.SendToRoleByNameAsync(
                             "Staff",
-                            "Khach da check-out",
-                            $"{guestName} da check-out cho booking {bookingCode}.",
+                            "Khách đã check-out",
+                            $"{guestName} đã check-out cho booking {bookingCode}.",
                             NotificationType.Info,
                             "/staff/bookings/check-out");
                         break;
                     case "Cancelled":
                         await _notificationService.SendToRoleByNameAsync(
                             "Admin",
-                            "Booking bi huy",
-                            $"Booking {bookingCode} cua {guestName} da bi huy.",
+                            "Booking bị hủy",
+                            $"Booking {bookingCode} của {guestName} đã bị hủy.",
                             NotificationType.Warning,
                             "/admin/bookings");
                         await _notificationService.SendToRoleByNameAsync(
                             "Staff",
-                            "Booking bi huy",
-                            $"Booking {bookingCode} cua {guestName} da bi huy.",
+                            "Booking bị hủy",
+                            $"Booking {bookingCode} của {guestName} đã bị hủy.",
                             NotificationType.Warning,
                             "/staff/bookings/manage");
                         break;
@@ -272,8 +272,8 @@ namespace HotelManagementAPI.Controllers
                 {
                     await _notificationService.SendNotificationAsync(
                         booking.UserId.Value,
-                        "Cap nhat booking",
-                        $"Booking {bookingCode} cua ban da chuyen sang trang thai {status}.",
+                        "Cập nhật booking",
+                        $"Booking {bookingCode} của bạn đã chuyển sang trạng thái {status}.",
                         status == "Cancelled" ? NotificationType.Warning : NotificationType.Info,
                         "/profile");
                 }

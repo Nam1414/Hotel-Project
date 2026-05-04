@@ -33,6 +33,11 @@ const actionColor = (action: string) => {
   if (action === 'DELETE') return 'error';
   if (action === 'UPDATE') return 'warning';
   if (action === 'CREATE') return 'success';
+  if (action === 'LOGIN') return 'blue';
+  if (action === 'LOGIN_FAILED') return 'red';
+  if (action === 'LOGOUT') return 'default';
+  if (action === 'REGISTER') return 'cyan';
+  if (action === 'REFRESH_TOKEN') return 'purple';
   return 'default';
 };
 
@@ -308,6 +313,9 @@ const AuditLogsPage: React.FC = () => {
                   { label: 'Cập nhật (UPDATE)', value: 'UPDATE' },
                   { label: 'Xóa (DELETE)', value: 'DELETE' },
                   { label: 'Đăng nhập (LOGIN)', value: 'LOGIN' },
+                  { label: 'Đăng nhập thất bại', value: 'LOGIN_FAILED' },
+                  { label: 'Đăng xuất (LOGOUT)', value: 'LOGOUT' },
+                  { label: 'Đăng ký (REGISTER)', value: 'REGISTER' },
                 ]}
                 className="custom-select-luxury"
               />

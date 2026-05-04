@@ -335,15 +335,15 @@ public class OrderServicesController : ControllerBase
             {
                 await _notificationService.SendToRoleByNameAsync(
                     "Admin",
-                    "Yeu cau dich vu moi",
-                    $"Khach vua gui don dich vu cho booking {bookingCode}: {summary}.",
+                    "Yêu cầu dịch vụ mới",
+                    $"Khách vừa gửi đơn dịch vụ cho booking {bookingCode}: {summary}.",
                     NotificationType.Info,
                     "/admin/orders");
 
                 await _notificationService.SendToRoleByNameAsync(
                     "Manager",
-                    "Yeu cau dich vu moi",
-                    $"Khach vua gui don dich vu cho booking {bookingCode}: {summary}.",
+                    "Yêu cầu dịch vụ mới",
+                    $"Khách vừa gửi đơn dịch vụ cho booking {bookingCode}: {summary}.",
                     NotificationType.Info,
                     "/admin/orders");
             }
@@ -353,8 +353,8 @@ public class OrderServicesController : ControllerBase
                 {
                     await _notificationService.SendNotificationAsync(
                         booking.UserId.Value,
-                        "Yeu cau dich vu da duoc tao",
-                        $"Don dich vu cho booking {bookingCode} da duoc tao: {summary}.",
+                        "Yêu cầu dịch vụ đã được tạo",
+                        $"Đơn dịch vụ cho booking {bookingCode} đã được tạo: {summary}.",
                         NotificationType.Success,
                         "/profile");
                 }
@@ -374,8 +374,8 @@ public class OrderServicesController : ControllerBase
             {
                 await _notificationService.SendNotificationAsync(
                     order.BookingDetail.Booking.UserId.Value,
-                    "Don dich vu da cap nhat",
-                    $"Don dich vu {summary} cho booking {bookingCode} da cap nhat trang thai thanh {order.Status}.",
+                    "Đơn dịch vụ đã cập nhật",
+                    $"Đơn dịch vụ {summary} cho booking {bookingCode} đã cập nhật trạng thái thành {order.Status}.",
                     NotificationType.Info,
                     "/profile");
             }

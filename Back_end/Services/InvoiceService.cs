@@ -66,7 +66,7 @@ namespace HotelManagementAPI.Services
             // Tính tiền phạt hỏng hóc vật tư
             var detailIds = booking.BookingDetails.Select(bd => bd.Id).ToList();
             var penaltyTotal = await _context.LossAndDamages
-                .Where(ld => ld.BookingDetailId.HasValue && detailIds.Contains(ld.BookingDetailId.Value))
+                .Where(ld => ld.BookingDetailId.HasValue && detailIds.Contains(ld.BookingDetailId.Value) && ld.Status != "cancelled")
                 .SumAsync(ld => ld.PenaltyAmount);
             
             deliveredServiceTotal += penaltyTotal;
@@ -133,7 +133,7 @@ namespace HotelManagementAPI.Services
 
             var detailIds = booking.BookingDetails.Select(bd => bd.Id).ToList();
             var penaltyTotal = await _context.LossAndDamages
-                .Where(ld => ld.BookingDetailId.HasValue && detailIds.Contains(ld.BookingDetailId.Value))
+                .Where(ld => ld.BookingDetailId.HasValue && detailIds.Contains(ld.BookingDetailId.Value) && ld.Status != "cancelled")
                 .SumAsync(ld => ld.PenaltyAmount);
                 
             deliveredServiceTotal += penaltyTotal;
@@ -306,7 +306,7 @@ namespace HotelManagementAPI.Services
                 .Include(ld => ld.Equipment)
                 .Include(ld => ld.RoomInventory)
                     .ThenInclude(ri => ri!.Room)
-                .Where(ld => ld.BookingDetailId.HasValue && detailIds.Contains(ld.BookingDetailId.Value))
+                .Where(ld => ld.BookingDetailId.HasValue && detailIds.Contains(ld.BookingDetailId.Value) && ld.Status != "cancelled")
                 .ToListAsync();
 
             return new InvoiceResponseDto

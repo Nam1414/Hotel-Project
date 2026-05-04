@@ -235,30 +235,30 @@ namespace HotelManagementAPI.Controllers
             try
             {
                 var bookingCode = booking?.BookingCode ?? $"Invoice #{invoiceId}";
-                var paymentLabel = isDepositPayment ? "thanh toan coc" : "thanh toan hoa don";
+                var paymentLabel = isDepositPayment ? "thanh toán cọc" : "thanh toán hóa đơn";
                 var amountText = amount.ToString("N0");
 
                 if (booking?.UserId != null)
                 {
                     await _notificationService.SendNotificationAsync(
                         booking.UserId.Value,
-                        "Thanh toan thanh cong",
-                        $"He thong da ghi nhan {paymentLabel} cho {bookingCode} voi so tien {amountText} VND.",
+                        "Thanh toán thành công",
+                        $"Hệ thống đã ghi nhận {paymentLabel} cho {bookingCode} với số tiền {amountText} VND.",
                         NotificationType.Success,
                         "/profile");
                 }
 
                 await _notificationService.SendToRoleByNameAsync(
                     "Admin",
-                    "Da nhan thanh toan",
-                    $"MoMo da xac nhan {paymentLabel} cho {bookingCode} voi so tien {amountText} VND.",
+                    "Đã nhận thanh toán",
+                    $"MoMo đã xác nhận {paymentLabel} cho {bookingCode} với số tiền {amountText} VND.",
                     NotificationType.Success,
                     "/admin/invoices");
 
                 await _notificationService.SendToRoleByNameAsync(
                     "Staff",
-                    "Da nhan thanh toan",
-                    $"MoMo da xac nhan {paymentLabel} cho {bookingCode} voi so tien {amountText} VND.",
+                    "Đã nhận thanh toán",
+                    $"MoMo đã xác nhận {paymentLabel} cho {bookingCode} với số tiền {amountText} VND.",
                     NotificationType.Success,
                     "/staff/invoices");
             }

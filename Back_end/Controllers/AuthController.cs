@@ -17,13 +17,15 @@ public class AuthController : ControllerBase
     private readonly ITokenService _tokenService;
     private readonly IConfiguration _config;
     private readonly IAuditLogService _auditLogService;
+    private readonly IEmailService _emailService;
 
-    public AuthController(AppDbContext context, ITokenService tokenService, IConfiguration config, IAuditLogService auditLogService)
+    public AuthController(AppDbContext context, ITokenService tokenService, IConfiguration config, IAuditLogService auditLogService, IEmailService emailService)
     {
         _context = context;
         _tokenService = tokenService;
         _config = config;
         _auditLogService = auditLogService;
+        _emailService = emailService;
     }
 
     // POST /api/Auth/register
@@ -70,13 +72,22 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(u => u.Email == dto.Email);
 
         if (user == null)
+        {
+            await _auditLogService.LogAsync("LOGIN_FAILED", nameof(User), new { email = dto.Email }, null, null, $"Đăng nhập thất bại - email không tồn tại: {dto.Email}");
             return Unauthorized(new { message = "Email hoặc mật khẩu không đúng" });
+        }
 
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+        {
+            await _auditLogService.LogAsync("LOGIN_FAILED", nameof(User), new { user.Id, user.Email }, null, null, $"Đăng nhập thất bại - sai mật khẩu: {user.Email}");
             return Unauthorized(new { message = "Email hoặc mật khẩu không đúng" });
+        }
 
         if (!user.Status)
+        {
+            await _auditLogService.LogAsync("LOGIN_FAILED", nameof(User), new { user.Id, user.Email }, null, null, $"Đăng nhập thất bại - tài khoản bị khóa: {user.Email}");
             return Unauthorized(new { message = "Tài khoản đã bị khóa" });
+        }
 
         // Query permissions riêng — tránh null chain
         var permissions = await _context.RolePermissions
@@ -104,15 +115,6 @@ public class AuthController : ControllerBase
             user.Role?.Name ?? "",
             permissions
         ));
-    }
-
-    // ⚠️ CHỈ DÙNG ĐỂ LẤY HASH — XÓA SAU KHI DÙNG
-    [HttpGet("generate-hash")]
-    [AllowAnonymous]
-    public IActionResult GenerateHash([FromQuery] string password)
-    {
-        var hash = BCrypt.Net.BCrypt.HashPassword(password);
-        return Ok(new { password, hash });
     }
 
 
@@ -187,6 +189,88 @@ public class AuthController : ControllerBase
             }
         }
         return Ok(new { message = "Đăng xuất thành công" });
+    }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            return Ok(new { message = "Nếu email này tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu." });
+
+        var secret = _config["JwtSettings:Secret"] + user.PasswordHash;
+        var securityKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secret));
+        var credentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(securityKey, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, user.Email)
+        };
+
+        var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+            issuer: _config["JwtSettings:Issuer"],
+            audience: _config["JwtSettings:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(15),
+            signingCredentials: credentials);
+
+        var tokenString = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+        var resetLink = $"http://localhost:5173/reset-password?token={tokenString}&email={user.Email}";
+        
+        var emailBody = $@"
+        <h3>Yêu cầu đặt lại mật khẩu</h3>
+        <p>Xin chào {user.FullName},</p>
+        <p>Bạn đã yêu cầu đặt lại mật khẩu tại hệ thống quản lý khách sạn. Vui lòng click vào link bên dưới để tạo mật khẩu mới:</p>
+        <a href='{resetLink}'>Đặt lại mật khẩu</a>
+        <p>Link này sẽ hết hạn sau 15 phút. Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>";
+
+        await _emailService.SendEmailAsync(user.Email, "Hotel Management - Đặt lại mật khẩu", emailBody);
+        await _auditLogService.LogAsync("FORGOT_PASSWORD", nameof(User), new { user.Id, user.Email }, null, null, $"Gửi email reset password: {user.Email}");
+
+        return Ok(new { message = "Nếu email này tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu." });
+    }
+
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            return BadRequest(new { message = "Token hoặc email không hợp lệ." });
+
+        var secret = _config["JwtSettings:Secret"] + user.PasswordHash;
+        var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var key = System.Text.Encoding.UTF8.GetBytes(secret);
+
+        try
+        {
+            tokenHandler.ValidateToken(dto.Token, new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key),
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidIssuer = _config["JwtSettings:Issuer"],
+                ValidAudience = _config["JwtSettings:Audience"],
+                ClockSkew = TimeSpan.Zero
+            }, out Microsoft.IdentityModel.Tokens.SecurityToken validatedToken);
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            await _context.SaveChangesAsync();
+            await _auditLogService.LogAsync("RESET_PASSWORD", nameof(User), new { user.Id, user.Email }, null, null, $"Đặt lại mật khẩu thành công: {user.Email}");
+
+            return Ok(new { message = "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập bằng mật khẩu mới." });
+        }
+        catch (Microsoft.IdentityModel.Tokens.SecurityTokenExpiredException)
+        {
+            return BadRequest(new { message = "Link đặt lại mật khẩu đã hết hạn." });
+        }
+        catch (Exception)
+        {
+            return BadRequest(new { message = "Link đặt lại mật khẩu không hợp lệ." });
+        }
     }
 
     private void SetRefreshTokenCookie(string refreshToken)

@@ -104,6 +104,7 @@ var cloudinaryAccount = new Account(
 builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 
 // 4. Services
+builder.Services.AddMemoryCache(); // Đăng ký Caching
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ISlugService, SlugService>();
@@ -200,6 +201,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseMiddleware<ExceptionMiddleware>();
 app.UseCors("AllowAll");
 // app.UseHttpsRedirection();
 

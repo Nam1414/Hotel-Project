@@ -338,6 +338,16 @@ public class EquipmentsController : ControllerBase
         }
 
         await _context.SaveChangesAsync();
+
+        if (record.BookingDetailId.HasValue)
+        {
+            var bookingDetail = await _context.BookingDetails.FindAsync(record.BookingDetailId.Value);
+            if (bookingDetail != null && bookingDetail.BookingId.HasValue)
+            {
+                await _invoiceService.RecalculateInvoiceAsync(bookingDetail.BookingId.Value);
+            }
+        }
+
         await NotifyDamageStatusUpdatedAsync(record);
         return Ok(new { message = "Cập nhật trạng thái thành công", record.Status });
     }

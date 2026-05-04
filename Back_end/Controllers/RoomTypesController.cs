@@ -5,6 +5,7 @@ using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HotelManagementAPI.Controllers;
 
@@ -16,21 +17,29 @@ public class RoomTypesController : ControllerBase
     private readonly ICloudinaryService _cloudinaryService;
     private readonly AppDbContext _context;
     private readonly IAuditLogService _auditLogService;
+    private readonly IMemoryCache _cache;
+    private const string CACHE_KEY = "roomTypesList";
 
-    public RoomTypesController(IRoomService roomService, ICloudinaryService cloudinaryService, AppDbContext context, IAuditLogService auditLogService)
+    public RoomTypesController(IRoomService roomService, ICloudinaryService cloudinaryService, AppDbContext context, IAuditLogService auditLogService, IMemoryCache cache)
     {
         _roomService = roomService;
         _cloudinaryService = cloudinaryService;
         _context = context;
         _auditLogService = auditLogService;
+        _cache = cache;
     }
 
     [HttpGet]
     [AllowAnonymous]
     public async Task<IActionResult> GetAll()
     {
-        var result = await _roomService.GetAllRoomTypesAsync();
-        return Ok(result);
+        if (!_cache.TryGetValue(CACHE_KEY, out IEnumerable<RoomTypeDto>? roomTypes))
+        {
+            roomTypes = await _roomService.GetAllRoomTypesAsync();
+            var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromHours(1));
+            _cache.Set(CACHE_KEY, roomTypes, cacheOptions);
+        }
+        return Ok(roomTypes);
     }
 
     [HttpGet("{id}")]
@@ -47,6 +56,7 @@ public class RoomTypesController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateRoomTypeDto dto)
     {
         var result = await _roomService.CreateRoomTypeAsync(dto);
+        _cache.Remove(CACHE_KEY); // Invalidate cache
         await _auditLogService.LogAsync("CREATE", nameof(RoomType), new { roomTypeId = result.Id, result.Name }, null, dto, $"Tạo loại phòng {result.Name}.");
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
@@ -57,6 +67,7 @@ public class RoomTypesController : ControllerBase
     {
         var result = await _roomService.UpdateRoomTypeAsync(id, dto);
         if (result == null) return NotFound(new { message = "Loại phòng không tồn tại" });
+        _cache.Remove(CACHE_KEY); // Invalidate cache
         await _auditLogService.LogAsync("UPDATE", nameof(RoomType), new { roomTypeId = id, result.Name }, dto, result, $"Cập nhật loại phòng {result.Name}.");
         return Ok(result);
     }
@@ -67,6 +78,7 @@ public class RoomTypesController : ControllerBase
     {
         var result = await _roomService.DeleteRoomTypeAsync(id);
         if (!result) return NotFound(new { message = "Loại phòng không tồn tại" });
+        _cache.Remove(CACHE_KEY); // Invalidate cache
         await _auditLogService.LogAsync("DELETE", nameof(RoomType), new { roomTypeId = id }, null, null, $"Vô hiệu hóa loại phòng #{id}.");
         return Ok(new { message = "Đã vô hiệu hóa loại phòng thành công" });
     }

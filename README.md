@@ -1,148 +1,223 @@
-## 🏨 Hệ Thống Quản Lý Khách Sạn
+# 🏨 KANT Hotel Management System
 
-Đây là đồ án web quản lý khách sạn theo mô hình **full-stack** gồm:
+<div align="center">
 
-- **Backend**: ASP.NET Core Web API (.NET 10)
-- **Frontend**: React + Vite + TypeScript
-- **Database**: SQL Server
-- **Realtime**: SignalR
+![Version](https://img.shields.io/badge/version-1.0.0-gold)
+![.NET](https://img.shields.io/badge/.NET-10.0-blue)
+![React](https://img.shields.io/badge/React-19-61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6)
+![SQL Server](https://img.shields.io/badge/SQL%20Server-2019+-CC2927)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-Dự án được xây dựng theo hướng phục vụ đồ án sinh viên, tập trung vào các nghiệp vụ thực tế của một khách sạn: đặt phòng, quản lý phòng, dịch vụ, hóa đơn, phân quyền và thống kê.
-
----
-
-## 1. Mục tiêu dự án
-
-Hệ thống giúp:
-
-- Khách hàng tìm kiếm và đặt phòng trực tuyến
-- Nhân viên theo dõi tình trạng phòng, dịch vụ và booking
-- Quản trị viên quản lý người dùng, phân quyền, doanh thu và nội dung hệ thống
-- Đồng bộ dữ liệu và cập nhật trạng thái theo thời gian thực
+**Hệ thống quản lý khách sạn toàn diện**
+</div>
 
 ---
 
-## 2. Công nghệ sử dụng
+## 📖 Giới thiệu
 
-### Backend
+**KANT Hotel Management System** là một hệ thống ERP (Enterprise Resource Planning) quản lý khách sạn được xây dựng theo kiến trúc **Full-Stack hiện đại**, bao gồm:
 
-- ASP.NET Core Web API
-- Entity Framework Core
-- SQL Server
-- JWT Authentication
-- BCrypt.Net-Next
-- SignalR
-- Swagger / OpenAPI
-- CloudinaryDotNet
-- MoMo payment integration
+- 🖥️ **Backend**: ASP.NET Core Web API (.NET 10)
+- ⚛️ **Frontend**: React 19 + Vite + TypeScript
+- 🗄️ **Database**: Microsoft SQL Server
+- 🔌 **Realtime**: SignalR (WebSocket)
 
-### Frontend
-
-- React 19
-- Vite
-- TypeScript
-- Redux Toolkit
-- React Router
-- Axios
-- Ant Design
-- Tailwind CSS
-- Framer Motion
-- Recharts
-- Lucide React
+Hệ thống phục vụ đầy đủ 3 vai trò: **Khách hàng**, **Nhân viên** và **Quản trị viên**, với giao diện sang trọng theo phong cách Luxury Hotel.
 
 ---
 
-## 3. Chức năng chính
+## ✨ Tính năng nổi bật
 
-### 3.1. Khách hàng
-
-- Xem trang chủ, phòng, bài viết, điểm tham quan và dịch vụ
-- Tìm kiếm, lọc và xem chi tiết phòng
-- Đặt phòng trực tuyến
-- Thanh toán đặt cọc hoặc thanh toán theo nghiệp vụ của hệ thống
-- Đánh giá dịch vụ / phòng sau khi sử dụng
-- Nhận thông báo cập nhật trạng thái
-
-### 3.2. Nhân viên
-
-- Cập nhật trạng thái phòng
-- Quản lý dọn phòng và theo dõi tình trạng buồng phòng
-- Xử lý đơn dịch vụ của khách
-- Theo dõi thông báo theo thời gian thực
-
-### 3.3. Quản trị viên
-
-- Quản lý tài khoản, vai trò và phân quyền
-- Quản lý phòng, loại phòng, tiện ích và hình ảnh
-- Quản lý booking, hóa đơn, dịch vụ và minibar
-- Quản lý thiết bị, tồn kho, hư hỏng và mất mát
-- Quản lý bài viết, danh mục, điểm tham quan và nội dung website
-- Theo dõi thống kê, báo cáo, audit log và thông báo hệ thống
+| Tính năng | Mô tả |
+|---|---|
+| 🔐 **Xác thực & Phân quyền** | JWT + Refresh Token, RBAC động theo Permission |
+| 📅 **Đặt phòng trực tuyến** | Khách hàng đặt phòng, chọn ngày, áp voucher |
+| 💳 **Thanh toán MoMo** | Tích hợp cổng thanh toán MoMo thực tế |
+| 🔔 **Thông báo Real-time** | SignalR push notification theo role |
+| 📊 **Dashboard & Thống kê** | Biểu đồ doanh thu, tỷ lệ lấp đầy phòng |
+| 🧾 **Hóa đơn & In ấn** | Tạo, quản lý và in hóa đơn PDF |
+| 📦 **Import Excel** | Nhập hàng loạt dữ liệu vật tư qua file .xlsx/.csv |
+| 🛎️ **Dịch vụ phòng** | Khách gọi dịch vụ, nhân viên xử lý real-time |
+| 🏆 **Hạng thành viên** | Tích điểm loyalty, tự động nâng hạng |
+| 📜 **Nhật ký hệ thống** | Audit log toàn bộ hành động, xuất JSON |
+| 🔧 **Đền bù hỏng hóc** | Quản lý vật tư hư hỏng, trừ trực tiếp hóa đơn |
+| 🌐 **CMS Nội dung** | Quản lý tin tức, địa điểm, tiện ích |
 
 ---
 
-## 4. Cấu trúc thư mục
+## 🏗️ Kiến trúc hệ thống
 
-```text
+```
 Hotel-Project/
-├── Back_end/
-│   ├── Controllers/        # API endpoints
-│   ├── DTOs/               # Data Transfer Objects
-│   ├── Models/             # Entity models
-│   ├── Services/           # Business logic
-│   ├── Data/               # DbContext, seeders, initializer
-│   ├── Hubs/               # SignalR hubs
-│   ├── Middleware/         # Middleware xử lý request
-│   └── sql/DBHotel.sql     # Script tạo database
-├── Front_end/
-│   ├── src/
-│   │   ├── components/     # Component dùng lại
-│   │   ├── pages/          # Các trang giao diện
-│   │   ├── store/          # Redux store
-│   │   └── services/       # Gọi API
-└── README.md
+├── Back_end/                    # ASP.NET Core Web API
+│   ├── Controllers/             # 28 API Controllers
+│   ├── Services/                # 29 Business Logic Services
+│   ├── Models/                  # 33 Entity Models
+│   ├── DTOs/                    # Data Transfer Objects
+│   ├── Data/                    # DbContext, Seeders, Initializers
+│   ├── Hubs/                    # SignalR NotificationHub
+│   ├── Middleware/              # Exception, Permission, RefreshToken
+│   ├── Configurations/          # MoMo, Settings configs
+│   └── sql/DBHotel.sql          # Script tạo database
+│
+└── Front_end/                   # React + Vite + TypeScript
+    └── src/
+        ├── pages/
+        │   ├── public/          # 11 trang khách hàng
+        │   ├── admin/           # 19 trang quản trị
+        │   ├── staff/           # 4 trang nhân viên
+        │   └── auth/            # Đăng nhập, Đăng ký, Quên MK
+        ├── components/          # Components tái sử dụng
+        ├── store/               # Redux Toolkit state
+        ├── services/            # Axios API calls
+        ├── hooks/               # Custom React hooks
+        ├── routes/              # Routing + ProtectedRoute
+        └── utils/               # Tiện ích dùng chung
 ```
 
 ---
 
-## 5. Yêu cầu hệ thống
+## 🛠️ Công nghệ sử dụng
 
-Trước khi chạy dự án, cần có:
+### Backend
+| Công nghệ | Phiên bản | Mục đích |
+|---|---|---|
+| ASP.NET Core | .NET 10 | Web API Framework |
+| Entity Framework Core | 9.x | ORM Database |
+| SQL Server | 2019+ | Cơ sở dữ liệu |
+| JWT Bearer | — | Xác thực Token |
+| BCrypt.Net-Next | — | Mã hóa mật khẩu |
+| SignalR | — | Realtime Notification |
+| Cloudinary SDK | — | Lưu trữ hình ảnh |
+| MoMo Payment API | — | Cổng thanh toán |
+| Swagger / OpenAPI | — | Tài liệu API |
+| MemoryCache | — | Caching |
 
-- .NET SDK 10.0 trở lên
-- Node.js 18 trở lên
-- SQL Server
-- npm
-- Visual Studio / VS Code / Rider
+### Frontend
+| Công nghệ | Phiên bản | Mục đích |
+|---|---|---|
+| React | 19 | UI Framework |
+| Vite | 6.x | Build Tool |
+| TypeScript | 5.x | Type Safety |
+| Redux Toolkit | — | State Management |
+| React Router | v7 | Routing |
+| Axios | — | HTTP Client |
+| Ant Design | 5.x | UI Component Library |
+| Tailwind CSS | 3.x | Utility CSS |
+| Framer Motion | — | Animations |
+| Recharts | — | Biểu đồ thống kê |
+| Lucide React | — | Icon Library |
+| SignalR Client | — | Realtime Connection |
+| dayjs | — | Xử lý ngày tháng |
 
 ---
 
-## 6. Hướng dẫn cài đặt và chạy dự án
+## 📋 Chức năng chi tiết
 
-### 6.1. Tải mã nguồn
+### 👤 Khách hàng (Public)
+- Xem trang chủ, phòng, dịch vụ, điểm tham quan, tin tức, giới thiệu
+- Tìm kiếm và lọc phòng theo ngày, loại, giá
+- Xem chi tiết phòng với ảnh đẹp, tiện ích
+- **Đặt phòng trực tuyến** với áp dụng mã voucher
+- **Thanh toán đặt cọc qua MoMo**
+- Xem lịch sử đặt phòng, trạng thái booking
+- Gọi dịch vụ phòng trong thời gian lưu trú
+- Đánh giá phòng / dịch vụ sau check-out
+- Nhận thông báo real-time qua trình duyệt
+- Quản lý hồ sơ cá nhân, đổi mật khẩu, avatar
+- Xem tích điểm và hạng thành viên
+
+### 🧑‍💼 Nhân viên (Staff)
+- Theo dõi danh sách đặt phòng theo trạng thái
+- Xử lý Check-in / Check-out khách hàng
+- Cập nhật trạng thái dọn phòng theo thời gian thực
+- Quản lý đơn gọi dịch vụ phòng (nhận, xử lý, hoàn thành)
+- Quản lý hóa đơn và thanh toán
+- Cộng minibar / dịch vụ phát sinh vào hóa đơn
+- Nhận thông báo ngay khi có booking hoặc yêu cầu mới
+
+### 👑 Quản trị viên (Admin)
+- **Dashboard**: Thống kê doanh thu, tỷ lệ lấp đầy, khách hàng mới
+- **Phân tích**: Biểu đồ doanh thu theo tháng, loại phòng, phương thức thanh toán
+- **Người dùng**: CRUD, khóa/mở tài khoản, phân role
+- **Phòng**: Tạo hàng loạt, đồng bộ vật tư, quản lý ảnh, trạng thái
+- **Loại phòng**: Quản lý hạng phòng, tiện ích, ảnh đại diện
+- **Booking**: Toàn quyền quản lý, đổi phòng, tách booking
+- **Hóa đơn**: Xem, tạo thanh toán (Tiền mặt / Chuyển khoản / MoMo), in PDF
+- **Vật tư**: CRUD, Import Excel hàng loạt, quản lý kho
+- **Đền bù hỏng hóc**: Ghi nhận, xác nhận, hủy — tự động cập nhật hóa đơn
+- **Dịch vụ & Voucher**: Quản lý dịch vụ, tạo mã khuyến mãi
+- **Hạng thành viên**: Cấu hình ngưỡng điểm, quyền lợi
+- **Phân quyền**: Quản lý Role, gán/gỡ Permission động
+- **Nội dung**: CMS tin tức, điểm tham quan, tiện ích khách sạn
+- **Nhật ký**: Audit log toàn bộ thao tác, lọc và xuất JSON
+- **Cài đặt hệ thống**: Cấu hình thông tin khách sạn
+
+---
+
+## 🚀 Hướng dẫn cài đặt
+
+### Yêu cầu hệ thống
+- ✅ .NET SDK **10.0** trở lên
+- ✅ Node.js **18.x** trở lên + npm
+- ✅ SQL Server **2019** trở lên
+- ✅ Visual Studio 2022 / VS Code / Rider
+
+### Bước 1 — Clone dự án
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Nam1414/Hotel-Project.git
 cd Hotel-Project
 ```
 
-### 6.2. Cài đặt cơ sở dữ liệu
+### Bước 2 — Thiết lập Database
 
-1. Mở SQL Server
-2. Chạy file `Back_end/sql/DBHotel.sql` để tạo database và dữ liệu mẫu nếu có
-3. Kiểm tra lại chuỗi kết nối trong `Back_end/appsettings.json`
+1. Mở **SQL Server Management Studio (SSMS)**
+2. Chạy file script:
+   ```
+   Back_end/sql/DBHotel.sql
+   ```
+3. Kiểm tra database `HotelManagementDB` đã được tạo
 
-Ví dụ:
+### Bước 3 — Cấu hình Backend
+
+Mở file `Back_end/appsettings.json` và cập nhật các thông số:
 
 ```json
 {
   "ConnectionStrings": {
     "DefaultConnection": "Server=.;Database=HotelManagementDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "JwtSettings": {
+    "Secret": "your-super-secret-key-minimum-32-chars",
+    "Issuer": "HotelManagementAPI",
+    "Audience": "HotelManagementClient",
+    "ExpiryMinutes": 60
+  },
+  "Cloudinary": {
+    "CloudName": "your-cloud-name",
+    "ApiKey": "your-api-key",
+    "ApiSecret": "your-api-secret"
+  },
+  "MoMo": {
+    "PartnerCode": "your-partner-code",
+    "AccessKey": "your-access-key",
+    "SecretKey": "your-secret-key",
+    "PaymentUrl": "https://test-payment.momo.vn/v2/gateway/api/create",
+    "ReturnUrl": "http://localhost:5173",
+    "NotifyUrl": "https://your-ngrok-url/api/invoices/momo-notify"
+  },
+  "EmailSettings": {
+    "SmtpHost": "smtp.gmail.com",
+    "SmtpPort": 587,
+    "SenderEmail": "your-email@gmail.com",
+    "SenderPassword": "your-app-password"
   }
 }
 ```
 
-### 6.3. Chạy Backend
+### Bước 4 — Chạy Backend
 
 ```bash
 cd Back_end
@@ -150,9 +225,10 @@ dotnet restore
 dotnet run
 ```
 
-Backend thường chạy theo cấu hình trong `launchSettings.json` hoặc `appsettings.json`.
+> Backend mặc định chạy tại: `http://localhost:5052`
+> Swagger UI: `http://localhost:5052` (truy cập trực tiếp root)
 
-### 6.4. Chạy Frontend
+### Bước 5 — Chạy Frontend
 
 ```bash
 cd Front_end
@@ -160,124 +236,135 @@ npm install
 npm run dev
 ```
 
-Sau đó mở trình duyệt theo địa chỉ Vite hiển thị, thường là:
+> Frontend mặc định chạy tại: `http://localhost:5173`
 
-```bash
-http://localhost:5173
+---
+
+## 🔑 Tài khoản Demo
+
+| Vai trò | Email | Mật khẩu |
+|---|---|---|
+| **Admin** | admin@kant.com | Admin@123 |
+| **Manager** | manager@kant.com | Manager@123 |
+| **Staff** | staff@kant.com | Staff@123 |
+| **Khách hàng** | guest@kant.com | Guest@123 |
+
+> ℹ️ Dữ liệu mẫu được tự động seed khi chạy lần đầu trong môi trường Development.
+
+---
+
+## 🗄️ Cơ sở dữ liệu
+
+Hệ thống sử dụng **33 bảng** chính:
+
+```
+Users, Roles, Permissions, RolePermissions
+Rooms, RoomTypes, RoomImages, RoomInventory, RoomCleanings, RoomTransferLogs
+Bookings, BookingDetails
+Invoices, Payments
+OrderServices, OrderServiceDetails
+Equipments, LossAndDamages
+Services, ServiceCategories
+Vouchers, Memberships
+Reviews, Notifications, AuditLogs
+Articles, ArticleCategories, Attractions, Amenities
+SystemSettings
 ```
 
 ---
 
-## 7. Cấu hình quan trọng
+## 🔐 Bảo mật
 
-Tùy vào môi trường, bạn có thể cần cấu hình thêm các thông tin sau trong `Back_end/appsettings.json` hoặc `Back_end/appsettings.Development.json`:
-
-- Chuỗi kết nối SQL Server
-- JWT Secret / Issuer / Audience
-- Cloudinary keys
-- MoMo payment credentials
-- Email SMTP settings
-
-Nếu frontend gọi API khác cổng, hãy kiểm tra lại địa chỉ backend trong phần cấu hình API của frontend.
+- **JWT Authentication** với Access Token (60 phút) + Refresh Token (7 ngày)
+- **RBAC** (Role-Based Access Control) — Phân quyền chi tiết theo Permission
+- **BCrypt** mã hóa mật khẩu với salt tự động
+- **Middleware bảo vệ** toàn bộ route Admin/Staff
+- **Audit Log** ghi lại mọi thao tác quan trọng (bao gồm đăng nhập thất bại)
+- **CORS** chỉ cho phép origin frontend
 
 ---
 
-## 8. API và tài liệu
+## 📡 API Endpoints chính
 
-Backend có hỗ trợ Swagger để kiểm thử API.
+| Nhóm | Prefix | Mô tả |
+|---|---|---|
+| Auth | `/api/Auth` | Đăng nhập, đăng ký, refresh, quên mật khẩu |
+| Booking | `/api/Booking` | Đặt phòng, cập nhật trạng thái |
+| Rooms | `/api/Rooms` | Quản lý phòng |
+| Invoices | `/api/invoices` | Hóa đơn, thanh toán MoMo |
+| Equipments | `/api/Equipments` | Vật tư, import Excel, đền bù |
+| OrderServices | `/api/OrderServices` | Dịch vụ phòng |
+| Users | `/api/UserManagement` | Quản lý người dùng |
+| Roles | `/api/Roles` | Vai trò & phân quyền |
+| AuditLogs | `/api/AuditLogs` | Nhật ký hệ thống |
+| Notifications | `/api/Notifications` | Thông báo |
 
-Khi chạy backend, mở:
+> 📖 Xem đầy đủ tại Swagger: `http://localhost:5052`
 
-```bash
-https://localhost:<port>/swagger
+---
+
+## 📁 Luồng nghiệp vụ chính
+
+```
+Khách hàng đặt phòng
+    ↓ Hệ thống tạo Booking (Pending)
+    ↓ Admin/Staff xác nhận → Booking (Confirmed)
+    ↓ Khách check-in → Booking (CheckedIn)
+    ↓ Gọi dịch vụ / Minibar → OrderService
+    ↓ Check-out → Booking (CheckedOut)
+    ↓ Tạo hóa đơn (Invoice) — tự động tính:
+        • Tiền phòng
+        • Tiền dịch vụ đã hoàn thành
+        • Tiền đền bù hỏng hóc (nếu có)
+        • Giảm giá Voucher
+        • Thuế VAT 10%
+        • Trừ tiền cọc đã đặt
+    ↓ Thanh toán (Tiền mặt / Chuyển khoản / MoMo)
+    ↓ In hóa đơn PDF
+    ↓ Cộng điểm Loyalty cho khách thành viên
 ```
 
-hoặc
+---
 
-```bash
-http://localhost:<port>/swagger
-```
+## 🎨 Giao diện
+
+Hệ thống có 3 phân hệ giao diện riêng biệt:
+
+- **🌐 Public (Khách hàng)**: Giao diện khách sạn sang trọng, dark mode, hiệu ứng glassmorphism
+- **🛡️ Admin Panel**: Dashboard quản trị đầy đủ công cụ, biểu đồ realtime
+- **🧑‍💼 Staff Panel**: Giao diện tối giản, tập trung vào tác vụ nhanh
 
 ---
 
-## 9. Môi trường phát triển
+## 🤝 Đóng góp
 
-### Backend
-
-- `Back_end/Program.cs`: cấu hình dịch vụ, middleware và route
-- `Back_end/Controllers/`: các API chính
-- `Back_end/Services/`: xử lý nghiệp vụ
-- `Back_end/Hubs/`: realtime notification
-
-### Frontend
-
-- `Front_end/src/pages/`: các trang giao diện
-- `Front_end/src/components/`: component tái sử dụng
-- `Front_end/src/store/`: quản lý state
-- `Front_end/src/services/`: gọi API backend
+Đây là dự án **đồ án sinh viên** — không nhận đóng góp từ bên ngoài trong giai đoạn bảo vệ.
 
 ---
 
-## 10. Tính năng nổi bật
+## 📞 Thông tin nhóm
 
-- Hệ thống quản lý khách sạn theo nghiệp vụ thực tế
-- Phân quyền rõ ràng theo vai trò
-- Realtime notification bằng SignalR
-- Tích hợp thanh toán và dịch vụ đám mây
-- Giao diện hiện đại, phù hợp đồ án sinh viên
-- Có cấu trúc tách biệt backend / frontend rõ ràng
-
----
-
-## 11. Đề xuất khi làm báo cáo đồ án
-
-Khi viết báo cáo, bạn có thể trình bày theo các phần sau:
-
-1. Lý do chọn đề tài
-2. Mục tiêu và phạm vi dự án
-3. Công nghệ sử dụng
-4. Phân tích yêu cầu hệ thống
-5. Thiết kế cơ sở dữ liệu
-6. Thiết kế giao diện
-7. Chức năng hệ thống
-8. Kiểm thử
-9. Kết luận và hướng phát triển
+| | |
+|---|---|
+| **Tên dự án** | KANT Hotel Management System |
+| **Nhóm thực hiện** | KANT Team |
+| **Trường** | Đại học Lạc Hồng |
+| **Khoa** | Công nghệ Thông tin |
+| **Lớp** | 23CT111 |
+| **Email** | khatong072@gmail.com |
 
 ---
 
-## 12. Hướng phát triển
+## 📄 License
 
-- Tích hợp thanh toán online đầy đủ hơn
-- Tối ưu dashboard phân tích dữ liệu
-- Bổ sung email / SMS marketing
-- Tăng cường kiểm thử tự động
-- Nâng cấp trải nghiệm mobile
+Dự án được phát triển phục vụ mục đích **học tập và nghiên cứu**.
 
 ---
 
-## 13. Thông tin liên hệ
+<div align="center">
 
-Dự án được phát triển phục vụ mục đích học tập và đồ án sinh viên.
+**© 2026 KANT Team · Đại học Lạc Hồng**
 
+*Chúc buổi bảo vệ đồ án thành công rực rỡ! 🎓*
 
-- Tên dự án: Kant Hotel Management
-- Tên nhóm thực hiện: KANT
-- Lớp :23CT111 / khoa: Công nghệ thông tin / trường: Đại học Lạc Hồng
-- Email liên hệ: khatong072@gmail.com
-
----
-
-## 14. Ghi chú
-
-Một số chức năng của hệ thống có thể phụ thuộc vào dữ liệu mẫu, file cấu hình hoặc dịch vụ bên ngoài như Cloudinary, MoMo và SMTP.
-
-Nếu chạy lần đầu, hãy kiểm tra kỹ:
-
-- Database đã được tạo chưa
-- Connection string đã đúng chưa
-- Frontend đã trỏ đúng API backend chưa
-- Các biến môi trường / appsettings đã đầy đủ chưa
-
----
-
-**Sản phẩm được thực hiện bới KANT Team**
+</div>

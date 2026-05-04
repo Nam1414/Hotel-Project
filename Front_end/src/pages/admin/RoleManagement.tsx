@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Tag, Button, Space, Modal, Form, Input, Popconfirm, Select, Checkbox, Divider, App } from 'antd';
-import { Shield, Edit2, ShieldAlert, Plus, Key } from 'lucide-react';
+import { Shield, Edit2, ShieldAlert, Plus, Key, Search } from 'lucide-react';
 import axiosClient from '../../api/axiosClient';
 
 const RoleManagement: React.FC = () => {
@@ -12,6 +12,7 @@ const RoleManagement: React.FC = () => {
   const [isPermModalOpen, setIsPermModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [form] = Form.useForm();
 
   const fetchRoles = async () => {
@@ -192,21 +193,38 @@ const RoleManagement: React.FC = () => {
     },
   ];
 
+  const filteredRoles = roles.filter(role => 
+    (role.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (role.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="glass-card p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-display font-bold text-title">Roles & Permissions</h2>
-        <button 
-          className="btn-gold flex items-center space-x-2"
-          onClick={handleAddRole}
-        >
-          <Plus size={20} />
-          <span>CREATE NEW ROLE</span>
-        </button>
+      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 mb-8">
+        <h2 className="text-2xl font-display font-bold text-title whitespace-nowrap">Roles & Permissions</h2>
+        
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+            <Input 
+              placeholder="Tìm kiếm vai trò..." 
+              className="input-luxury pl-12"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button 
+            className="btn-gold flex items-center space-x-2 whitespace-nowrap"
+            onClick={handleAddRole}
+          >
+            <Plus size={20} />
+            <span>CREATE NEW ROLE</span>
+          </button>
+        </div>
       </div>
       <Table 
         columns={columns} 
-        dataSource={roles} 
+        dataSource={filteredRoles} 
         rowKey="id" 
         loading={loading}
         pagination={false} 

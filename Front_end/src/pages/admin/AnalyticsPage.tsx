@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, Users, DollarSign, Bed, Activity, 
-  ArrowUpRight, PieChart as PieIcon 
+  ArrowUpRight, PieChart as PieIcon, Download 
 } from 'lucide-react';
 import { adminApi, DashboardAnalyticsDto } from '../../services/adminApi';
 
@@ -34,6 +34,24 @@ const AnalyticsPage: React.FC = () => {
     return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
   };
 
+  const handleExportCSV = () => {
+    if (!data) return;
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    csvContent += "Ngay,Doanh Thu (VND)\n";
+    data.revenueChart30Days.forEach(item => {
+      csvContent += `${item.date},${item.revenue}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `DoanhThu_30Ngay_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="p-8 space-y-6">
@@ -50,13 +68,21 @@ const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="p-6 space-y-8 bg-[var(--bg-main)] min-h-screen">
-      <div className="flex flex-col gap-2">
-        <Typography.Title level={2} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.02em' }}>
-          Thống kê chuyên sâu
-        </Typography.Title>
-        <Typography.Paragraph className="text-muted text-base">
-          Phân tích doanh thu, tỷ lệ lấp đầy và hiệu quả vận hành khách sạn trong 30 ngày qua.
-        </Typography.Paragraph>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col gap-2">
+          <Typography.Title level={2} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            Thống kê chuyên sâu
+          </Typography.Title>
+          <Typography.Paragraph className="text-muted text-base">
+            Phân tích doanh thu, tỷ lệ lấp đầy và hiệu quả vận hành khách sạn trong 30 ngày qua.
+          </Typography.Paragraph>
+        </div>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg shadow-primary/20"
+        >
+          <Download size={18} /> Xuất báo cáo CSV
+        </button>
       </div>
 
       {/* Top Stats */}

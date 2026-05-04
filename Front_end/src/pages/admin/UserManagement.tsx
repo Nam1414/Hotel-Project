@@ -169,7 +169,7 @@ const UserManagement: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (record: any) => (
+      render: (record: any) => canManageUsers ? (
         <Space>
           <Tooltip title="Chỉnh sửa người dùng">
             <Button
@@ -217,7 +217,7 @@ const UserManagement: React.FC = () => {
             />
           </Popconfirm>
         </Space>
-      ),
+      ) : null,
     },
   ];
 
@@ -277,11 +277,9 @@ const UserManagement: React.FC = () => {
             <Input className="input-luxury" placeholder="Enter full name" />
           </Form.Item>
 
-          {!editingUser && (
-            <Form.Item label={<span className="text-muted">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
-              <Input className="input-luxury" placeholder="Enter email" />
-            </Form.Item>
-          )}
+          <Form.Item label={<span className="text-muted">Email Address</span>} name="email" rules={[{ required: true, type: 'email' }]}>
+            <Input className="input-luxury" placeholder="Enter email" disabled={!!editingUser} />
+          </Form.Item>
 
           <Form.Item label={<span className="text-muted">Password</span>} name="password" rules={[{ required: !editingUser, min: 6 }]}>
             <Input.Password className="input-luxury" placeholder={editingUser ? 'Enter new password (leave blank to keep current)' : 'Enter password (min 6 chars)'} />

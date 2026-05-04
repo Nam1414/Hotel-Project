@@ -30,7 +30,7 @@ const Login: React.FC = () => {
         return;
       }
 
-      alert((resultAction.payload as string) || 'Email hoac mat khau khong chinh xac');
+      alert((resultAction.payload as string) || 'Email hoặc mật khẩu không chính xác');
     } finally {
       setLoading(false);
     }
@@ -80,7 +80,7 @@ const Login: React.FC = () => {
                 />
               </div>
               <div className="flex justify-end">
-                <button type="button" className="text-xs text-primary hover:underline">Forgot password?</button>
+                <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-primary hover:underline">Forgot password?</button>
               </div>
             </div>
 

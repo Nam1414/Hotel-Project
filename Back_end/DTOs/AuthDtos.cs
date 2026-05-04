@@ -16,3 +16,7 @@ public record RefreshTokenDto(string AccessToken);
 public record UpdateProfileDto(string FullName, string? Phone);
 
 public record ChangePasswordDto(string OldPassword, string NewPassword);
+
+public record ForgotPasswordDto(string Email);
+
+public record ResetPasswordDto(string Email, string Token, string NewPassword);

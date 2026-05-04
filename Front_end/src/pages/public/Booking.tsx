@@ -17,18 +17,18 @@ const PAYMENT_METHOD_OPTIONS: Array<{
 }> = [
   {
     value: 'pay_at_hotel',
-    title: 'Thanh toan tai khach san',
-    description: 'Phu hop de demo. Booking duoc tao ngay va thanh toan sau tai quay.',
+    title: 'Thanh toán tại khách sạn',
+    description: 'Booking được tạo ngay và thanh toán sau tại quầy.',
   },
   {
     value: 'bank_transfer',
-    title: 'Chuyen khoan thu cong',
-    description: 'Tao booking truoc, sau do lien he chuyen khoan va doi nhan vien xac nhan.',
+    title: 'Chuyển khoản thủ công',
+    description: 'Tạo booking trước, sau đó liên hệ chuyển khoản và đợi nhân viên xác nhận.',
   },
   {
     value: 'momo',
     title: 'MoMo',
-    description: 'Chi mo trang MoMo khi ban chu dong bam thanh toan, khong tu dong redirect nua.',
+    description: 'Hệ thống sẽ mở trang MoMo khi bạn chủ động bấm thanh toán.',
   },
 ];
 
@@ -122,7 +122,7 @@ const Booking: React.FC = () => {
   useEffect(() => {
     const id = Number(roomId);
     if (!id) {
-      setError('Loai phong khong hop le');
+      setError('Loại phòng không hợp lệ');
       setLoading(false);
       return;
     }
@@ -262,7 +262,7 @@ const Booking: React.FC = () => {
       const momoRes = await bookingApi.createMoMoPayment(
         createdInvoiceId,
         normalizedDepositAmount,
-        `Thanh toan coc booking ${bookingCode}`
+        `Thanh toán cọc booking ${bookingCode}`
       );
 
       if (momoRes.payUrl) {
@@ -282,7 +282,7 @@ const Booking: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted">
         <Loader2 className="mr-3 h-6 w-6 animate-spin text-primary" />
-        Dang tai phong...
+        Đang tải phòng...
       </div>
     );
   }
@@ -292,7 +292,7 @@ const Booking: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="admin-card max-w-xl w-full flex items-center gap-3 text-error">
           <AlertCircle size={20} />
-          <span>{error || 'Khong tim thay loai phong nao phu hop'}</span>
+          <span>{error || 'Không tìm thấy loại phòng nào phù hợp'}</span>
         </div>
       </div>
     );
@@ -312,7 +312,7 @@ const Booking: React.FC = () => {
             className="inline-flex items-center gap-2 rounded-full border border-luxury bg-[var(--card-bg)] px-4 py-2 text-sm font-semibold text-title transition hover:border-primary hover:text-primary"
           >
             <ArrowLeft size={16} />
-            Quay lai
+            Quay lại
           </button>
         </div>
 
@@ -486,7 +486,7 @@ const Booking: React.FC = () => {
                             {voucher.discountType === 'Percentage'
                               ? `${voucher.discountValue}%`
                               : `${voucher.discountValue.toLocaleString('vi-VN')}VND`}{' '}
-                            {totalRoomPrice < voucher.minBookingAmount ? '(Don chua du DK)' : ''}
+                            {totalRoomPrice < voucher.minBookingAmount ? '(Chưa đủ ĐK)' : ''}
                           </option>
                         ))}
                       </select>
@@ -503,7 +503,7 @@ const Booking: React.FC = () => {
                         onBlur={(e) => commitDepositAmount(e.target.value)}
                       />
                       <p className="text-xs text-muted">
-                        Nhap tien coc tu 0 den {finalTotal.toLocaleString('vi-VN')} VND. He thong se tu dong gioi han theo tong gia tri booking.
+                        Nhập tiền cọc từ 0 đến {finalTotal.toLocaleString('vi-VN')} VND. Hệ thống sẽ tự động giới hạn theo tổng giá trị booking.
                       </p>
                     </div>
                   </div>
@@ -654,7 +654,7 @@ const Booking: React.FC = () => {
                         </span>
                       </div>
                       <p className="text-[10px] text-muted text-center italic">
-                        Booking se duoc tao truoc. Ban tu chon cach thanh toan o buoc tiep theo.
+                        Booking sẽ được tạo trước. Bạn tự chọn cách thanh toán ở bước tiếp theo.
                       </p>
                     </div>
                   </div>
@@ -716,8 +716,8 @@ const Booking: React.FC = () => {
               </div>
               <h2 className="text-4xl font-display font-bold text-title mb-4">Booking Confirmed</h2>
               <p className="text-muted text-lg mb-10 max-w-2xl mx-auto">
-                Reservation for <strong>{totalRoomsCount} rooms</strong> has been created successfully. Ban da chon{' '}
-                <strong>{selectedPaymentOption.title}</strong> cho buoc thanh toan tiep theo.
+                Reservation for <strong>{totalRoomsCount} rooms</strong> has been created successfully. Bạn đã chọn{' '}
+                <strong>{selectedPaymentOption.title}</strong> cho bước thanh toán tiếp theo.
               </p>
 
               <div className="admin-card !p-6 mb-6 text-left space-y-3">
@@ -738,31 +738,31 @@ const Booking: React.FC = () => {
                   <span className="text-title">{formData.checkOut}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted">Tong gia tri:</span>
+                  <span className="text-muted">Tổng giá trị:</span>
                   <span className="text-title">{finalTotal.toLocaleString('vi-VN')} VND</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted">Tien coc:</span>
+                  <span className="text-muted">Tiền cọc:</span>
                   <span className="text-title">{normalizedDepositAmount.toLocaleString('vi-VN')} VND</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted">Con lai:</span>
+                  <span className="text-muted">Còn lại:</span>
                   <span className="text-title font-bold">{remainingAmount.toLocaleString('vi-VN')} VND</span>
                 </div>
               </div>
 
               <div className="admin-card !p-6 mb-10 text-left">
-                <h3 className="text-lg font-bold text-title mb-3">Thanh toan sau khi tao booking</h3>
+                <h3 className="text-lg font-bold text-title mb-3">Thanh toán sau khi tạo booking</h3>
                 <p className="text-sm text-muted mb-4">{selectedPaymentOption.description}</p>
 
                 {normalizedDepositAmount <= 0 ? (
                   <div className="status-success">
-                    Booking nay khong co tien coc bat buoc, ban co the thanh toan phan con lai sau.
+                    Booking này không có tiền cọc bắt buộc, bạn có thể thanh toán phần còn lại sau.
                   </div>
                 ) : paymentMethod === 'momo' ? (
                   <div className="space-y-4">
                     <div className="status-warning">
-                      MoMo dang chua on dinh cho demo, nen he thong chi mo trang thanh toan khi ban bam nut ben duoi.
+                      Hệ thống sẽ chuyển hướng đến trang thanh toán MoMo khi bạn bấm nút bên dưới.
                     </div>
                     <button
                       type="button"
@@ -770,16 +770,16 @@ const Booking: React.FC = () => {
                       disabled={launchingPayment || !createdInvoiceId}
                       className="btn-gold w-full py-4 disabled:opacity-60"
                     >
-                      {launchingPayment ? 'OPENING MOMO...' : `THANH TOAN MOMO ${normalizedDepositAmount.toLocaleString('vi-VN')} VND`}
+                      {launchingPayment ? 'ĐANG MỞ MOMO...' : `THANH TOÁN MOMO ${normalizedDepositAmount.toLocaleString('vi-VN')} VND`}
                     </button>
                   </div>
                 ) : paymentMethod === 'bank_transfer' ? (
                   <div className="status-info">
-                    Booking da duoc tao. Khi demo, ban co the thong bao khach chuyen khoan thu cong va nhan vien xac nhan sau.
+                    Booking đã được tạo. Vui lòng chuyển khoản thủ công và báo nhân viên xác nhận.
                   </div>
                 ) : (
                   <div className="bg-subtle border border-luxury p-4 rounded-xl text-muted text-sm">
-                    Booking da duoc tao. Ban co the thu tien coc tai quay hoac bo qua buoc thanh toan online trong luc demo.
+                    Booking đã được tạo. Bạn có thể thu tiền cọc tại quầy hoặc bỏ qua bước thanh toán online.
                   </div>
                 )}
               </div>

@@ -77,10 +77,8 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   Cash: 'Tiền mặt',
-  Card: 'Thẻ',
   BankTransfer: 'Chuyển khoản',
   MoMo: 'MoMo',
-  VNPay: 'VNPay',
 };
 
 const PAYMENT_METHODS = Object.keys(PAYMENT_METHOD_LABELS);
@@ -1246,7 +1244,7 @@ const BookingPage: React.FC = () => {
                   <span>{formatMoney(selectedInvoice.depositAmount)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#16a34a' }}>
-                  <span>Tien coc da thanh toan:</span>
+                  <span>Tiền cọc đã thanh toán:</span>
                   <span>-{formatMoney(selectedInvoice.depositPaidAmount)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: selectedInvoice.depositRemainingAmount > 0 ? '#dc2626' : '#16a34a' }}>

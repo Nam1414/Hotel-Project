@@ -149,7 +149,7 @@ public class UserManagementService : IUserManagementService
             // Gửi thông báo đến Admin và Manager
             await _notificationService.SendToRolesAndUserAsync(
                 new List<string> { "Admin", "Manager" },
-                user.Id,
+                null,
                 NotificationAction.LockAccount,
                 NotificationType.Security,
                 user.FullName
@@ -160,7 +160,7 @@ public class UserManagementService : IUserManagementService
         {
             await _notificationService.SendToRolesAndUserAsync(
                 new List<string> { "Admin", "Manager" },
-                user.Id,
+                null,
                 NotificationAction.UnlockAccount,
                 NotificationType.Account,
                 user.FullName
@@ -193,7 +193,7 @@ public class UserManagementService : IUserManagementService
 
         await _notificationService.SendToRolesAndUserAsync(
             new List<string> { "Admin", "Manager" },
-            user.Id,
+            null,
             NotificationAction.LockAccount,
             NotificationType.Security,
             user.FullName
@@ -227,7 +227,7 @@ public class UserManagementService : IUserManagementService
         // Thông báo bằng Group Broadcast đến Admin và Manager
         await _notificationService.SendToRolesAndUserAsync(
             new List<string> { "Admin", "Manager" },
-            userId,
+            null,
             NotificationAction.ChangeRole,
             NotificationType.PermissionUpdate,
             user.FullName
