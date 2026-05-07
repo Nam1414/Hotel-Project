@@ -183,6 +183,7 @@ var app = builder.Build();
 await DatabaseSchemaInitializer.EnsureMembershipSchemaAsync(app.Services);
 await DatabaseSchemaInitializer.EnsureVoucherSchemaAsync(app.Services);
 await DatabaseSchemaInitializer.EnsureEquipmentDamageSchemaAsync(app.Services);
+await DatabaseSchemaInitializer.EnsureContactMessageSchemaAsync(app.Services);
 if (app.Environment.IsDevelopment())
 {
     await DemoPresentationSeeder.SeedAsync(app.Services);

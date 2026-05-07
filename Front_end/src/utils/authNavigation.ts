@@ -24,18 +24,12 @@ export const getAuthorizedHomePath = (user: User | null | undefined): string => 
     return '/';
   }
 
-  if (role === 'housekeeping') {
-    return '/staff/cleaning';
+  if (role === 'admin') {
+    return '/admin';
   }
 
-  if (role === 'receptionist') {
-    return '/staff/bookings/manage';
-  }
-
-  const permissions = user.permissions ?? [];
-  const matched = permissionLandingOrder.find((item) => permissions.includes(item.permission));
-
-  return matched?.path ?? '/admin';
+  // All other internal staff roles should land on the Modular Dashboard
+  return '/staff';
 };
 
 export const canAccessPath = (user: User | null | undefined, path: string | null | undefined): boolean => {
@@ -47,7 +41,7 @@ export const canAccessPath = (user: User | null | undefined, path: string | null
     return true;
   }
 
-  if (path.startsWith('/profile') || path.startsWith('/booking/')) {
+  if (path.startsWith('/profile') || path.startsWith('/booking/') || path === '/staff') {
     return true;
   }
 
@@ -55,6 +49,14 @@ export const canAccessPath = (user: User | null | undefined, path: string | null
 
   if (path === '/admin') {
     return permissions.includes('VIEW_DASHBOARD');
+  }
+
+  if (path.startsWith('/admin/analytics')) {
+    return permissions.includes('VIEW_REPORTS');
+  }
+
+  if (path.startsWith('/admin/audit-logs')) {
+    return permissions.includes('MANAGE_ROLES');
   }
 
   if (path.startsWith('/admin/users')) {
@@ -99,10 +101,18 @@ export const canAccessPath = (user: User | null | undefined, path: string | null
   }
 
   if (path.startsWith('/staff/cleaning')) {
-    return (user.role || '').toLowerCase() === 'housekeeping';
+    return permissions.includes('MANAGE_ROOMS');
   }
 
   if (path.startsWith('/staff/bookings')) {
+    return permissions.includes('MANAGE_BOOKINGS');
+  }
+
+  if (path.startsWith('/staff/vouchers')) {
+    return permissions.includes('MANAGE_BOOKINGS');
+  }
+
+  if (path.startsWith('/staff/memberships')) {
     return permissions.includes('MANAGE_BOOKINGS');
   }
 
@@ -114,5 +124,5 @@ export const canAccessPath = (user: User | null | undefined, path: string | null
     return permissions.includes('MANAGE_SERVICES') || permissions.includes('MANAGE_ROOMS');
   }
 
-  return true;
+  return false;
 };

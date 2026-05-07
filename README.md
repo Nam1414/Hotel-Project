@@ -2,47 +2,50 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-gold)
-![.NET](https://img.shields.io/badge/.NET-10.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-gold)
+![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![React](https://img.shields.io/badge/React-19-61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6)
 ![SQL Server](https://img.shields.io/badge/SQL%20Server-2019+-CC2927)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Hệ thống quản lý khách sạn toàn diện**
+**Hệ thống quản lý khách sạn toàn diện — Full-Stack ERP**
+
+*Đồ án tốt nghiệp · Đại học Lạc Hồng · Khoa CNTT · Lớp 23CT111*
+
 </div>
 
 ---
 
 ## 📖 Giới thiệu
 
-**KANT Hotel Management System** là một hệ thống ERP (Enterprise Resource Planning) quản lý khách sạn được xây dựng theo kiến trúc **Full-Stack hiện đại**, bao gồm:
+**KANT Hotel Management System** là hệ thống ERP quản lý khách sạn theo kiến trúc Full-Stack hiện đại, bao gồm:
 
-- 🖥️ **Backend**: ASP.NET Core Web API (.NET 10)
-- ⚛️ **Frontend**: React 19 + Vite + TypeScript
-- 🗄️ **Database**: Microsoft SQL Server
-- 🔌 **Realtime**: SignalR (WebSocket)
+- 🖥️ **Backend**: ASP.NET Core Web API (.NET 10) — 28 Controllers, 29 Services
+- ⚛️ **Frontend**: React 19 + Vite + TypeScript — 34 trang UI
+- 🗄️ **Database**: Microsoft SQL Server — 33 bảng
+- 🔌 **Realtime**: SignalR WebSocket — Thông báo tức thì
 
-Hệ thống phục vụ đầy đủ 3 vai trò: **Khách hàng**, **Nhân viên** và **Quản trị viên**, với giao diện sang trọng theo phong cách Luxury Hotel.
+Hệ thống phục vụ 3 phân hệ: **Khách hàng** · **Nhân viên** · **Quản trị viên**
 
 ---
 
 ## ✨ Tính năng nổi bật
 
-| Tính năng | Mô tả |
+| Module | Mô tả |
 |---|---|
-| 🔐 **Xác thực & Phân quyền** | JWT + Refresh Token, RBAC động theo Permission |
-| 📅 **Đặt phòng trực tuyến** | Khách hàng đặt phòng, chọn ngày, áp voucher |
-| 💳 **Thanh toán MoMo** | Tích hợp cổng thanh toán MoMo thực tế |
-| 🔔 **Thông báo Real-time** | SignalR push notification theo role |
-| 📊 **Dashboard & Thống kê** | Biểu đồ doanh thu, tỷ lệ lấp đầy phòng |
-| 🧾 **Hóa đơn & In ấn** | Tạo, quản lý và in hóa đơn PDF |
-| 📦 **Import Excel** | Nhập hàng loạt dữ liệu vật tư qua file .xlsx/.csv |
-| 🛎️ **Dịch vụ phòng** | Khách gọi dịch vụ, nhân viên xử lý real-time |
-| 🏆 **Hạng thành viên** | Tích điểm loyalty, tự động nâng hạng |
-| 📜 **Nhật ký hệ thống** | Audit log toàn bộ hành động, xuất JSON |
-| 🔧 **Đền bù hỏng hóc** | Quản lý vật tư hư hỏng, trừ trực tiếp hóa đơn |
-| 🌐 **CMS Nội dung** | Quản lý tin tức, địa điểm, tiện ích |
+| 🔐 **RBAC động** | JWT + Refresh Token, phân quyền chi tiết theo Permission (không theo Role cứng) |
+| 📅 **Đặt phòng** | Tìm kiếm, đặt phòng, áp voucher, thanh toán đặt cọc MoMo |
+| 💳 **Hóa đơn thông minh** | Tự động tính tiền phòng + dịch vụ + đền bù hỏng hóc + VAT 10% - voucher - cọc |
+| 🔔 **Realtime SignalR** | Push notification cho từng role khi có booking/dịch vụ mới |
+| 📊 **Analytics** | Biểu đồ doanh thu 30 ngày, RevPAR, ADR, tỷ lệ lấp đầy |
+| 🛎️ **Dịch vụ phòng** | Khách gọi dịch vụ → nhân viên nhận & xử lý realtime |
+| 🏆 **Loyalty Points** | Tích điểm tự động sau thanh toán, nâng hạng thành viên |
+| 📦 **Import Excel** | Nhập hàng loạt vật tư thiết bị từ file .xlsx |
+| 🔧 **Báo hỏng hóc** | Ghi nhận thiệt hại, tự động trừ vào hóa đơn checkout |
+| 📜 **Audit Log** | Ghi lại toàn bộ hành động hệ thống, xuất JSON |
+| 🌐 **CMS** | Quản lý tin tức, điểm tham quan, tiện nghi khách sạn |
+| 📧 **Email** | Quên mật khẩu, xác nhận booking, trả lời liên hệ |
 
 ---
 
@@ -55,25 +58,24 @@ Hotel-Project/
 │   ├── Services/                # 29 Business Logic Services
 │   ├── Models/                  # 33 Entity Models
 │   ├── DTOs/                    # Data Transfer Objects
-│   ├── Data/                    # DbContext, Seeders, Initializers
+│   ├── Data/                    # DbContext, Seeders, Schema Initializers
 │   ├── Hubs/                    # SignalR NotificationHub
-│   ├── Middleware/              # Exception, Permission, RefreshToken
-│   ├── Configurations/          # MoMo, Settings configs
-│   └── sql/DBHotel.sql          # Script tạo database
+│   ├── Middleware/              # PermissionMiddleware, ExceptionMiddleware
+│   ├── Configurations/          # MoMo, Email, Cloudinary configs
+│   └── sql/DBHotel.sql          # Script khởi tạo database đầy đủ
 │
 └── Front_end/                   # React + Vite + TypeScript
     └── src/
         ├── pages/
-        │   ├── public/          # 11 trang khách hàng
+        │   ├── public/          # Trang khách hàng (Home, Rooms, Booking...)
         │   ├── admin/           # 19 trang quản trị
-        │   ├── staff/           # 4 trang nhân viên
-        │   └── auth/            # Đăng nhập, Đăng ký, Quên MK
-        ├── components/          # Components tái sử dụng
-        ├── store/               # Redux Toolkit state
-        ├── services/            # Axios API calls
-        ├── hooks/               # Custom React hooks
-        ├── routes/              # Routing + ProtectedRoute
-        └── utils/               # Tiện ích dùng chung
+        │   ├── staff/           # Staff Portal (Booking, Invoice, Cleaning...)
+        │   └── auth/            # Login, Register, Forgot Password
+        ├── layouts/             # AdminLayout, StaffLayout, MainLayout
+        ├── store/               # Redux Toolkit (auth, notifications)
+        ├── services/            # Axios API services
+        ├── utils/               # authNavigation, canAccessPath
+        └── routes/              # ProtectedRoute theo Permission
 ```
 
 ---
@@ -84,15 +86,15 @@ Hotel-Project/
 | Công nghệ | Phiên bản | Mục đích |
 |---|---|---|
 | ASP.NET Core | .NET 10 | Web API Framework |
-| Entity Framework Core | 9.x | ORM Database |
-| SQL Server | 2019+ | Cơ sở dữ liệu |
-| JWT Bearer | — | Xác thực Token |
-| BCrypt.Net-Next | — | Mã hóa mật khẩu |
+| Entity Framework Core | 9.x | ORM |
+| SQL Server | 2019+ | Database |
 | SignalR | — | Realtime Notification |
-| Cloudinary SDK | — | Lưu trữ hình ảnh |
-| MoMo Payment API | — | Cổng thanh toán |
-| Swagger / OpenAPI | — | Tài liệu API |
-| MemoryCache | — | Caching |
+| JWT Bearer | — | Authentication |
+| BCrypt.Net-Next | — | Password Hashing |
+| Cloudinary SDK | — | Image Storage |
+| MoMo Payment API | — | Payment Gateway |
+| MemoryCache | — | Server-side Caching |
+| Swagger / OpenAPI | — | API Documentation |
 
 ### Frontend
 | Công nghệ | Phiên bản | Mục đích |
@@ -101,68 +103,24 @@ Hotel-Project/
 | Vite | 6.x | Build Tool |
 | TypeScript | 5.x | Type Safety |
 | Redux Toolkit | — | State Management |
-| React Router | v7 | Routing |
-| Axios | — | HTTP Client |
-| Ant Design | 5.x | UI Component Library |
-| Tailwind CSS | 3.x | Utility CSS |
+| React Router | v7 | Client-side Routing |
+| Ant Design | 5.x | UI Components |
 | Framer Motion | — | Animations |
-| Recharts | — | Biểu đồ thống kê |
-| Lucide React | — | Icon Library |
-| SignalR Client | — | Realtime Connection |
-| dayjs | — | Xử lý ngày tháng |
-
----
-
-## 📋 Chức năng chi tiết
-
-### 👤 Khách hàng (Public)
-- Xem trang chủ, phòng, dịch vụ, điểm tham quan, tin tức, giới thiệu
-- Tìm kiếm và lọc phòng theo ngày, loại, giá
-- Xem chi tiết phòng với ảnh đẹp, tiện ích
-- **Đặt phòng trực tuyến** với áp dụng mã voucher
-- **Thanh toán đặt cọc qua MoMo**
-- Xem lịch sử đặt phòng, trạng thái booking
-- Gọi dịch vụ phòng trong thời gian lưu trú
-- Đánh giá phòng / dịch vụ sau check-out
-- Nhận thông báo real-time qua trình duyệt
-- Quản lý hồ sơ cá nhân, đổi mật khẩu, avatar
-- Xem tích điểm và hạng thành viên
-
-### 🧑‍💼 Nhân viên (Staff)
-- Theo dõi danh sách đặt phòng theo trạng thái
-- Xử lý Check-in / Check-out khách hàng
-- Cập nhật trạng thái dọn phòng theo thời gian thực
-- Quản lý đơn gọi dịch vụ phòng (nhận, xử lý, hoàn thành)
-- Quản lý hóa đơn và thanh toán
-- Cộng minibar / dịch vụ phát sinh vào hóa đơn
-- Nhận thông báo ngay khi có booking hoặc yêu cầu mới
-
-### 👑 Quản trị viên (Admin)
-- **Dashboard**: Thống kê doanh thu, tỷ lệ lấp đầy, khách hàng mới
-- **Phân tích**: Biểu đồ doanh thu theo tháng, loại phòng, phương thức thanh toán
-- **Người dùng**: CRUD, khóa/mở tài khoản, phân role
-- **Phòng**: Tạo hàng loạt, đồng bộ vật tư, quản lý ảnh, trạng thái
-- **Loại phòng**: Quản lý hạng phòng, tiện ích, ảnh đại diện
-- **Booking**: Toàn quyền quản lý, đổi phòng, tách booking
-- **Hóa đơn**: Xem, tạo thanh toán (Tiền mặt / Chuyển khoản / MoMo), in PDF
-- **Vật tư**: CRUD, Import Excel hàng loạt, quản lý kho
-- **Đền bù hỏng hóc**: Ghi nhận, xác nhận, hủy — tự động cập nhật hóa đơn
-- **Dịch vụ & Voucher**: Quản lý dịch vụ, tạo mã khuyến mãi
-- **Hạng thành viên**: Cấu hình ngưỡng điểm, quyền lợi
-- **Phân quyền**: Quản lý Role, gán/gỡ Permission động
-- **Nội dung**: CMS tin tức, điểm tham quan, tiện ích khách sạn
-- **Nhật ký**: Audit log toàn bộ thao tác, lọc và xuất JSON
-- **Cài đặt hệ thống**: Cấu hình thông tin khách sạn
+| Recharts | — | Analytics Charts |
+| i18next | — | Đa ngôn ngữ (VI/EN) |
+| Axios | — | HTTP Client |
 
 ---
 
 ## 🚀 Hướng dẫn cài đặt
 
 ### Yêu cầu hệ thống
-- ✅ .NET SDK **10.0** trở lên
-- ✅ Node.js **18.x** trở lên + npm
-- ✅ SQL Server **2019** trở lên
-- ✅ Visual Studio 2022 / VS Code / Rider
+- ✅ **.NET SDK 10.0** trở lên
+- ✅ **Node.js 18.x** trở lên + npm
+- ✅ **SQL Server 2019** trở lên (hoặc SQL Server Express)
+- ✅ **SQL Server Management Studio (SSMS)** để chạy script
+
+---
 
 ### Bước 1 — Clone dự án
 
@@ -171,18 +129,20 @@ git clone https://github.com/Nam1414/Hotel-Project.git
 cd Hotel-Project
 ```
 
-### Bước 2 — Thiết lập Database
+---
 
-1. Mở **SQL Server Management Studio (SSMS)**
-2. Chạy file script:
-   ```
-   Back_end/sql/DBHotel.sql
-   ```
-3. Kiểm tra database `HotelManagementDB` đã được tạo
+### Bước 2 — Khởi tạo Database
 
-### Bước 3 — Cấu hình Backend
+1. Mở **SSMS**, kết nối tới SQL Server instance của bạn
+2. Mở file `Back_end/sql/DBHotel.sql`
+3. Nhấn **Execute (F5)** để chạy toàn bộ script
+4. Kiểm tra database `HotelManagementDB` đã xuất hiện
 
-Mở file `Back_end/appsettings.json` và cập nhật các thông số:
+> ⚠️ Script đã bao gồm: tạo bảng, dữ liệu mẫu, roles, permissions, tài khoản admin.
+
+---
+
+### Bước 3 — Cấu hình Backend (`appsettings.json`)
 
 ```json
 {
@@ -190,7 +150,7 @@ Mở file `Back_end/appsettings.json` và cập nhật các thông số:
     "DefaultConnection": "Server=.;Database=HotelManagementDB;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "JwtSettings": {
-    "Secret": "your-super-secret-key-minimum-32-chars",
+    "Secret": "your-super-secret-key-minimum-32-characters!!",
     "Issuer": "HotelManagementAPI",
     "Audience": "HotelManagementClient",
     "ExpiryMinutes": 60
@@ -212,10 +172,14 @@ Mở file `Back_end/appsettings.json` và cập nhật các thông số:
     "SmtpHost": "smtp.gmail.com",
     "SmtpPort": 587,
     "SenderEmail": "your-email@gmail.com",
-    "SenderPassword": "your-app-password"
+    "SenderPassword": "your-gmail-app-password"
   }
 }
 ```
+
+> 💡 Với môi trường **demo/test**, chỉ cần cấu hình `ConnectionStrings` là đủ. Các tính năng Cloudinary, MoMo, Email là tùy chọn.
+
+---
 
 ### Bước 4 — Chạy Backend
 
@@ -225,8 +189,10 @@ dotnet restore
 dotnet run
 ```
 
-> Backend mặc định chạy tại: `http://localhost:5052`
-> Swagger UI: `http://localhost:5052` (truy cập trực tiếp root)
+- Backend: `http://localhost:5052`
+- Swagger UI: `http://localhost:5052` (truy cập trực tiếp root)
+
+---
 
 ### Bước 5 — Chạy Frontend
 
@@ -236,109 +202,209 @@ npm install
 npm run dev
 ```
 
-> Frontend mặc định chạy tại: `http://localhost:5173`
+- Frontend: `http://localhost:5173`
 
 ---
 
 ## 🔑 Tài khoản Demo
 
-| Vai trò | Email | Mật khẩu |
-|---|---|---|
-| **Admin** | admin@kant.com | Admin@123 |
-| **Manager** | manager@kant.com | Manager@123 |
-| **Staff** | staff@kant.com | Staff@123 |
-| **Khách hàng** | guest@kant.com | Guest@123 |
+> Dữ liệu mẫu được seed tự động khi backend khởi động lần đầu (môi trường Development).
 
-> ℹ️ Dữ liệu mẫu được tự động seed khi chạy lần đầu trong môi trường Development.
+### Tài khoản hệ thống (có trong `DBHotel.sql`)
+
+| Vai trò | Email | Mật khẩu | Quyền truy cập |
+|---|---|---|---|
+| **Admin** | `admin@hotel.com` | `Admin@123` | Toàn quyền hệ thống |
+| **Manager** | `hunglm@vaa.edu.vn` | `Hieu@1234` | Quản lý vận hành |
+| **Receptionist** | `manhung08062@gmail.com` | `Hung@1234` | Đặt phòng, Check-in/out |
+| **Accountant** | `nguyenbinhan2707@gmail.com` | `Binh@1234` | Hóa đơn, Thanh toán |
+| **Housekeeping** | `dainguyen1254@gmail.com` | `Nguyen@1234` | Dọn phòng, Dịch vụ |
+
+### Tài khoản khách hàng Demo (seeded tự động)
+
+| Vai trò | Email | Mật khẩu | Ghi chú |
+|---|---|---|---|
+| **Guest** | `demo.traveler@hotel.local` | `Demo@123` | Có booking đã checkout |
+| **Guest** | `demo.family@hotel.local` | `Demo@123` | Đang check-in |
+| **Guest** | `demo.business@hotel.local` | `Demo@123` | Booking sắp tới |
+
+> ⚠️ **Lưu ý**: Nếu mật khẩu tài khoản Staff không đúng (do hash mới), hãy dùng tính năng **Quản lý người dùng** trong Admin Panel để reset mật khẩu, hoặc tạo tài khoản Staff mới và gán role phù hợp.
+
+---
+
+## 🧪 Hướng dẫn kiểm thử chức năng
+
+### 1. 👤 Luồng Khách hàng
+
+#### Đăng ký & Đăng nhập
+1. Truy cập `http://localhost:5173`
+2. Click **Đăng ký** → Điền thông tin → Submit
+3. Đăng nhập với tài khoản vừa tạo
+
+#### Đặt phòng
+1. Vào menu **Phòng** → Chọn một loại phòng
+2. Click **Đặt phòng** → Chọn ngày nhận/trả phòng
+3. (Tùy chọn) Nhập mã voucher: `DEMO10` hoặc `FAMILY500`
+4. Xác nhận đặt phòng → Hệ thống gửi thông báo realtime
+
+#### Gọi dịch vụ (khi đang check-in)
+1. Đăng nhập tài khoản `demo.family@hotel.local` / `Demo@123`
+2. Vào **Hồ sơ cá nhân** → **Lịch sử đặt phòng**
+3. Chọn booking đang check-in → **Gọi dịch vụ**
+
+---
+
+### 2. 🧑‍💼 Luồng Nhân viên (Staff Portal)
+
+Truy cập: `http://localhost:5173/staff`
+
+#### Test tài khoản Receptionist (Lễ tân)
+1. Đăng nhập: `manhung08062@gmail.com` / `Hung@1234`
+2. Vào **Quản lý Đặt phòng** → Xem danh sách booking
+3. **Check-in**: Tìm booking trạng thái `Confirmed` → Click **Check-in**
+4. **Check-out**: Tìm booking trạng thái `CheckedIn` → Click **Check-out**
+5. Vào **Hóa đơn** → Tạo thanh toán cho booking đã check-out
+
+#### Test tài khoản Housekeeping (Buồng phòng)
+1. Đăng nhập: `dainguyen1254@gmail.com` / `Nguyen@1234`
+2. Vào **Dọn phòng** → Xem danh sách phòng cần dọn
+3. Click cập nhật trạng thái phòng: `Dirty` → `Cleaning` → `Clean`
+4. Vào **Đơn dịch vụ** → Xem và xử lý đơn dịch vụ phòng
+
+#### Test tài khoản Accountant (Kế toán)
+1. Đăng nhập: `nguyenbinhan2707@gmail.com` / `Binh@1234`
+2. Vào **Hóa đơn** → Xem danh sách hóa đơn
+3. Chọn hóa đơn → **Tạo thanh toán** (Tiền mặt / Chuyển khoản)
+4. In hóa đơn PDF
+
+---
+
+### 3. 👑 Luồng Quản trị viên (Admin Panel)
+
+Truy cập: `http://localhost:5173/admin`  
+Tài khoản: `admin@hotel.com` / `Admin@123`
+
+#### Dashboard & Analytics
+1. Vào **Bảng điều khiển** → Xem tổng quan: phòng trống, doanh thu, khách hàng mới
+2. Vào **Thống kê** → Xem biểu đồ doanh thu 30 ngày, RevPAR, ADR
+3. Click **Xuất báo cáo CSV** để tải file
+
+#### Quản lý Phòng
+1. Vào **Phòng** → **Quản lý phòng** → Tạo phòng mới hoặc tạo hàng loạt
+2. Vào **Hạng phòng & Ảnh** → Thêm/sửa loại phòng, upload ảnh
+3. Vào **Kho vật tư** → Quản lý thiết bị, nhập Excel hàng loạt
+
+#### Quản lý Booking
+1. Vào **Đặt phòng** → Tìm kiếm, lọc theo trạng thái
+2. Click vào booking → Xem chi tiết, đổi phòng, tách booking
+3. Tạo booking thủ công cho khách walk-in
+
+#### Quản lý Hóa đơn & Đền bù
+1. Vào **Hóa đơn** → Xem chi tiết, thêm thanh toán
+2. Vào **Hỏng hóc & Tổn thất** → Ghi nhận thiệt hại, hệ thống tự cập nhật hóa đơn
+
+#### Phân quyền RBAC
+1. Vào **Quyền & Phân quyền** → Chọn một Role (VD: Receptionist)
+2. Tick/untick các permission → Lưu
+3. Đăng xuất → Đăng nhập bằng tài khoản Receptionist → Kiểm tra menu đã thay đổi
+
+#### Seed dữ liệu Demo
+1. Sau khi chạy backend, gọi API:
+   ```
+   POST http://localhost:5052/api/Admin/seed-demo-presentation
+   ```
+   Hoặc dùng nút **Seed Demo** trong Admin Panel (nếu có).
+
+---
+
+## 📡 API Endpoints chính
+
+| Nhóm | Prefix | Yêu cầu quyền |
+|---|---|---|
+| Auth | `/api/Auth` | Public |
+| Booking | `/api/Booking` | `MANAGE_BOOKINGS` |
+| Rooms | `/api/Rooms` | `MANAGE_ROOMS` |
+| Room Types | `/api/RoomTypes` | `MANAGE_ROOMS` |
+| Invoices | `/api/invoices` | `MANAGE_INVOICES` |
+| OrderServices | `/api/OrderServices` | `MANAGE_SERVICES` hoặc `MANAGE_ROOMS` |
+| Equipments | `/api/Equipments` | `MANAGE_INVENTORY` |
+| LossAndDamages | `/api/LossAndDamages` | `MANAGE_INVENTORY` |
+| Dashboard | `/api/Dashboard` | `VIEW_DASHBOARD` |
+| AuditLogs | `/api/AuditLogs` | `MANAGE_ROLES` |
+| Roles | `/api/Roles` | `MANAGE_ROLES` |
+| UserManagement | `/api/UserManagement` | `MANAGE_USERS` |
+| Vouchers | `/api/Vouchers` | `MANAGE_BOOKINGS` |
+| Memberships | `/api/Memberships` | `MANAGE_BOOKINGS` |
+| Contact | `/api/Contact` | Admin only |
+| Notifications | `/api/Notifications` | Authenticated |
+
+> 📖 Xem đầy đủ tại **Swagger UI**: `http://localhost:5052`
 
 ---
 
 ## 🗄️ Cơ sở dữ liệu
 
-Hệ thống sử dụng **33 bảng** chính:
+**33 bảng chính:**
 
 ```
 Users, Roles, Permissions, RolePermissions
-Rooms, RoomTypes, RoomImages, RoomInventory, RoomCleanings, RoomTransferLogs
-Bookings, BookingDetails
+Rooms, Room_Types, Room_Images, RoomInventory, Room_Cleanings, Room_Transfer_Logs
+Bookings, Booking_Details
 Invoices, Payments
 OrderServices, OrderServiceDetails
-Equipments, LossAndDamages
-Services, ServiceCategories
+Equipments, Loss_And_Damages
+Services, Service_Categories
 Vouchers, Memberships
 Reviews, Notifications, AuditLogs
 Articles, ArticleCategories, Attractions, Amenities
-SystemSettings
+SystemSettings, ContactMessages
 ```
 
 ---
 
 ## 🔐 Bảo mật
 
-- **JWT Authentication** với Access Token (60 phút) + Refresh Token (7 ngày)
-- **RBAC** (Role-Based Access Control) — Phân quyền chi tiết theo Permission
-- **BCrypt** mã hóa mật khẩu với salt tự động
-- **Middleware bảo vệ** toàn bộ route Admin/Staff
-- **Audit Log** ghi lại mọi thao tác quan trọng (bao gồm đăng nhập thất bại)
-- **CORS** chỉ cho phép origin frontend
-
----
-
-## 📡 API Endpoints chính
-
-| Nhóm | Prefix | Mô tả |
-|---|---|---|
-| Auth | `/api/Auth` | Đăng nhập, đăng ký, refresh, quên mật khẩu |
-| Booking | `/api/Booking` | Đặt phòng, cập nhật trạng thái |
-| Rooms | `/api/Rooms` | Quản lý phòng |
-| Invoices | `/api/invoices` | Hóa đơn, thanh toán MoMo |
-| Equipments | `/api/Equipments` | Vật tư, import Excel, đền bù |
-| OrderServices | `/api/OrderServices` | Dịch vụ phòng |
-| Users | `/api/UserManagement` | Quản lý người dùng |
-| Roles | `/api/Roles` | Vai trò & phân quyền |
-| AuditLogs | `/api/AuditLogs` | Nhật ký hệ thống |
-| Notifications | `/api/Notifications` | Thông báo |
-
-> 📖 Xem đầy đủ tại Swagger: `http://localhost:5052`
+| Cơ chế | Chi tiết |
+|---|---|
+| **JWT** | Access Token (60 phút) + Refresh Token (7 ngày, lưu HttpOnly Cookie) |
+| **RBAC Permission-based** | Mỗi API endpoint yêu cầu `[RequirePermission("...")]` cụ thể |
+| **BCrypt** | Mã hóa mật khẩu với salt tự động (cost factor 11) |
+| **Deny by Default** | Frontend `canAccessPath` chặn mọi route chưa được khai báo |
+| **Audit Log** | Ghi lại mọi thao tác: đăng nhập, đăng nhập thất bại, CRUD |
+| **CORS** | Chỉ cho phép origin `http://localhost:5173` |
 
 ---
 
 ## 📁 Luồng nghiệp vụ chính
 
 ```
-Khách hàng đặt phòng
-    ↓ Hệ thống tạo Booking (Pending)
-    ↓ Admin/Staff xác nhận → Booking (Confirmed)
-    ↓ Khách check-in → Booking (CheckedIn)
-    ↓ Gọi dịch vụ / Minibar → OrderService
-    ↓ Check-out → Booking (CheckedOut)
-    ↓ Tạo hóa đơn (Invoice) — tự động tính:
-        • Tiền phòng
-        • Tiền dịch vụ đã hoàn thành
-        • Tiền đền bù hỏng hóc (nếu có)
-        • Giảm giá Voucher
-        • Thuế VAT 10%
-        • Trừ tiền cọc đã đặt
-    ↓ Thanh toán (Tiền mặt / Chuyển khoản / MoMo)
-    ↓ In hóa đơn PDF
-    ↓ Cộng điểm Loyalty cho khách thành viên
+Khách hàng đặt phòng → Booking (Pending)
+  ↓ Admin/Receptionist xác nhận → Booking (Confirmed)
+  ↓ Khách check-in → Booking (CheckedIn)
+  ↓ Gọi dịch vụ / Minibar → OrderService (Pending → Delivered)
+  ↓ Báo hỏng vật tư → LossAndDamage → Tự cập nhật Invoice
+  ↓ Check-out → Booking (CheckedOut)
+  ↓ Hệ thống tính Invoice tự động:
+      + Tiền phòng (số đêm × giá)
+      + Tiền dịch vụ (Delivered orders)
+      + Đền bù hỏng hóc (LossAndDamages)
+      + VAT 10%
+      - Voucher giảm giá
+      - Tiền cọc đã thanh toán
+  ↓ Thanh toán: Tiền mặt / Chuyển khoản / MoMo
+  ↓ In hóa đơn PDF
+  ↓ Cộng điểm Loyalty → Tự nâng hạng thành viên
 ```
 
 ---
 
 ## 🎨 Giao diện
 
-Hệ thống có 3 phân hệ giao diện riêng biệt:
-
-- **🌐 Public (Khách hàng)**: Giao diện khách sạn sang trọng, dark mode, hiệu ứng glassmorphism
-- **🛡️ Admin Panel**: Dashboard quản trị đầy đủ công cụ, biểu đồ realtime
-- **🧑‍💼 Staff Panel**: Giao diện tối giản, tập trung vào tác vụ nhanh
-
----
-
-## 🤝 Đóng góp
-
-Đây là dự án **đồ án sinh viên** — không nhận đóng góp từ bên ngoài trong giai đoạn bảo vệ.
+| Phân hệ | Mô tả |
+|---|---|
+| **🌐 Public** | Giao diện khách sạn sang trọng, Dark/Light mode, Glassmorphism, Animation |
+| **🛡️ Admin Panel** | Dashboard đầy đủ công cụ, biểu đồ realtime, bảng dữ liệu phân trang |
+| **🧑‍💼 Staff Portal** | Menu động theo quyền, tập trung tác vụ nhanh, tối ưu mobile |
 
 ---
 
@@ -347,17 +413,17 @@ Hệ thống có 3 phân hệ giao diện riêng biệt:
 | | |
 |---|---|
 | **Tên dự án** | KANT Hotel Management System |
-| **Nhóm thực hiện** | KANT Team |
 | **Trường** | Đại học Lạc Hồng |
 | **Khoa** | Công nghệ Thông tin |
 | **Lớp** | 23CT111 |
-| **Email** | khatong072@gmail.com |
+| **Email liên hệ** | khatong072@gmail.com |
+| **GitHub** | https://github.com/Nam1414/Hotel-Project |
 
 ---
 
 ## 📄 License
 
-Dự án được phát triển phục vụ mục đích **học tập và nghiên cứu**.
+Dự án phát triển phục vụ mục đích **học tập và nghiên cứu học thuật**.
 
 ---
 

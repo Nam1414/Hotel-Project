@@ -40,5 +40,9 @@ export const publicHotelApi = {
     const response = (await axiosClient.get(`/api/RoomTypes/${id}`)) as RoomTypeDto;
     return mapRoomTypeToPublicRoom(response);
   },
+
+  sendContactMessage: async (data: { fullName: string, email: string, subject: string, message: string }) => {
+    return await axiosClient.post('/api/Contact', data);
+  }
 };
 

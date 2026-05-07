@@ -14,12 +14,12 @@ const RoomCard: React.FC<RoomCardProps> = ({ number, type, status, onUpdateStatu
   return (
     <motion.div
       whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
-      className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition-all duration-300"
+      className="bg-[var(--card-bg,var(--nav-bg))] p-6 rounded-2xl shadow-sm border border-[var(--nav-border)] transition-all duration-300"
     >
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-3xl font-display font-bold text-gray-800">{number}</h3>
-          <p className="text-gray-500 text-sm">{type}</p>
+          <h3 className="text-3xl font-display font-bold text-[var(--text-title)]">{number}</h3>
+          <p className="text-[var(--text-muted)] text-sm">{type}</p>
         </div>
         <StatusBadge status={status} />
       </div>

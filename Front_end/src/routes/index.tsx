@@ -46,11 +46,13 @@ const ServiceOrderManagementPage = lazy(() => import('../pages/staff/ServiceOrde
 const AuditLogsPage = lazy(() => import('../pages/admin/AuditLogsPage'));
 const AnalyticsPage = lazy(() => import('../pages/admin/AnalyticsPage'));
 const SystemSettingsPage = lazy(() => import('../pages/admin/SystemSettingsPage'));
+const ContactManagementPage = lazy(() => import('../pages/admin/ContactManagement'));
 const UnauthorizedPage = lazy(() => import('../pages/errors/UnauthorizedPage'));
 
 const StaffBookingPage = lazy(() => import('../pages/admin/BookingManagement'));
 const StaffInvoicePage = lazy(() => import('../pages/staff/InvoiceManagement'));
 const StaffCleaningPage = lazy(() => import('../pages/admin/CleaningPage'));
+const StaffDashboard = lazy(() => import('../pages/staff/StaffDashboard'));
 
 const LoadingScreen = () => (
   <div className="flex h-screen w-screen items-center justify-center bg-dark-base text-primary font-display text-2xl animate-pulse">
@@ -120,7 +122,7 @@ const AppRoutes: React.FC = () => {
           <Route
             path="analytics"
             element={
-              <RequirePermission allowedPermissions={['VIEW_DASHBOARD']}>
+              <RequirePermission allowedPermissions={['VIEW_REPORTS']}>
                 <AnalyticsPage />
               </RequirePermission>
             }
@@ -202,6 +204,14 @@ const AppRoutes: React.FC = () => {
             element={
               <RequirePermission allowedPermissions={['MANAGE_CONTENT']}>
                 <ReviewManagement />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="contact"
+            element={
+              <RequirePermission allowedPermissions={['MANAGE_CONTENT']}>
+                <ContactManagementPage />
               </RequirePermission>
             }
           />
@@ -294,7 +304,7 @@ const AppRoutes: React.FC = () => {
           <Route
             path="audit-logs"
             element={
-              <RequirePermission allowedPermissions={['VIEW_DASHBOARD']}>
+              <RequirePermission allowedPermissions={['MANAGE_ROLES']}>
                 <AuditLogsPage />
               </RequirePermission>
             }
@@ -319,7 +329,7 @@ const AppRoutes: React.FC = () => {
         >
           <Route
             index
-            element={<Navigate to={canAccessPath(user, '/staff/cleaning') ? '/staff/cleaning' : '/staff/bookings/manage'} replace />}
+            element={<StaffDashboard />}
           />
           <Route
             path="cleaning"
@@ -369,6 +379,22 @@ const AppRoutes: React.FC = () => {
             element={
               <RequirePermission allowedPermissions={['MANAGE_INVOICES']}>
                 <StaffInvoicePage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="vouchers"
+            element={
+              <RequirePermission allowedPermissions={['MANAGE_BOOKINGS']}>
+                <VoucherManagementPage />
+              </RequirePermission>
+            }
+          />
+          <Route
+            path="memberships"
+            element={
+              <RequirePermission allowedPermissions={['MANAGE_BOOKINGS']}>
+                <MembershipManagementPage />
               </RequirePermission>
             }
           />

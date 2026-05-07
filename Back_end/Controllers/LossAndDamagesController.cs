@@ -9,7 +9,7 @@ namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Manager,HR,Nhân sự,Staff,Housekeeping,Receptionist,Lễ tân,Dọn phòng,Nhân viên")]
+[RequirePermission("MANAGE_INVENTORY")]
 public class LossAndDamagesController : ControllerBase
 {
     private readonly AppDbContext _context;

@@ -9,7 +9,7 @@ namespace HotelManagementAPI.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    [RequirePermission("MANAGE_BOOKINGS")]
+    [RequirePermission("MANAGE_BOOKINGS", "MANAGE_INVOICES")]
     public class VouchersController : ControllerBase
     {
         private readonly IVoucherService _voucherService;

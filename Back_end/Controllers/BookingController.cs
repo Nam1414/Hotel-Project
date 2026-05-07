@@ -27,7 +27,7 @@ namespace HotelManagementAPI.Controllers
         /// <summary>Lấy tất cả booking — chỉ Staff/Admin có quyền MANAGE_BOOKINGS</summary>
         [HttpGet]
         [Authorize]
-        [RequirePermission("MANAGE_BOOKINGS")]
+        [RequirePermission("MANAGE_BOOKINGS", "MANAGE_INVOICES")]
         public async Task<IActionResult> GetAllBookings()
         {
             try
@@ -66,7 +66,7 @@ namespace HotelManagementAPI.Controllers
         /// <summary>Lấy chi tiết booking — chỉ Staff/Admin có quyền MANAGE_BOOKINGS</summary>
         [HttpGet("{id:int}")]
         [Authorize]
-        [RequirePermission("MANAGE_BOOKINGS")]
+        [RequirePermission("MANAGE_BOOKINGS", "MANAGE_INVOICES")]
         public async Task<IActionResult> GetBookingById(int id)
         {
             try

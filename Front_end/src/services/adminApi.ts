@@ -447,4 +447,25 @@ export const adminApi = {
   updateSystemSettings: async (settings: any[]) => axiosClient.put('/api/SystemSettings', settings),
 
   getUsers: async () => (await axiosClient.get('/api/UserManagement')) as any[],
+
+  getContactMessages: async () => (await axiosClient.get('/api/Contact')) as ContactMessageDto[],
+
+  replyContactMessage: async (id: number, replyContent: string) =>
+    axiosClient.post(`/api/Contact/${id}/reply`, JSON.stringify(replyContent), {
+      headers: { 'Content-Type': 'application/json' },
+    }),
+
+  markContactAsRead: async (id: number) => axiosClient.patch(`/api/Contact/${id}/read`),
 };
+
+export interface ContactMessageDto {
+  id: number;
+  fullName: string;
+  email: string;
+  subject: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+  replyMessage?: string | null;
+  repliedAt?: string | null;
+}

@@ -470,4 +470,39 @@ public static class DatabaseSchemaInitializer
             """
         );
     }
+
+    public static async Task EnsureContactMessageSchemaAsync(IServiceProvider services)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'[dbo].[ContactMessages]', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[ContactMessages](
+                    [id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [full_name] NVARCHAR(100) NOT NULL,
+                    [email] NVARCHAR(100) NOT NULL,
+                    [subject] NVARCHAR(200) NOT NULL,
+                    [message] NVARCHAR(MAX) NOT NULL,
+                    [created_at] DATETIME2 NOT NULL DEFAULT(SYSDATETIME()),
+                    [is_read] BIT NOT NULL DEFAULT(0)
+                );
+            END
+            IF OBJECT_ID(N'[dbo].[ContactMessages]', N'U') IS NOT NULL
+            BEGIN
+                IF COL_LENGTH(N'[dbo].[ContactMessages]', 'reply_message') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[ContactMessages] ADD [reply_message] NVARCHAR(MAX) NULL;
+                END
+
+                IF COL_LENGTH(N'[dbo].[ContactMessages]', 'replied_at') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[ContactMessages] ADD [replied_at] DATETIME2 NULL;
+                END
+            END
+            """
+        );
+    }
 }

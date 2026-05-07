@@ -10,6 +10,7 @@ namespace HotelManagementAPI.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[RequirePermission("MANAGE_INVENTORY")]
 public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;
@@ -22,7 +23,6 @@ public class InventoryController : ControllerBase
     }
 
     [HttpPost("sync")]
-    [Authorize(Roles = "Admin,Manager,HR,Nhân sự,Housekeeping")]
     public async Task<IActionResult> Sync([FromBody] SyncRoomInventoryDto dto)
     {
         try
@@ -39,7 +39,6 @@ public class InventoryController : ControllerBase
 
     // GET /api/Inventory/room/{roomId} — Lấy danh sách thiết bị trong phòng
     [HttpGet("room/{roomId}")]
-    [Authorize(Roles = "Admin,Manager,HR,Nhân sự,Housekeeping")]
     public async Task<IActionResult> GetByRoom(int roomId)
     {
         var result = await _inventoryService.GetByRoomAsync(roomId);
@@ -48,7 +47,6 @@ public class InventoryController : ControllerBase
 
     // GET /api/Inventory/{id} — Lấy chi tiết 1 bản ghi
     [HttpGet("{id}")]
-    [Authorize(Roles = "Admin,Manager,HR,Nhân sự,Housekeeping")]
     public async Task<IActionResult> GetById(int id)
     {
         var result = await _inventoryService.GetByIdAsync(id);
@@ -58,7 +56,6 @@ public class InventoryController : ControllerBase
 
     // PUT /api/Inventory/{id} — Cập nhật số lượng / giá đền bù / ghi chú
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin,Manager,HR,Nhân sự,Housekeeping")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomInventoryDto dto)
     {
         var previous = await _inventoryService.GetByIdAsync(id);
@@ -70,7 +67,6 @@ public class InventoryController : ControllerBase
 
     // DELETE /api/Inventory/{id} — Xóa thiết bị khỏi phòng
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,HR,Nhân sự")]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _inventoryService.DeleteByIdAsync(id);

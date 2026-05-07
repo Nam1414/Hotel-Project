@@ -11,6 +11,7 @@ namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[RequirePermission("MANAGE_ROOMS")]
 public class RoomTypesController : ControllerBase
 {
     private readonly IRoomService _roomService;
@@ -33,7 +34,7 @@ public class RoomTypesController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetAll()
     {
-        if (!_cache.TryGetValue(CACHE_KEY, out IEnumerable<RoomTypeDto>? roomTypes))
+        if (!_cache.TryGetValue(CACHE_KEY, out IEnumerable<RoomTypeResponseDto>? roomTypes))
         {
             roomTypes = await _roomService.GetAllRoomTypesAsync();
             var cacheOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromHours(1));
@@ -52,7 +53,6 @@ public class RoomTypesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateRoomTypeDto dto)
     {
         var result = await _roomService.CreateRoomTypeAsync(dto);
@@ -62,7 +62,6 @@ public class RoomTypesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomTypeDto dto)
     {
         var result = await _roomService.UpdateRoomTypeAsync(id, dto);
@@ -73,7 +72,6 @@ public class RoomTypesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _roomService.DeleteRoomTypeAsync(id);
@@ -85,7 +83,6 @@ public class RoomTypesController : ControllerBase
 
     // GALLERY MANAGEMENT
     [HttpPost("{id}/images")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UploadImage(int id, IFormFile file, [FromQuery] bool isPrimary = false)
     {
         var rt = await _context.RoomTypes.FindAsync(id);
@@ -116,7 +113,6 @@ public class RoomTypesController : ControllerBase
     }
 
     [HttpDelete("images/{imageId}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteImage(int imageId)
     {
         var img = await _context.RoomImages.FindAsync(imageId);
@@ -132,7 +128,6 @@ public class RoomTypesController : ControllerBase
     }
 
     [HttpPatch("images/{imageId}/set-primary")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> SetPrimary(int imageId)
     {
         var img = await _context.RoomImages.FindAsync(imageId);

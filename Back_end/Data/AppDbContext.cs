@@ -41,6 +41,7 @@ public class AppDbContext : DbContext
     public DbSet<RoomTransferLog> RoomTransferLogs { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<SystemSetting> SystemSettings { get; set; }
+    public DbSet<ContactMessage> ContactMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -44,6 +44,7 @@ public class DashboardService : IDashboardService
 
         foreach (var inv in paidInvoices)
         {
+            if (inv == null) continue;
             roomRevenue += inv.TotalRoomAmount ?? 0;
             serviceRevenue += (inv.TotalServiceAmount ?? 0) - (inv.DiscountAmount ?? 0);
         }
@@ -93,10 +94,10 @@ public class DashboardService : IDashboardService
 
         // 7. Revenue by Room Type (Pie Chart)
         var roomTypeRevenue = await _context.BookingDetails
-            .Include(bd => bd.Booking).ThenInclude(b => b.Invoice)
+            .Include(bd => bd.Booking!).ThenInclude(b => b!.Invoice)
             .Include(bd => bd.RoomType)
-            .Where(bd => bd.CheckInDate >= thirtyDaysAgo && bd.Booking.Invoice != null && bd.Booking.Invoice.StatusString == "Paid")
-            .GroupBy(bd => bd.RoomType.Name)
+            .Where(bd => bd.CheckInDate >= thirtyDaysAgo && bd.Booking != null && bd.Booking.Invoice != null && bd.Booking.Invoice.StatusString == "Paid" && bd.RoomType != null)
+            .GroupBy(bd => bd.RoomType!.Name)
             .Select(g => new PieChartDataDto { Name = g.Key, Value = g.Sum(x => x.PricePerNight) })
             .ToListAsync();
 
@@ -104,8 +105,8 @@ public class DashboardService : IDashboardService
         var serviceUsage = await _context.OrderServiceDetails
             .Include(osd => osd.Service)
             .Include(osd => osd.OrderService)
-            .Where(osd => osd.OrderService.OrderDate >= thirtyDaysAgo)
-            .GroupBy(osd => osd.Service.Name)
+            .Where(osd => osd.OrderService != null && osd.OrderService.OrderDate >= thirtyDaysAgo && osd.Service != null)
+            .GroupBy(osd => osd.Service!.Name)
             .Select(g => new PieChartDataDto { Name = g.Key, Value = g.Count() })
             .ToListAsync();
 

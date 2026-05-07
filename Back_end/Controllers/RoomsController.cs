@@ -11,6 +11,7 @@ namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[RequirePermission("MANAGE_ROOMS")]
 public class RoomsController : ControllerBase
 {
     private readonly IRoomService _roomService;
@@ -44,7 +45,6 @@ public class RoomsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateRoomDto dto)
     {
         var result = await _roomService.CreateRoomAsync(dto);
@@ -53,7 +53,6 @@ public class RoomsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomDto dto)
     {
         var result = await _roomService.UpdateRoomAsync(id, dto);
@@ -63,7 +62,6 @@ public class RoomsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var result = await _roomService.DeleteRoomAsync(id);
@@ -73,7 +71,6 @@ public class RoomsController : ControllerBase
     }
 
     [HttpPatch("{id}/cleaning-status")]
-    [Authorize(Roles = "Admin,Manager,Staff,Housekeeping,Lễ tân,Dọn phòng")]
     public async Task<IActionResult> UpdateCleaningStatus(int id, [FromBody] UpdateRoomCleaningDto dto)
     {
         var room = await _context.Rooms.FindAsync(id);
@@ -90,7 +87,6 @@ public class RoomsController : ControllerBase
     }
 
     [HttpPost("{id}/clone-items")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> CloneItems(int id, [FromBody] CloneRoomItemsDto dto)
     {
         var targetRoom = await _context.Rooms.FindAsync(id);
@@ -119,7 +115,6 @@ public class RoomsController : ControllerBase
     }
 
     [HttpPost("{id}/sync-items")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> SyncItems(int id)
     {
         var templateRoom = await _context.Rooms.FindAsync(id);
@@ -150,7 +145,6 @@ public class RoomsController : ControllerBase
     }
 
     [HttpPost("bulk-create")]
-    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> BulkCreate([FromBody] BulkCreateRoomsRequestDto dto)
     {
         if (dto.Count <= 0 || dto.Count > 50) return BadRequest(new { message = "Số lượng phòng phải từ 1 đến 50" });

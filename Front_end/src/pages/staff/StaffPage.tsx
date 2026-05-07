@@ -11,11 +11,11 @@ import { fetchRoles, selectAllRoles } from '../../store/slices/roleSlice';
 const CUSTOMER_ROLES = ['Customer', 'Guest']; // Các role không phải nhân sự
 
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
-  Admin: { bg: '#fef3c7', text: '#92400e' },
-  Manager: { bg: '#ede9fe', text: '#5b21b6' },
-  Receptionist: { bg: '#dbeafe', text: '#1d4ed8' },
-  Housekeeping: { bg: '#d1fae5', text: '#065f46' },
-  default: { bg: '#f1f5f9', text: '#475569' },
+  Admin: { bg: 'rgba(245,158,11,0.12)', text: '#f59e0b' },
+  Manager: { bg: 'rgba(139,92,246,0.12)', text: '#8b5cf6' },
+  Receptionist: { bg: 'rgba(59,130,246,0.12)', text: '#3b82f6' },
+  Housekeeping: { bg: 'rgba(16,185,129,0.12)', text: '#10b981' },
+  default: { bg: 'rgba(100,116,139,0.1)', text: '#64748b' },
 };
 
 const StaffPage: React.FC = () => {
@@ -136,12 +136,12 @@ const StaffPage: React.FC = () => {
       {loading ? (
         <div style={styles.loadingWrap}>
           <div style={styles.spinner} />
-          <p style={{ color: '#94a3b8', marginTop: 12 }}>Đang tải nhân sự...</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>Đang tải nhân sự...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div style={styles.empty}>
           <div style={{ fontSize: 48 }}>🏨</div>
-          <p>Không tìm thấy nhân sự nào phù hợp</p>
+          <p style={{ color: 'var(--text-muted)' }}>Không tìm thấy nhân sự nào phù hợp</p>
         </div>
       ) : (
         <div style={styles.grid}>
@@ -194,8 +194,9 @@ const StaffPage: React.FC = () => {
                       <span
                         style={{
                           ...styles.statusLabel,
-                          color: u.status ? '#16a34a' : '#dc2626',
-                          background: u.status ? '#dcfce7' : '#fee2e2',
+                          color: u.status ? '#10b981' : '#ef4444',
+                          background: u.status ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                          border: `1px solid ${u.status ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`,
                         }}
                       >
                         {u.status ? 'Đang làm việc' : 'Đã nghỉ'}
@@ -220,8 +221,8 @@ const StaffPage: React.FC = () => {
 const styles: Record<string, React.CSSProperties> = {
   page: {},
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  h1: { fontSize: 24, fontWeight: 800, color: '#0f172a', margin: '0 0 4px' },
-  subtitle: { fontSize: 14, color: '#64748b', margin: 0 },
+  h1: { fontSize: 24, fontWeight: 800, color: 'var(--text-title)', margin: '0 0 4px' },
+  subtitle: { fontSize: 14, color: 'var(--text-muted)', margin: 0 },
   statsRow: { display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' },
   statCard: {
     borderRadius: 10, padding: '14px 20px', minWidth: 120,
@@ -235,26 +236,28 @@ const styles: Record<string, React.CSSProperties> = {
   },
   searchInput: {
     flex: '1 1 240px', padding: '10px 14px',
-    border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 14, outline: 'none',
+    border: '1.5px solid var(--nav-border)', borderRadius: 8, fontSize: 14, outline: 'none',
+    background: 'var(--card-bg, var(--nav-bg))', color: 'var(--text-body)',
   },
   select: {
-    padding: '10px 14px', border: '1.5px solid #e2e8f0',
-    borderRadius: 8, fontSize: 14, background: '#fff', cursor: 'pointer',
+    padding: '10px 14px', border: '1.5px solid var(--nav-border)',
+    borderRadius: 8, fontSize: 14, background: 'var(--card-bg, var(--nav-bg))',
+    color: 'var(--text-body)', cursor: 'pointer',
   },
   resetBtn: {
-    padding: '10px 16px', background: '#fef2f2',
-    border: '1.5px solid #fca5a5', color: '#dc2626',
+    padding: '10px 16px', background: 'rgba(239,68,68,0.1)',
+    border: '1.5px solid rgba(239,68,68,0.3)', color: '#ef4444',
     borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
   },
-  resultCount: { fontSize: 13, color: '#94a3b8', marginLeft: 4 },
+  resultCount: { fontSize: 13, color: 'var(--text-muted)', marginLeft: 4 },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
     gap: 16,
   },
   card: {
-    background: '#fff', borderRadius: 12,
-    border: '1px solid #e2e8f0', overflow: 'hidden',
+    background: 'var(--card-bg, var(--nav-bg))', borderRadius: 12,
+    border: '1px solid var(--nav-border)', overflow: 'hidden',
     display: 'flex', flexDirection: 'column',
     transition: 'box-shadow 0.2s, transform 0.2s',
   },
@@ -263,37 +266,37 @@ const styles: Record<string, React.CSSProperties> = {
   avatarWrap: { position: 'relative', flexShrink: 0 },
   avatar: {
     width: 52, height: 52, borderRadius: '50%',
-    background: 'linear-gradient(135deg, #1e3a5f, #2563eb)',
+    background: 'linear-gradient(135deg, #C6A96B, #A6894B)',
     color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
     fontWeight: 700, fontSize: 20, overflow: 'hidden',
   },
   avatarImg: { width: '100%', height: '100%', objectFit: 'cover' },
   onlineDot: {
     position: 'absolute', bottom: 2, right: 2,
-    width: 12, height: 12, borderRadius: '50%', border: '2px solid #fff',
+    width: 12, height: 12, borderRadius: '50%', border: '2px solid var(--nav-bg)',
   },
   cardInfo: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
-  cardName: { fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 },
+  cardName: { fontSize: 16, fontWeight: 700, color: 'var(--text-title)', margin: 0 },
   roleBadge: {
     display: 'inline-block', padding: '2px 10px', borderRadius: 20,
     fontSize: 11, fontWeight: 700, width: 'fit-content',
   },
   contactRow: { display: 'flex', alignItems: 'center', gap: 6 },
-  contactText: { fontSize: 13, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  contactText: { fontSize: 13, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   cardFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   statusLabel: { fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 },
-  joinDate: { fontSize: 11, color: '#94a3b8' },
+  joinDate: { fontSize: 11, color: 'var(--text-muted)' },
   loadingWrap: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     justifyContent: 'center', paddingTop: 80,
   },
   spinner: {
-    width: 36, height: 36, border: '3px solid #e2e8f0',
+    width: 36, height: 36, border: '3px solid var(--nav-border)',
     borderTopColor: '#2563eb', borderRadius: '50%',
     animation: 'spin 0.7s linear infinite',
   },
   empty: {
-    textAlign: 'center', color: '#94a3b8', paddingTop: 80,
+    textAlign: 'center', color: 'var(--text-muted)', paddingTop: 80,
     fontSize: 15, display: 'flex', flexDirection: 'column',
     alignItems: 'center', gap: 12,
   },

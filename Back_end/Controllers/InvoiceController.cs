@@ -23,7 +23,7 @@ namespace HotelManagementAPI.Controllers
         }
 
         [HttpGet("booking/{bookingId}")]
-        [AllowAnonymous]
+        [RequirePermission("MANAGE_BOOKINGS", "MANAGE_INVOICES")]
         public async Task<IActionResult> GetInvoiceByBookingId(int bookingId)
         {
             try
@@ -39,7 +39,7 @@ namespace HotelManagementAPI.Controllers
         }
 
         [HttpPost("booking/{bookingId}")]
-        [AllowAnonymous]
+        [RequirePermission("MANAGE_INVOICES")]
         public async Task<IActionResult> CreateInvoice(int bookingId)
         {
             try

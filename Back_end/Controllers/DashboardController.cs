@@ -8,7 +8,7 @@ namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Staff")]
+[RequirePermission("VIEW_DASHBOARD")]
 public class DashboardController : ControllerBase
 {
     private readonly IDashboardService _dashboardService;

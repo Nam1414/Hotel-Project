@@ -464,8 +464,8 @@ const InvoiceManagementPage: React.FC = () => {
               </div>
 
               {/* Costs Breakdown */}
-              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#fafafa', borderRadius: 6, color: '#111827' }}>
-                <div style={{ fontWeight: 600, marginBottom: 8, color: '#111827' }}>Chi tiết chi phí</div>
+              <div style={{ borderBottom: '1px solid var(--nav-border)', marginBottom: 8, padding: '12px', background: 'var(--bg-subtle)', borderRadius: 6, color: 'var(--text-body)' }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--text-title)' }}>Chi tiết chi phí</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14 }}>
                   <span>Tiền phòng:</span>
                   <span style={{ fontWeight: 500 }}>{formatMoney(selectedInvoice.totalRoomAmount)}</span>
@@ -474,11 +474,11 @@ const InvoiceManagementPage: React.FC = () => {
                   <span>Dịch vụ & Vật tư (Minibar...):</span>
                   <span>{formatMoney(invoiceServices.reduce((sum, s) => sum + (s.totalAmount || 0), 0))}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#dc2626' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#ef4444' }}>
                   <span>Hỏng hóc & Thất thoát:</span>
                   <span style={{ fontWeight: 500 }}>+{formatMoney(invoiceDamages.reduce((sum, d) => sum + (d.penaltyAmount || 0), 0))}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: 14, fontWeight: 700, borderTop: '1px dashed #e5e7eb', marginTop: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 4px', fontSize: 14, fontWeight: 700, borderTop: '1px dashed var(--nav-border)', marginTop: 4, color: 'var(--text-title)' }}>
                   <span>TỔNG CỘNG (Chưa Thuế):</span>
                   <span>{formatMoney(selectedInvoice.totalRoomAmount + selectedInvoice.totalServiceAmount)}</span>
                 </div>
@@ -486,16 +486,16 @@ const InvoiceManagementPage: React.FC = () => {
                   <span>Đã đặt cọc:</span>
                   <span>-{formatMoney(selectedInvoice.depositPaidAmount)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: selectedInvoice.depositRemainingAmount > 0 ? '#dc2626' : '#16a34a' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: selectedInvoice.depositRemainingAmount > 0 ? '#ef4444' : '#10b981' }}>
                   <span>Cọc còn thiếu:</span>
                   <span>{formatMoney(selectedInvoice.depositRemainingAmount)}</span>
                 </div>
               </div>
 
               {/* Deductions */}
-              <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 8, padding: '12px', background: '#f0fdf4', borderRadius: 6, color: '#111827' }}>
-                <div style={{ fontWeight: 600, marginBottom: 8, color: '#111827' }}>Các khoản giảm trừ</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#16a34a' }}>
+              <div style={{ borderBottom: '1px solid var(--nav-border)', marginBottom: 8, padding: '12px', background: 'var(--bg-subtle)', borderRadius: 6, color: 'var(--text-body)' }}>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--text-title)' }}>Các khoản giảm trừ</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 14, color: '#10b981' }}>
                   <span>Ưu đãi / Voucher:</span>
                   <span>-{formatMoney(selectedInvoice.discountAmount)}</span>
                 </div>
@@ -507,25 +507,25 @@ const InvoiceManagementPage: React.FC = () => {
 
               {/* Amount Due Table */}
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>Thông tin lưu trú:</div>
+                <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--text-title)' }}>Thông tin lưu trú:</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ backgroundColor: '#f3f4f6' }}>
-                      <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Phòng</th>
-                      <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Số đêm</th>
-                      <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#374151' }}>Tổng tiền</th>
+                    <tr style={{ backgroundColor: 'var(--bg-subtle)' }}>
+                      <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid var(--nav-border)', color: 'var(--text-muted)' }}>Phòng</th>
+                      <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid var(--nav-border)', color: 'var(--text-muted)' }}>Số đêm</th>
+                      <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid var(--nav-border)', color: 'var(--text-muted)' }}>Tổng tiền</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedBooking?.details?.map((d, i) => {
                       const nights = nightsBetween(d.checkInDate, d.checkOutDate);
                       return (
-                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
-                          <td style={{ padding: '8px 12px', border: '1px solid #e5e7eb', color: '#111' }}>
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--card-bg)' : 'var(--bg-subtle)' }}>
+                          <td style={{ padding: '8px 12px', border: '1px solid var(--nav-border)', color: 'var(--text-body)' }}>
                             Phòng {rooms.find(r => r.id === d.roomId)?.roomNumber ?? d.roomId}
                           </td>
-                          <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#111' }}>{nights}</td>
-                          <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #e5e7eb', color: '#111', fontWeight: 600 }}>{formatMoney(d.pricePerNight * nights)}</td>
+                          <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid var(--nav-border)', color: 'var(--text-body)' }}>{nights}</td>
+                          <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid var(--nav-border)', color: 'var(--text-title)', fontWeight: 600 }}>{formatMoney(d.pricePerNight * nights)}</td>
                         </tr>
                       );
                     })}
@@ -536,23 +536,23 @@ const InvoiceManagementPage: React.FC = () => {
               {/* Services Table */}
               {invoiceServices && invoiceServices.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#0369a1' }}>Dịch vụ & Vật tư đã sử dụng:</div>
+                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#3b82f6' }}>Dịch vụ & Vật tư đã sử dụng:</div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#f0f9ff' }}>
-                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Sản phẩm/Dịch vụ</th>
-                        <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Số lượng</th>
-                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd', color: '#0369a1' }}>Tổng tiền</th>
+                      <tr style={{ backgroundColor: 'var(--bg-subtle)' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid var(--nav-border)', color: '#3b82f6' }}>Sản phẩm/Dịch vụ</th>
+                        <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid var(--nav-border)', color: '#3b82f6' }}>Số lượng</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid var(--nav-border)', color: '#3b82f6' }}>Tổng tiền</th>
                       </tr>
                     </thead>
                     <tbody>
                       {invoiceServices.map((order, i) => (
                         <React.Fragment key={i}>
                           {order.details?.map((item: any, j: number) => (
-                            <tr key={`${i}-${j}`} style={{ backgroundColor: '#ffffff', color: '#111827' }}>
-                              <td style={{ padding: '8px 12px', border: '1px solid #bae6fd' }}>{item.serviceName}</td>
-                              <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #bae6fd' }}>{item.quantity}</td>
-                              <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #bae6fd' }}>{formatMoney(item.lineTotal)}</td>
+                            <tr key={`${i}-${j}`} style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-body)' }}>
+                              <td style={{ padding: '8px 12px', border: '1px solid var(--nav-border)' }}>{item.serviceName}</td>
+                              <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid var(--nav-border)' }}>{item.quantity}</td>
+                              <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid var(--nav-border)' }}>{formatMoney(item.lineTotal)}</td>
                             </tr>
                           ))}
                         </React.Fragment>
@@ -565,21 +565,21 @@ const InvoiceManagementPage: React.FC = () => {
               {/* Damages Table */}
               {invoiceDamages && invoiceDamages.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#dc2626' }}>Hỏng hóc & Thất thoát:</div>
+                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#ef4444' }}>Hỏng hóc & Thất thoát:</div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#fff7ed' }}>
-                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid #fed7aa', color: '#9a3412' }}>Vật tư hư hỏng</th>
-                        <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #fed7aa', color: '#9a3412' }}>Số lượng</th>
-                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #fed7aa', color: '#9a3412' }}>Phí bồi thường</th>
+                      <tr style={{ backgroundColor: 'rgba(239,68,68,0.08)' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>Vật tư hư hỏng</th>
+                        <th style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>Số lượng</th>
+                        <th style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444' }}>Phí bồi thường</th>
                       </tr>
                     </thead>
                     <tbody>
                       {invoiceDamages.map((d, i) => (
-                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? '#ffffff' : '#fff7ed', color: '#111827' }}>
-                          <td style={{ padding: '8px 12px', border: '1px solid #fed7aa' }}>{d.equipmentName || 'Vật dụng'} ({d.roomNumber || 'N/A'})</td>
-                          <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid #fed7aa' }}>{d.quantity}</td>
-                          <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid #fed7aa', color: '#dc2626', fontWeight: 600 }}>{formatMoney(d.penaltyAmount)}</td>
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? 'var(--card-bg)' : 'rgba(239,68,68,0.04)', color: 'var(--text-body)' }}>
+                          <td style={{ padding: '8px 12px', border: '1px solid rgba(239,68,68,0.2)' }}>{d.equipmentName || 'Vật dụng'} ({d.roomNumber || 'N/A'})</td>
+                          <td style={{ textAlign: 'center', padding: '8px 12px', border: '1px solid rgba(239,68,68,0.2)' }}>{d.quantity}</td>
+                          <td style={{ textAlign: 'right', padding: '8px 12px', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontWeight: 600 }}>{formatMoney(d.penaltyAmount)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -598,14 +598,14 @@ const InvoiceManagementPage: React.FC = () => {
                   </Tag>
                 </div>
 
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '16px', marginBottom: 20, color: '#111827' }}>
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Tổng thanh toán</div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a' }}>{formatMoney(selectedInvoice.finalTotal)}</div>
+                <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--nav-border)', borderRadius: 8, padding: '16px', marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Tổng thanh toán</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-title)' }}>{formatMoney(selectedInvoice.finalTotal)}</div>
                   
                   <Divider style={{ margin: '12px 0' }} />
                   
-                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 4 }}>Còn lại</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: remainingAmount > 0 ? '#dc2626' : '#16a34a' }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Còn lại</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: remainingAmount > 0 ? '#ef4444' : '#10b981' }}>
                     {formatMoney(Math.max(0, remainingAmount))}
                   </div>
                 </div>
@@ -670,7 +670,7 @@ const InvoiceManagementPage: React.FC = () => {
                       </Button>
                     </>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '12px', background: '#f0fdf4', borderRadius: 8, color: '#16a34a', fontWeight: 600 }}>
+                    <div style={{ textAlign: 'center', padding: '12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 8, color: '#10b981', fontWeight: 600 }}>
                       ✓ ĐÃ THANH TOÁN ĐỦ
                     </div>
                   )}
@@ -678,15 +678,15 @@ const InvoiceManagementPage: React.FC = () => {
 
                 {selectedInvoice.payments?.length > 0 && (
                   <div style={{ marginTop: 'auto', paddingTop: 20 }}>
-                    <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8, color: '#64748b' }}>LỊCH SỬ GIAO DỊCH</div>
+                    <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 8, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>LỊCH SỬ GIAO DỊCH</div>
                     <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                       {selectedInvoice.payments.map((p, i) => (
-                        <div key={i} style={{ padding: '8px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                        <div key={i} style={{ padding: '8px 0', borderBottom: '1px dashed var(--nav-border)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                            <span style={{ fontWeight: 600 }}>{formatMoney(p.amountPaid)}</span>
-                            <span style={{ color: '#94a3b8', fontSize: 11 }}>{p.paymentMethod}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-title)' }}>{formatMoney(p.amountPaid)}</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{p.paymentMethod}</span>
                           </div>
-                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{p.paymentDate ? dayjs(p.paymentDate).format('DD/MM HH:mm') : ''}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.paymentDate ? dayjs(p.paymentDate).format('DD/MM HH:mm') : ''}</div>
                         </div>
                       ))}
                     </div>
@@ -707,15 +707,15 @@ const InvoiceManagementPage: React.FC = () => {
       >
         <Form form={paymentForm} layout="vertical" onFinish={submitPayment}>
           {selectedInvoice && (
-            <div style={{ background: '#faf7f2', border: '1px solid #e8d9bb', borderRadius: 8, padding: '12px 16px', marginBottom: 20, color: '#111827' }}>
+            <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--nav-border)', borderRadius: 8, padding: '12px 16px', marginBottom: 20 }}>
               <Row>
                 <Col span={12}>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Tổng hóa đơn</div>
-                  <div style={{ fontWeight: 900 }}>{formatMoney(selectedInvoice.finalTotal)}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tổng hóa đơn</div>
+                  <div style={{ fontWeight: 900, color: 'var(--text-title)' }}>{formatMoney(selectedInvoice.finalTotal)}</div>
                 </Col>
                 <Col span={12}>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Còn phải thu</div>
-                  <div style={{ fontWeight: 900, color: remainingAmount > 0 ? '#dc2626' : '#16a34a' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Còn phải thu</div>
+                  <div style={{ fontWeight: 900, color: remainingAmount > 0 ? '#ef4444' : '#10b981' }}>
                     {formatMoney(Math.max(0, remainingAmount))}
                   </div>
                 </Col>

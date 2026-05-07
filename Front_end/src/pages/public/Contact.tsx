@@ -2,12 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock3, Mail, MapPin, Phone, Send, MessageSquare } from 'lucide-react';
 import { bookingApi } from '../../services/bookingApi';
+import { publicHotelApi } from '../../services/publicHotelApi';
 import { App } from 'antd';
+import { useTranslation } from 'react-i18next';
 
 const Contact: React.FC = () => {
   const { message } = App.useApp();
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -30,14 +40,24 @@ const Contact: React.FC = () => {
   const phone = getSetting('ContactPhone', '+84 28 1234 5678');
   const email = getSetting('ContactEmail', 'hello@kanthotel.vn');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.fullName || !formData.email || !formData.message) {
+      message.error('Vui lòng điền đầy đủ các thông tin bắt buộc.');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      message.success('Cảm ơn bạn! Lời nhắn của bạn đã được gửi thành công. Chúng tôi sẽ phản hồi sớm nhất.');
+    try {
+      await publicHotelApi.sendContactMessage(formData);
+      message.success(t('contact.success'));
+      setFormData({ fullName: '', email: '', subject: '', message: '' });
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      message.error('Gửi lời nhắn thất bại. Vui lòng thử lại sau.');
+    } finally {
       setLoading(false);
-      (e.target as HTMLFormElement).reset();
-    }, 1500);
+    }
   };
 
   return (
@@ -50,7 +70,7 @@ const Contact: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-primary font-black tracking-[0.5em] uppercase text-[10px] sm:text-xs mb-6 block"
           >
-            Liên hệ với chúng tôi
+            {t('contact.title')}
           </motion.span>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -58,7 +78,7 @@ const Contact: React.FC = () => {
             transition={{ delay: 0.1 }}
             className="text-5xl md:text-7xl lg:text-8xl font-display font-bold text-title mb-10 leading-[1.1]"
           >
-            Sẵn sàng mang đến <br/> <span className="text-primary italic font-serif">trải nghiệm hoàn mỹ</span>
+            {t('contact.hero_title')} <br/> <span className="text-primary italic font-serif">{t('contact.hero_title_highlight')}</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -66,7 +86,7 @@ const Contact: React.FC = () => {
             transition={{ delay: 0.2 }}
             className="text-muted text-lg sm:text-xl font-light leading-relaxed max-w-2xl mx-auto"
           >
-            Dù là yêu cầu đặt phòng đặc biệt hay cần tư vấn về chuyến đi, đội ngũ chuyên gia của {hotelName} luôn sẵn sàng kiến tạo kỳ nghỉ trong mơ của bạn.
+            {t('contact.hero_desc', { hotelName })}
           </motion.p>
           <motion.div 
             initial={{ scaleX: 0 }}
@@ -91,7 +111,7 @@ const Contact: React.FC = () => {
                   <MapPin size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">Địa chỉ</h3>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">{t('contact.address')}</h3>
                   <p className="text-lg font-display font-semibold text-title leading-relaxed">
                     {address}
                   </p>
@@ -103,7 +123,7 @@ const Contact: React.FC = () => {
                   <Phone size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">Điện thoại</h3>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">{t('contact.phone')}</h3>
                   <p className="text-lg font-display font-semibold text-title tracking-wide">{phone}</p>
                 </div>
               </div>
@@ -113,7 +133,7 @@ const Contact: React.FC = () => {
                   <Mail size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">Email</h3>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">{t('contact.email')}</h3>
                   <p className="text-lg font-display font-semibold text-title">{email}</p>
                 </div>
               </div>
@@ -123,16 +143,16 @@ const Contact: React.FC = () => {
                   <Clock3 size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">Thời gian phục vụ</h3>
-                  <p className="text-lg font-display font-semibold text-title">Lễ tân: 24/7</p>
-                  <p className="text-lg font-display font-semibold text-title">Spa & Gym: 06:00 - 22:00</p>
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary mb-3">{t('contact.hours')}</h3>
+                  <p className="text-lg font-display font-semibold text-title">{t('contact.reception')}</p>
+                  <p className="text-lg font-display font-semibold text-title">{t('contact.spa_gym')}</p>
                 </div>
               </div>
             </motion.div>
 
             {/* Social Links placeholder */}
             <div className="flex justify-between items-center px-4">
-              <h4 className="text-xs font-bold text-muted uppercase tracking-[0.2em]">Theo dõi chúng tôi</h4>
+              <h4 className="text-xs font-bold text-muted uppercase tracking-[0.2em]">{t('contact.follow_us')}</h4>
               <div className="flex gap-6">
                 {['FB', 'IG', 'TW', 'LI'].map(s => (
                   <button key={s} className="text-muted hover:text-primary font-bold text-xs transition-colors">{s}</button>
@@ -153,28 +173,52 @@ const Contact: React.FC = () => {
                 <MessageSquare size={160} className="text-primary" />
               </div>
               
-              <h2 className="text-3xl sm:text-4xl font-display font-bold text-title mb-12">Gửi lời nhắn riêng cho chúng tôi</h2>
+              <h2 className="text-3xl sm:text-4xl font-display font-bold text-title mb-12">{t('contact.form_title')}</h2>
               
               <form className="space-y-8" onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-3">
-                    <label className="block text-xs font-bold text-muted uppercase tracking-widest">Họ và tên</label>
-                    <input className="input-luxury w-full" placeholder="Nguyễn Văn A" />
+                    <label className="block text-xs font-bold text-muted uppercase tracking-widest">{t('contact.fullname')}</label>
+                    <input 
+                      className="input-luxury w-full" 
+                      placeholder="Nguyễn Văn A" 
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                      required
+                    />
                   </div>
                   <div className="space-y-3">
-                    <label className="block text-xs font-bold text-muted uppercase tracking-widest">Địa chỉ Email</label>
-                    <input className="input-luxury w-full" placeholder="email@vi-du.com" type="email" />
+                    <label className="block text-xs font-bold text-muted uppercase tracking-widest">{t('contact.email_addr')}</label>
+                    <input 
+                      className="input-luxury w-full" 
+                      placeholder="email@vi-du.com" 
+                      type="email" 
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      required
+                    />
                   </div>
                 </div>
                 
                 <div className="space-y-3">
-                  <label className="block text-xs font-bold text-muted uppercase tracking-widest">Chủ đề</label>
-                  <input className="input-luxury w-full" placeholder="Yêu cầu đặt phòng, thắc mắc..." />
+                  <label className="block text-xs font-bold text-muted uppercase tracking-widest">{t('contact.subject')}</label>
+                  <input 
+                    className="input-luxury w-full" 
+                    placeholder="Yêu cầu đặt phòng, thắc mắc..." 
+                    value={formData.subject}
+                    onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                  />
                 </div>
                 
                 <div className="space-y-3">
-                  <label className="block text-xs font-bold text-muted uppercase tracking-widest">Nội dung lời nhắn</label>
-                  <textarea className="input-luxury w-full min-h-[160px] resize-none py-4" placeholder="Chúng tôi có thể giúp gì cho bạn?" />
+                  <label className="block text-xs font-bold text-muted uppercase tracking-widest">{t('contact.message')}</label>
+                  <textarea 
+                    className="input-luxury w-full min-h-[160px] resize-none py-4" 
+                    placeholder={t('contact.message_placeholder')}
+                    value={formData.message}
+                    onChange={(e) => setFormData({...formData, message: e.target.value})}
+                    required
+                  />
                 </div>
                 
                 <div className="pt-6">
@@ -183,7 +227,7 @@ const Contact: React.FC = () => {
                     disabled={loading}
                     className="btn-gold w-full md:w-auto px-16 py-5 flex items-center justify-center gap-4 group text-sm font-black tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'ĐANG GỬI...' : 'GỬI YÊU CẦU NGAY'}
+                    {loading ? t('contact.sending') : t('contact.send_now')}
                     {!loading && <Send size={18} className="transition-all group-hover:translate-x-2 group-hover:-translate-y-2" />}
                   </button>
                 </div>
@@ -206,15 +250,15 @@ const Contact: React.FC = () => {
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
                 <MapPin size={32} />
               </div>
-              <h3 className="text-2xl md:text-3xl font-display font-bold text-title mb-3 tracking-tight">Tìm đường đến với chúng tôi</h3>
+              <h3 className="text-2xl md:text-3xl font-display font-bold text-title mb-3 tracking-tight">{t('contact.find_way')}</h3>
               <p className="text-muted text-sm mb-10 font-light leading-relaxed">
-                Khám phá vị trí đắc địa của {hotelName} <br/> và bắt đầu hành trình nghỉ dưỡng của bạn.
+                {t('contact.map_desc', { hotelName })}
               </p>
               <button 
                 onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank')}
                 className="btn-gold mx-auto block px-12 py-4 text-xs font-black tracking-widest uppercase hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/20"
               >
-                XEM BẢN ĐỒ CHI TIẾT
+                {t('contact.view_map')}
               </button>
             </div>
           </div>

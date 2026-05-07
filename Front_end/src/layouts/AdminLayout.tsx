@@ -32,10 +32,14 @@ import {
   MessageSquare,
   History,
   TrendingUp,
-  Settings
+  Settings,
+  Mail
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '../utils/cn';
+import { useTranslation } from 'react-i18next';
+import { Sun, Moon } from 'lucide-react';
+import { useThemeStore } from '../store/themeStore';
 
 const AdminLayout: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -45,6 +49,13 @@ const AdminLayout: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isBookingMenuOpen, setIsBookingMenuOpen] = useState(true);
+  const { t, i18n } = useTranslation();
+  const { isDarkMode, toggleTheme } = useThemeStore();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'vi' ? 'en' : 'vi';
+    i18n.changeLanguage(newLang);
+  };
 
   const { requestPermission } = useNotification();
 
@@ -57,32 +68,33 @@ const AdminLayout: React.FC = () => {
   }, [location.pathname]);
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
-    { icon: TrendingUp, label: 'Thống kê', path: '/admin/analytics', permissions: ['VIEW_DASHBOARD'] },
-    { icon: Users, label: 'User Management', path: '/admin/users', permissions: ['MANAGE_USERS'] },
-    { icon: Bed, label: 'Room Management', path: '/admin/rooms', permissions: ['MANAGE_ROOMS'] },
-    { icon: LayoutGrid, label: 'Hạng phòng & Ảnh', path: '/admin/room-types', permissions: ['MANAGE_ROOMS'] },
-    { icon: ClipboardList, label: 'Cleaning', path: '/admin/cleaning', permissions: ['MANAGE_ROOMS'] },
-    { icon: Sparkles, label: 'Amenities', path: '/admin/amenities', permissions: ['MANAGE_ROOMS'] },
-    { icon: Package, label: 'Inventory', path: '/admin/inventory', permissions: ['MANAGE_INVENTORY'] },
-    { icon: TriangleAlert, label: 'Damage & Loss', path: '/admin/inventory/damages', permissions: ['MANAGE_INVENTORY'] },
-    { icon: MapPin, label: 'Attractions', path: '/admin/attractions', permissions: ['MANAGE_CONTENT'] },
-    { icon: FileText, label: 'CMS', path: '/admin/cms', permissions: ['MANAGE_CONTENT'] },
-    { icon: MessageSquare, label: 'Reviews', path: '/admin/reviews', permissions: ['MANAGE_CONTENT'] },
-    { icon: CreditCard, label: 'Invoices', path: '/admin/invoices', permissions: ['MANAGE_INVOICES'] },
-    { icon: BadgePercent, label: 'Vouchers', path: '/admin/vouchers', permissions: ['MANAGE_BOOKINGS'] },
-    { icon: Users, label: 'Membership', path: '/admin/memberships', permissions: ['MANAGE_BOOKINGS'] },
-    { icon: Package, label: 'Service Orders', path: '/admin/orders', permissions: ['MANAGE_SERVICES', 'MANAGE_ROOMS'] },
-    { icon: ShieldCheck, label: 'Roles & Permissions', path: '/admin/roles', permissions: ['MANAGE_ROLES'] },
-    { icon: Settings, label: 'Cấu hình hệ thống', path: '/admin/settings', permissions: ['MANAGE_ROLES'] },
-    { icon: History, label: 'Nhật ký hệ thống', path: '/admin/audit-logs', permissions: ['VIEW_DASHBOARD'] },
+    { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/admin', permissions: ['VIEW_DASHBOARD'] },
+    { icon: TrendingUp, label: t('nav.analytics'), path: '/admin/analytics', permissions: ['VIEW_REPORTS'] },
+    { icon: Users, label: t('nav.users'), path: '/admin/users', permissions: ['MANAGE_USERS'] },
+    { icon: Bed, label: t('nav.room_mgmt'), path: '/admin/rooms', permissions: ['MANAGE_ROOMS'] },
+    { icon: LayoutGrid, label: t('nav.room_types'), path: '/admin/room-types', permissions: ['MANAGE_ROOMS'] },
+    { icon: ClipboardList, label: t('nav.cleaning'), path: '/admin/cleaning', permissions: ['MANAGE_ROOMS'] },
+    { icon: Sparkles, label: t('nav.amenities'), path: '/admin/amenities', permissions: ['MANAGE_ROOMS'] },
+    { icon: Package, label: t('nav.inventory'), path: '/admin/inventory', permissions: ['MANAGE_INVENTORY'] },
+    { icon: TriangleAlert, label: t('nav.damages'), path: '/admin/inventory/damages', permissions: ['MANAGE_INVENTORY'] },
+    { icon: MapPin, label: t('nav.attractions'), path: '/admin/attractions', permissions: ['MANAGE_CONTENT'] },
+    { icon: FileText, label: t('nav.cms'), path: '/admin/cms', permissions: ['MANAGE_CONTENT'] },
+    { icon: MessageSquare, label: t('nav.reviews'), path: '/admin/reviews', permissions: ['MANAGE_CONTENT'] },
+    { icon: Mail, label: t('nav.contact'), path: '/admin/contact', permissions: ['MANAGE_CONTENT'] },
+    { icon: CreditCard, label: t('nav.invoices'), path: '/admin/invoices', permissions: ['MANAGE_INVOICES'] },
+    { icon: BadgePercent, label: t('nav.vouchers'), path: '/admin/vouchers', permissions: ['MANAGE_BOOKINGS'] },
+    { icon: Users, label: t('nav.memberships'), path: '/admin/memberships', permissions: ['MANAGE_BOOKINGS'] },
+    { icon: Package, label: t('nav.orders'), path: '/admin/orders', permissions: ['MANAGE_SERVICES', 'MANAGE_ROOMS'] },
+    { icon: ShieldCheck, label: t('nav.roles'), path: '/admin/roles', permissions: ['MANAGE_ROLES'] },
+    { icon: Settings, label: t('nav.settings'), path: '/admin/settings', permissions: ['MANAGE_ROLES'] },
+    { icon: History, label: t('nav.audit_logs'), path: '/admin/audit-logs', permissions: ['MANAGE_ROLES'] },
   ];
 
   const bookingMenuItems = [
-    { icon: CalendarClock, label: 'Tất cả booking', path: '/admin/bookings/manage', permissions: ['MANAGE_BOOKINGS'] },
-    { icon: CalendarDays, label: 'Khách đến hôm nay', path: '/admin/bookings/arrivals', permissions: ['MANAGE_BOOKINGS'] },
-    { icon: House, label: 'Khách đang lưu trú', path: '/admin/bookings/in-house', permissions: ['MANAGE_BOOKINGS'] },
-    { icon: DoorClosed, label: 'Thủ tục trả phòng', path: '/admin/bookings/check-out', permissions: ['MANAGE_BOOKINGS'] },
+    { icon: CalendarClock, label: t('nav.all_bookings'), path: '/admin/bookings/manage', permissions: ['MANAGE_BOOKINGS'] },
+    { icon: CalendarDays, label: t('nav.arrivals'), path: '/admin/bookings/arrivals', permissions: ['MANAGE_BOOKINGS'] },
+    { icon: House, label: t('nav.in_house'), path: '/admin/bookings/in-house', permissions: ['MANAGE_BOOKINGS'] },
+    { icon: DoorClosed, label: t('nav.check_out'), path: '/admin/bookings/check-out', permissions: ['MANAGE_BOOKINGS'] },
   ];
 
   const filteredMenu = menuItems.filter((item) => {
@@ -127,7 +139,7 @@ const AdminLayout: React.FC = () => {
             >
               <span className="flex items-center space-x-3">
                 <CalendarClock size={20} className={cn(isBookingSectionActive ? 'text-primary' : 'text-[var(--text-muted)]')} />
-                {!isCollapsed && <span className="font-semibold tracking-wide">Quản lý Đặt phòng</span>}
+                {!isCollapsed && <span className="font-semibold tracking-wide">{t('nav.bookings')}</span>}
               </span>
               {!isCollapsed && (isBookingMenuOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />)}
             </button>
@@ -182,7 +194,7 @@ const AdminLayout: React.FC = () => {
           className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-all group"
         >
           <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
-          {!isCollapsed && <span className="font-bold tracking-wide">Logout</span>}
+          {!isCollapsed && <span className="font-bold tracking-wide">{t('nav.logout')}</span>}
         </button>
       </div>
     </>
@@ -251,6 +263,26 @@ const AdminLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-6">
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl border border-[var(--nav-border)] text-[var(--text-muted)] hover:bg-primary/5 hover:border-primary/30 transition-all shadow-sm"
+              title={isDarkMode ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+            >
+              {isDarkMode
+                ? <Sun size={18} className="text-yellow-500" />
+                : <Moon size={18} className="text-indigo-500" />
+              }
+            </button>
+
+            {/* Language Toggle */}
+            <button
+              onClick={toggleLanguage}
+              className="p-2.5 rounded-xl border border-[var(--nav-border)] text-primary font-bold hover:bg-primary/5 hover:border-primary/30 transition-all shadow-sm min-w-[45px]"
+              title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+            >
+              {i18n.language === 'vi' ? 'VI' : 'EN'}
+            </button>
+
             <NotificationBell />
             <div className="flex items-center gap-3 pl-3 sm:pl-6 border-l border-[var(--nav-border)]">
               <div className="text-right hidden sm:block">

@@ -9,10 +9,22 @@ import {
   ArrowUpRight, PieChart as PieIcon, Download 
 } from 'lucide-react';
 import { adminApi, DashboardAnalyticsDto } from '../../services/adminApi';
+import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 
-const COLORS = ['#C6A96B', '#1d4ed8', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#f43f5e'];
+const COLORS = [
+  '#C6A96B', // Luxury Gold (Primary)
+  '#3730A3', // Indigo
+  '#059669', // Emerald
+  '#D97706', // Amber
+  '#BE123C', // Rose
+  '#0891B2', // Cyan
+  '#4F46E5', // Violet
+  '#64748B'  // Slate
+];
 
 const AnalyticsPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState<DashboardAnalyticsDto | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,105 +79,131 @@ const AnalyticsPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-8 bg-[var(--bg-main)] min-h-screen">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="p-4 sm:p-8 space-y-8 bg-[var(--bg-main)] min-h-screen">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+      >
         <div className="flex flex-col gap-2">
-          <Typography.Title level={2} style={{ margin: 0, fontWeight: 700, letterSpacing: '-0.02em' }}>
-            Thống kê chuyên sâu
+          <Typography.Title level={2} className="!m-0 font-display font-bold text-title tracking-tight">
+            {t('analytics.title')}
           </Typography.Title>
-          <Typography.Paragraph className="text-muted text-base">
-            Phân tích doanh thu, tỷ lệ lấp đầy và hiệu quả vận hành khách sạn trong 30 ngày qua.
+          <Typography.Paragraph className="text-muted text-base max-w-2xl !mb-0">
+            {t('analytics.subtitle')}
           </Typography.Paragraph>
         </div>
         <button
           onClick={handleExportCSV}
-          className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-xl font-bold transition-all shadow-lg shadow-primary/20"
+          className="flex items-center gap-2 bg-primary hover:bg-gold-light text-white px-6 py-3 rounded-xl font-bold transition-all shadow-xl shadow-primary/20 active:scale-95"
         >
-          <Download size={18} /> Xuất báo cáo CSV
+          <Download size={18} /> {t('analytics.export')}
         </button>
-      </div>
+      </motion.div>
 
       {/* Top Stats */}
       <Row gutter={[24, 24]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="glass-card border-none shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl">
-            <Statistic
-              title={<span className="flex items-center gap-2 text-muted font-medium mb-1"><DollarSign size={16} /> Tổng doanh thu</span>}
-              value={data?.totalRevenue}
-              formatter={(val) => formatCurrency(Number(val))}
-              valueStyle={{ color: 'var(--primary)', fontWeight: 800, fontSize: '1.5rem' }}
-            />
-            <div className="mt-3 flex items-center gap-1 text-xs font-bold text-green-500 bg-green-500/10 w-fit px-2 py-1 rounded-full">
-              <ArrowUpRight size={14} /> <span>12.5% tăng trưởng</span>
-            </div>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="glass-card border border-luxury/10 shadow-sm hover:shadow-xl transition-all duration-500 rounded-2xl group overflow-hidden relative">
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
+              <Statistic
+                title={<span className="flex items-center gap-2 text-muted font-bold uppercase tracking-widest text-[10px] mb-2"><DollarSign size={14} className="text-primary" /> {t('analytics.total_revenue')}</span>}
+                value={data?.totalRevenue}
+                formatter={(val) => formatCurrency(Number(val))}
+                valueStyle={{ color: '#C6A96B', fontWeight: 900, fontSize: '1.75rem', letterSpacing: '-0.03em' }}
+              />
+              <div className="mt-4 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-tighter text-green-600 bg-green-500/10 w-fit px-3 py-1 rounded-full">
+                <ArrowUpRight size={14} strokeWidth={3} /> <span>12.5% {t('analytics.growth')}</span>
+              </div>
+            </Card>
+          </motion.div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="glass-card border-none shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl">
-            <Statistic
-              title={<span className="flex items-center gap-2 text-muted font-medium mb-1"><Users size={16} /> Tỷ lệ lấp đầy</span>}
-              value={data?.occupancyRate}
-              suffix="%"
-              valueStyle={{ color: '#1d4ed8', fontWeight: 800, fontSize: '1.5rem' }}
-            />
-            <div className="mt-3 flex items-center gap-1 text-xs font-bold text-blue-500 bg-blue-500/10 w-fit px-2 py-1 rounded-full">
-              <Activity size={14} /> <span>Vận hành ổn định</span>
-            </div>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <Card className="glass-card border border-luxury/10 shadow-sm hover:shadow-xl transition-all duration-500 rounded-2xl group overflow-hidden relative">
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl group-hover:bg-indigo-500/10 transition-colors" />
+              <Statistic
+                title={<span className="flex items-center gap-2 text-muted font-bold uppercase tracking-widest text-[10px] mb-2"><Users size={14} className="text-indigo-500" /> {t('analytics.occupancy_rate')}</span>}
+                value={data?.occupancyRate}
+                suffix="%"
+                valueStyle={{ color: '#3730A3', fontWeight: 900, fontSize: '1.75rem', letterSpacing: '-0.03em' }}
+              />
+              <div className="mt-4 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-tighter text-indigo-600 bg-indigo-500/10 w-fit px-3 py-1 rounded-full">
+                <Activity size={14} strokeWidth={3} /> <span>{t('analytics.stable_ops')}</span>
+              </div>
+            </Card>
+          </motion.div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="glass-card border-none shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl">
-            <Statistic
-              title={<span className="flex items-center gap-2 text-muted font-medium mb-1"><TrendingUp size={16} /> Chỉ số ADR</span>}
-              value={data?.adr}
-              formatter={(val) => formatCurrency(Number(val))}
-              valueStyle={{ color: '#10b981', fontWeight: 800, fontSize: '1.5rem' }}
-            />
-            <div className="mt-3 text-xs text-muted font-medium">Giá phòng TB mỗi đêm</div>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <Card className="glass-card border border-luxury/10 shadow-sm hover:shadow-xl transition-all duration-500 rounded-2xl group overflow-hidden relative">
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
+              <Statistic
+                title={<span className="flex items-center gap-2 text-muted font-bold uppercase tracking-widest text-[10px] mb-2"><TrendingUp size={14} className="text-emerald-500" /> {t('analytics.adr')}</span>}
+                value={data?.adr}
+                formatter={(val) => formatCurrency(Number(val))}
+                valueStyle={{ color: '#059669', fontWeight: 900, fontSize: '1.75rem', letterSpacing: '-0.03em' }}
+              />
+              <div className="mt-4 text-[10px] text-muted font-bold uppercase tracking-widest">{t('analytics.avg_price_night')}</div>
+            </Card>
+          </motion.div>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="glass-card border-none shadow-sm hover:shadow-md transition-all duration-300 rounded-2xl">
-            <Statistic
-              title={<span className="flex items-center gap-2 text-muted font-medium mb-1"><Bed size={16} /> Chỉ số RevPAR</span>}
-              value={data?.revPAR}
-              formatter={(val) => formatCurrency(Number(val))}
-              valueStyle={{ color: '#f59e0b', fontWeight: 800, fontSize: '1.5rem' }}
-            />
-            <div className="mt-3 text-xs text-muted font-medium">Doanh thu / phòng trống</div>
-          </Card>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <Card className="glass-card border border-luxury/10 shadow-sm hover:shadow-xl transition-all duration-500 rounded-2xl group overflow-hidden relative">
+              <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors" />
+              <Statistic
+                title={<span className="flex items-center gap-2 text-muted font-bold uppercase tracking-widest text-[10px] mb-2"><Bed size={14} className="text-amber-500" /> {t('analytics.revpar')}</span>}
+                value={data?.revPAR}
+                formatter={(val) => formatCurrency(Number(val))}
+                valueStyle={{ color: '#D97706', fontWeight: 900, fontSize: '1.75rem', letterSpacing: '-0.03em' }}
+              />
+              <div className="mt-4 text-[10px] text-muted font-bold uppercase tracking-widest">{t('analytics.rev_empty_room')}</div>
+            </Card>
+          </motion.div>
         </Col>
       </Row>
 
       {/* Main Charts Row */}
       <Row gutter={[24, 24]}>
         <Col span={24} lg={16}>
-          <Card title={<span className="font-bold">Biểu đồ doanh thu 30 ngày</span>} className="glass-card border-none shadow-sm rounded-2xl overflow-hidden">
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }}>
+            <Card 
+              title={<span className="text-xs font-black uppercase tracking-[0.2em] text-title">{t('analytics.revenue_30days')}</span>} 
+              className="glass-card border border-luxury/10 shadow-xl rounded-2xl overflow-hidden"
+            >
             <div style={{ width: '100%', height: 350, marginTop: 20 }}>
               <ResponsiveContainer>
                 <AreaChart data={data?.revenueChart30Days} margin={{ top: 10, right: 30, left: 20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#C6A96B" stopOpacity={0.6}/>
+                      <stop offset="95%" stopColor="#C6A96B" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af' }} tickFormatter={(val) => `${val/1000000}M`} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(val) => `${val/1000000}M`} />
                   <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', padding: '12px' }}
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid rgba(198,169,107,0.2)', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', padding: '12px' }}
+                    itemStyle={{ color: '#C6A96B' }}
                     formatter={(value: number) => [formatCurrency(value), 'Doanh thu']}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" />
+                  <Area type="monotone" dataKey="revenue" stroke="#C6A96B" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-          </Card>
+            </Card>
+          </motion.div>
         </Col>
 
         <Col span={24} lg={8}>
-          <Card title={<span className="font-bold">Doanh thu / Hạng phòng</span>} className="glass-card border-none shadow-sm rounded-2xl h-full">
+          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }}>
+            <Card 
+              title={<span className="text-xs font-black uppercase tracking-[0.2em] text-title">{t('analytics.rev_by_room_type')}</span>} 
+              className="glass-card border border-luxury/10 shadow-xl rounded-2xl h-full"
+            >
             <div style={{ width: '100%', height: 350, marginTop: 20 }}>
               <ResponsiveContainer>
                 <PieChart>
@@ -179,7 +217,7 @@ const AnalyticsPage: React.FC = () => {
                     dataKey="value"
                   >
                     {data?.revenueByRoomType.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="transparent" />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
@@ -188,13 +226,18 @@ const AnalyticsPage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           </Card>
-        </Col>
-      </Row>
+        </motion.div>
+      </Col>
+    </Row>
 
       {/* Bottom Charts Row */}
       <Row gutter={[24, 24]}>
         <Col span={24} lg={12}>
-          <Card title={<span className="font-bold">Phân bổ trạng thái Đặt phòng</span>} className="glass-card border-none shadow-sm rounded-2xl">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
+            <Card 
+              title={<span className="text-xs font-black uppercase tracking-[0.2em] text-title">{t('analytics.booking_status_dist')}</span>} 
+              className="glass-card border border-luxury/10 shadow-xl rounded-2xl"
+            >
             <div style={{ width: '100%', height: 350, marginTop: 20 }}>
               <ResponsiveContainer>
                 <BarChart 
@@ -202,7 +245,7 @@ const AnalyticsPage: React.FC = () => {
                   layout="vertical"
                   margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(0,0,0,0.05)" />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.1)" />
                   <XAxis type="number" hide />
                   <YAxis 
                     dataKey="name" 
@@ -210,18 +253,26 @@ const AnalyticsPage: React.FC = () => {
                     axisLine={false} 
                     tickLine={false} 
                     width={100}
-                    tick={{ fontSize: 12, fontWeight: 600, fill: 'var(--text-main)' }} 
+                    tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
                   />
-                  <Tooltip cursor={{ fill: 'rgba(var(--primary-rgb), 0.05)' }} />
-                  <Bar dataKey="value" fill="var(--primary)" radius={[0, 8, 8, 0]} barSize={24} />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(198, 169, 107, 0.05)' }} 
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(198,169,107,0.2)', borderRadius: '8px' }}
+                  />
+                  <Bar dataKey="value" fill="#C6A96B" radius={[0, 8, 8, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </Card>
+            </Card>
+          </motion.div>
         </Col>
 
         <Col span={24} lg={12}>
-          <Card title={<span className="font-bold">Dịch vụ sử dụng nhiều nhất</span>} className="glass-card border-none shadow-sm rounded-2xl">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
+            <Card 
+              title={<span className="text-xs font-black uppercase tracking-[0.2em] text-title">{t('analytics.top_services')}</span>} 
+              className="glass-card border border-luxury/10 shadow-xl rounded-2xl"
+            >
             <div style={{ width: '100%', height: 350, marginTop: 20 }}>
               <ResponsiveContainer>
                 <PieChart>
@@ -236,7 +287,7 @@ const AnalyticsPage: React.FC = () => {
                     label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                   >
                     {data?.serviceUsage.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[(index + 3) % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} stroke="transparent" />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -245,8 +296,9 @@ const AnalyticsPage: React.FC = () => {
               </ResponsiveContainer>
             </div>
           </Card>
-        </Col>
-      </Row>
+        </motion.div>
+      </Col>
+    </Row>
     </div>
   );
 };

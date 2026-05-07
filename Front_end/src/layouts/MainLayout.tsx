@@ -7,6 +7,7 @@ import { useThemeStore } from '../store/themeStore';
 import { Menu, X, Sun, Moon, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAuthorizedHomePath } from '../utils/authNavigation';
+import { useTranslation } from 'react-i18next';
 
 import NotificationBell from '../components/notification/NotificationBell';
 import Footer from '../components/common/Footer';
@@ -29,14 +30,31 @@ const getMembershipBadgeClass = (membershipName?: string | null) => {
   return 'bg-primary/10 text-primary';
 };
 
-const getMembershipDisplayName = (membershipName?: string | null) => membershipName || 'Chưa có';
+const getMembershipDisplayName = (membershipName: string | null | undefined, t: any) => membershipName || t('common.no_info');
 
 const MainLayout: React.FC = () => {
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { isDarkMode, toggleTheme } = useThemeStore();
+  const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'vi' ? 'en' : 'vi';
+    i18n.changeLanguage(newLang);
+  };
+
+  const navItems = [
+    { to: '/', label: t('nav.home') },
+    { to: '/rooms', label: t('nav.rooms') },
+    { to: '/services', label: t('nav.services') },
+    { to: '/news', label: t('nav.news') },
+    { to: '/attractions', label: t('nav.explore') },
+    { to: '/about', label: t('nav.about') },
+    { to: '/contact', label: t('nav.contact') },
+  ];
+
   const dashboardPath = getAuthorizedHomePath(user);
   const canOpenDashboard =
     isAuthenticated && (dashboardPath.startsWith('/admin') || dashboardPath.startsWith('/staff'));
@@ -60,7 +78,7 @@ const MainLayout: React.FC = () => {
             </div>
 
             <nav className="hidden md:flex items-center space-x-12">
-              {NAV_ITEMS.map((item) => (
+              {navItems.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
@@ -75,9 +93,17 @@ const MainLayout: React.FC = () => {
               <button
                 onClick={toggleTheme}
                 className="p-2.5 rounded-xl border border-[var(--border-color)] text-[var(--text-muted)] hover:bg-primary/5 transition-all shadow-sm"
-                title={isDarkMode ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+                title={isDarkMode ? t('common.light_mode') : t('common.dark_mode')}
               >
                 {isDarkMode ? <Sun size={18} className="text-yellow-500" /> : <Moon size={18} className="text-indigo-500" />}
+              </button>
+
+              <button
+                onClick={toggleLanguage}
+                className="p-2.5 rounded-xl border border-[var(--border-color)] text-primary font-bold hover:bg-primary/5 transition-all shadow-sm min-w-[45px]"
+                title={i18n.language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+              >
+                {i18n.language === 'vi' ? 'VI' : 'EN'}
               </button>
 
               {isAuthenticated ? (
@@ -93,7 +119,7 @@ const MainLayout: React.FC = () => {
                         {user?.membershipName && (
                           <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getMembershipBadgeClass(user.membershipName)}`}>
                             <Crown size={10} />
-                            {getMembershipDisplayName(user.membershipName)}
+                            {getMembershipDisplayName(user.membershipName, t)}
                           </span>
                         )}
                       </div>
@@ -101,26 +127,26 @@ const MainLayout: React.FC = () => {
                     <div className="absolute right-0 mt-2 w-56 bg-[var(--card-bg)] border border-luxury rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2">
                       {user?.membershipName && (
                         <div className="px-4 pb-2 mb-2 border-b border-luxury">
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-muted">Membership</div>
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-muted">{t('common.membership')}</div>
                           <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${getMembershipBadgeClass(user.membershipName)}`}>
                             <Crown size={12} />
-                            {getMembershipDisplayName(user.membershipName)}
+                            {getMembershipDisplayName(user.membershipName, t)}
                           </div>
                           {user.membershipDiscountPercent != null && (
-                            <div className="mt-2 text-[11px] text-muted">Giảm giá: {user.membershipDiscountPercent}%</div>
+                            <div className="mt-2 text-[11px] text-muted">{t('common.discount')}: {user.membershipDiscountPercent}%</div>
                           )}
                         </div>
                       )}
-                      <Link to="/profile" className="block px-4 py-2 text-xs font-bold text-muted hover:bg-primary/5 hover:!text-primary transition-colors">Hồ sơ cá nhân</Link>
+                      <Link to="/profile" className="block px-4 py-2 text-xs font-bold text-muted hover:bg-primary/5 hover:!text-primary transition-colors">{t('common.profile')}</Link>
                       {canOpenDashboard && (
-                        <Link to={dashboardPath} className="block px-4 py-2 text-xs font-bold text-muted hover:bg-primary/5 hover:!text-primary transition-colors">Bảng điều khiển</Link>
+                        <Link to={dashboardPath} className="block px-4 py-2 text-xs font-bold text-muted hover:bg-primary/5 hover:!text-primary transition-colors">{t('nav.dashboard')}</Link>
                       )}
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-xs font-bold text-error hover:bg-error/10 transition-colors">Đăng xuất</button>
+                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-xs font-bold text-error hover:bg-error/10 transition-colors">{t('nav.logout')}</button>
                     </div>
                   </div>
                 </div>
               ) : (
-                <Link to="/login" className="btn-gold px-8 py-2 text-xs">Đăng nhập</Link>
+                <Link to="/login" className="btn-gold px-8 py-2 text-xs">{t('common.login')}</Link>
               )}
             </div>
 
@@ -148,42 +174,46 @@ const MainLayout: React.FC = () => {
               className="md:hidden bg-[var(--card-bg)] border-b border-luxury overflow-hidden"
             >
               <div className="px-4 pt-2 pb-6 space-y-1">
-                <Link to="/" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Trang chủ</Link>
-                <Link to="/rooms" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Phòng</Link>
-                <Link to="/services" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Dịch vụ</Link>
-                <Link to="/news" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Tin tức</Link>
-                <Link to="/attractions" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Khám phá</Link>
-                <Link to="/about" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Giới thiệu</Link>
-                <Link to="/contact" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">Liên hệ</Link>
+                {navItems.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={closeMobileMenu}
+                    className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+                
                 {isAuthenticated && (
                   <>
                     {user?.membershipName && (
                       <div className="px-3 py-2 mx-1 mb-2 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)]">
-                        <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Membership</div>
+                        <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">{t('common.membership')}</div>
                         <div className={`mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${getMembershipBadgeClass(user.membershipName)}`}>
                           <Crown size={11} />
-                          {getMembershipDisplayName(user.membershipName)}
+                          {getMembershipDisplayName(user.membershipName, t)}
                         </div>
                         {user.membershipDiscountPercent != null && (
-                          <div className="mt-2 text-[11px] text-[var(--text-muted)]">Giảm giá: {user.membershipDiscountPercent}%</div>
+                          <div className="mt-2 text-[11px] text-[var(--text-muted)]">{t('common.discount')}: {user.membershipDiscountPercent}%</div>
                         )}
                       </div>
                     )}
                     {canOpenDashboard && (
                       <Link to={dashboardPath} onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">
-                        Bảng điều khiển
+                        {t('nav.dashboard')}
                       </Link>
                     )}
                     <Link to="/profile" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-muted hover:text-primary tracking-widest">
-                      Hồ sơ cá nhân
+                      {t('common.profile')}
                     </Link>
                     <button onClick={handleLogout} className="block w-full text-left px-3 py-4 text-xs font-bold text-error tracking-widest hover:bg-error/10">
-                      Đăng xuất
+                      {t('nav.logout')}
                     </button>
                   </>
                 )}
                 {!isAuthenticated && (
-                  <Link to="/login" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-primary tracking-widest">Đăng nhập</Link>
+                  <Link to="/login" onClick={closeMobileMenu} className="block px-3 py-4 text-xs font-bold text-primary tracking-widest">{t('common.login')}</Link>
                 )}
               </div>
             </motion.div>

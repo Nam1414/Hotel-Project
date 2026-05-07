@@ -16,6 +16,7 @@ namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[RequirePermission("MANAGE_SERVICES", "MANAGE_ROOMS")]
 public class OrderServicesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -35,8 +36,6 @@ public class OrderServicesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetBookingsForServiceManagement()
     {
-        if (!CanManageServiceOrders())
-            return Forbid("Ban khong co quyen quan ly don dich vu.");
 
         var bookings = await _context.Bookings
             .Include(b => b.BookingDetails)
@@ -86,8 +85,6 @@ public class OrderServicesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetByBookingId(int bookingId)
     {
-        if (!CanManageServiceOrders())
-            return Forbid("Ban khong co quyen xem don dich vu.");
 
         var orders = await _context.OrderServices
             .Include(o => o.Details)
@@ -174,8 +171,6 @@ public class OrderServicesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderServiceStatusDto dto)
     {
-        if (!CanManageServiceOrders())
-            return Forbid("Ban khong co quyen cap nhat trang thai don dich vu.");
 
         var order = await _context.OrderServices
             .Include(o => o.BookingDetail)
@@ -202,15 +197,13 @@ public class OrderServicesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> ReportMinibar(int roomId, [FromBody] List<CreateOrderServiceItemDto> items)
     {
-        if (!CanManageServiceOrders())
-            return Forbid("Ban khong co quyen cong minibar/dich vu vao hoa don.");
 
         if (items == null || items.Count == 0)
             return BadRequest(new { message = "Danh sách dịch vụ/Minibar trống" });
 
         var activeBookingDetail = await _context.BookingDetails
-            .Include(bd => bd.Booking)
-                .ThenInclude(b => b.Invoice)
+            .Include(bd => bd.Booking!)
+                .ThenInclude(b => b!.Invoice)
             .Where(bd => bd.RoomId == roomId && bd.Booking != null)
             .OrderByDescending(bd => bd.CheckInDate)
             .FirstOrDefaultAsync();
@@ -308,18 +301,6 @@ public class OrderServicesController : ControllerBase
         );
     }
 
-    private bool CanManageServiceOrders()
-    {
-        if (User.IsInRole("Admin"))
-            return true;
-
-        var permissions = User.Claims
-            .Where(c => c.Type == "permission")
-            .Select(c => c.Value)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        return permissions.Contains("MANAGE_ROOMS") || permissions.Contains("MANAGE_SERVICES");
-    }
 
     private async Task NotifyServiceOrderCreatedAsync(BookingDetail bookingDetail, OrderService order, string? userRole)
     {

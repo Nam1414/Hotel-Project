@@ -12,6 +12,12 @@ import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { useScrollToTop } from './hooks/useScrollToTop';
 import { useThemeStore } from './store/themeStore';
 import { addNotification } from './store/slices/notificationSlice';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import 'dayjs/locale/vi';
+
+dayjs.extend(relativeTime);
+dayjs.locale('vi');
 
 const GlobalLoading = () => {
   return null;

@@ -7,7 +7,7 @@ namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin,Manager")]
+[RequirePermission("MANAGE_ROLES")]
 public class AuditLogsController : ControllerBase
 {
     private readonly IAuditLogService _auditLogService;

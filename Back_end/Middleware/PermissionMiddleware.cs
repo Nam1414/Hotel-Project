@@ -11,9 +11,9 @@ namespace HotelManagementAPI.Middleware;
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
 public class RequirePermissionAttribute : Attribute
 {
-    public string Permission { get; }
-    public RequirePermissionAttribute(string permission)
-        => Permission = permission;
+    public string[] Permissions { get; }
+    public RequirePermissionAttribute(params string[] permissions)
+        => Permissions = permissions;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -65,20 +65,24 @@ public class PermissionMiddleware
             await _next(context);
             return;
         }
-        var requiredPermission = endpoint?
+        var requiredPermissions = endpoint?
             .Metadata.GetMetadata<RequirePermissionAttribute>()
-            ?.Permission;
+            ?.Permissions;
 
         // Ưu tiên 2: Route map — fallback nếu endpoint không có attribute
-        if (requiredPermission == null)
+        if (requiredPermissions == null || requiredPermissions.Length == 0)
         {
             var path   = context.Request.Path.Value?.ToLower() ?? "";
             var method = context.Request.Method.ToUpper();
-            requiredPermission = GetRequiredPermissionFromMap(method, path);
+            var mappedPerm = GetRequiredPermissionFromMap(method, path);
+            if (mappedPerm != null)
+            {
+                requiredPermissions = new[] { mappedPerm };
+            }
         }
 
         // Không yêu cầu permission → cho qua toàn bộ
-        if (requiredPermission == null)
+        if (requiredPermissions == null || requiredPermissions.Length == 0)
         {
             await _next(context);
             return;
@@ -93,7 +97,7 @@ public class PermissionMiddleware
             {
                 statusCode = 401,
                 message    = "Bạn chưa đăng nhập!",
-                required   = requiredPermission
+                required   = requiredPermissions
             });
             return;
         }
@@ -111,15 +115,15 @@ public class PermissionMiddleware
             .Select(c => c.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase); // OrdinalIgnoreCase: tránh lỗi case
 
-        if (!userPermissions.Contains(requiredPermission))
+        if (!requiredPermissions.Any(rp => userPermissions.Contains(rp)))
         {
             context.Response.StatusCode    = 403;
             context.Response.ContentType   = "application/json";
             await context.Response.WriteAsJsonAsync(new
             {
                 statusCode       = 403,
-                message          = $"Bạn không có quyền [{requiredPermission}] để thực hiện thao tác này!",
-                required         = requiredPermission,
+                message          = $"Bạn không có quyền cần thiết để thực hiện thao tác này!",
+                required         = requiredPermissions,
                 your_permissions = userPermissions   // Trả về để debug dễ hơn
             });
             return;

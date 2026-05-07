@@ -2,11 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Star, Shield, Coffee, Wifi, MapPin, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { publicHotelApi, type PublicRoomType } from '../../services/publicHotelApi';
 import WhyChooseKant from '../../components/home/WhyChooseKant';
 import GuestExperiences from '../../components/home/GuestExperiences';
 
 const Home: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [rooms, setRooms] = React.useState<PublicRoomType[]>([]);
 
   React.useEffect(() => {
@@ -36,7 +38,7 @@ const Home: React.FC = () => {
             transition={{ duration: 0.6 }}
             className="text-primary font-bold tracking-[0.2em] sm:tracking-[0.4em] uppercase text-xs sm:text-sm mb-4 sm:mb-6 block"
           >
-            Chào mừng đến với KANT Luxury Hotel
+            {t('home.welcome')}
           </motion.span>
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
@@ -44,7 +46,7 @@ const Home: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-4xl sm:text-5xl md:text-7xl font-display font-bold text-white mb-6 sm:mb-8 leading-tight"
           >
-            Sự Sang Trọng Trong Từng <span className="text-primary italic font-serif">Chi Tiết</span>
+            {t('home.hero_title')} <span className="text-primary italic font-serif">{t('home.hero_title_highlight')}</span>
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -52,7 +54,7 @@ const Home: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="text-base sm:text-lg text-gray-300 mb-8 sm:mb-10 max-w-2xl mx-auto leading-relaxed font-light"
           >
-            Khám phá thế giới của sự xa hoa thuần khiết, nơi dịch vụ đẳng cấp gặp gỡ thiết kế vượt thời gian. Thiên đường nghỉ dưỡng của bạn đang chờ đợi.
+            {t('home.hero_desc')}
           </motion.p>
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
@@ -61,10 +63,10 @@ const Home: React.FC = () => {
             className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
           >
             <Link to="/rooms" className="btn-gold px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg w-full sm:w-auto">
-              KHÁM PHÁ PHÒNG
+              {t('home.explore_rooms')}
             </Link>
             <Link to="/about" className="btn-outline-gold px-8 sm:px-10 py-3.5 sm:py-4 text-base sm:text-lg w-full sm:w-auto hover:!text-white">
-              CÂU CHUYỆN CỦA CHÚNG TÔI
+              {t('home.our_story')}
             </Link>
           </motion.div>
         </div>
@@ -78,11 +80,11 @@ const Home: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-12 sm:mb-16">
             <div className="max-w-2xl">
-              <span className="text-primary font-bold tracking-widest uppercase text-xs mb-4 block">Lựa chọn của chúng tôi</span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-title">Phòng Nổi Bật</h2>
+              <span className="text-primary font-bold tracking-widest uppercase text-xs mb-4 block">{t('home.our_selection')}</span>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-title">{t('home.featured_rooms')}</h2>
             </div>
             <Link to="/rooms" className="hidden md:flex items-center text-primary font-bold hover:text-gold-light transition-colors">
-              XEM TẤT CẢ <ArrowRight size={20} className="ml-2" />
+              {t('home.view_all')} <ArrowRight size={20} className="ml-2" />
             </Link>
           </div>
 
@@ -101,7 +103,7 @@ const Home: React.FC = () => {
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute top-4 right-4 bg-primary text-white px-4 py-1 rounded-full font-bold text-sm">
-                    {room.displayPrice.toLocaleString('vi-VN')} đ/đêm
+                    {room.displayPrice.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US')} đ/{t('home.night')}
                   </div>
                 </div>
                 <div className="p-5 sm:p-6 lg:p-8 flex flex-col flex-1">
@@ -109,7 +111,7 @@ const Home: React.FC = () => {
                     {[...Array(5)].map((_, i) => (
                       <Star key={i} size={14} fill="currentColor" />
                     ))}
-                    <span className="ml-2 text-xs font-bold text-muted">5.0 Đánh giá</span>
+                    <span className="ml-2 text-xs font-bold text-muted">5.0 {t('home.reviews')}</span>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-display font-bold text-title mb-4">{room.name}</h3>
                   <div className="flex flex-wrap gap-3 sm:gap-4 text-muted text-sm mb-6 sm:mb-8">
@@ -117,7 +119,7 @@ const Home: React.FC = () => {
                   </div>
                   <div className="mt-auto">
                     <Link to={`/rooms/${room.id}`} className="btn-outline-gold w-full block text-center">
-                      XEM CHI TIẾT
+                      {t('home.view_details')}
                     </Link>
                   </div>
                 </div>
@@ -142,10 +144,10 @@ const Home: React.FC = () => {
           <div className="absolute inset-0 bg-dark-base/80"></div>
         </div>
         <div className="relative z-10 max-w-4xl mx-auto text-center px-4 sm:px-6">
-          <h2 className="text-3xl sm:text-4xl md:text-6xl font-display font-bold text-white mb-6 sm:mb-8">Sẵn sàng cho một trải nghiệm khó quên?</h2>
-          <p className="text-lg sm:text-xl text-gray-300 mb-10 sm:mb-12">Đặt phòng ngay hôm nay để tận hưởng những ưu đãi độc quyền và giá tốt nhất.</p>
+          <h2 className="text-3xl sm:text-4xl md:text-6xl font-display font-bold text-white mb-6 sm:mb-8">{t('home.ready_to_book')}</h2>
+          <p className="text-lg sm:text-xl text-gray-300 mb-10 sm:mb-12">{t('home.cta_desc')}</p>
           <Link to="/rooms" className="btn-gold px-8 sm:px-12 py-4 sm:py-5 text-lg sm:text-xl inline-flex">
-            ĐẶT PHÒNG NGAY BÂY GIỜ
+            {t('home.book_now')}
           </Link>
         </div>
       </section>
