@@ -1,4 +1,5 @@
 using HotelManagementAPI.DTOs;
+using HotelManagementAPI.Middleware;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
