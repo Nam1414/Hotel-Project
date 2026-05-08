@@ -240,17 +240,10 @@ const NotificationBellImproved: React.FC = () => {
                       background: typeColors[n.type] ?? '#94a3b8',
                     }}
                   />
-                  <div style={styles.itemBody}>
-                    <p style={styles.itemMsg}>{n.message}</p>
-                    <time style={styles.itemTime}>
-                      {new Date(n.createdAt).toLocaleString('vi-VN', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        day: '2-digit',
-                        month: '2-digit',
-                      })}
-                    </time>
-                  </div>
+                    <div style={styles.itemBody}>
+                      <p style={styles.itemMsg}>{n.message}</p>
+                      <time style={styles.itemTime}>{n.time}</time>
+                    </div>
                   {!n.isRead && <span style={styles.unreadDot} />}
                 </div>
               ))

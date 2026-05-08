@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { format } from 'date-fns';
+import { formatVietnamTime } from '../../utils/dateFormatter';
 
 export interface NotificationItem {
   id: string | number;
@@ -17,16 +17,6 @@ interface NotificationState {
   unreadCount: number;
   connected: boolean;
 }
-
-const formatVietnamTime = (dateString: string): string => {
-  try {
-    const utcString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-    const localDate = new Date(utcString);
-    return format(localDate, 'HH:mm:ss dd/MM/yyyy');
-  } catch (error) {
-    return new Date(dateString).toLocaleString('vi-VN');
-  }
-};
 
 const normalizeNotification = (raw: any): NotificationItem => {
   const createdAt = raw.createdAt || raw.CreatedAt || new Date().toISOString();

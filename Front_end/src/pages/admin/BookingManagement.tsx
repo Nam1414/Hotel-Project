@@ -41,6 +41,9 @@ import {
   Search,
   Ticket,
   XCircle,
+  Clock,
+  LayoutDashboard,
+  UserCheck,
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import {
@@ -273,7 +276,7 @@ const BookingPage: React.FC = () => {
   }, [viewConfig.defaultStatus, viewMode]);
 
   // ── derived stats ──
-  const stats = {
+  const stats = React.useMemo(() => ({
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'Pending').length,
     confirmed: bookings.filter(b => b.status === 'Confirmed').length,
@@ -288,66 +291,45 @@ const BookingPage: React.FC = () => {
     ).length,
     withInvoice: bookings.filter(b => Boolean(b.invoiceId)).length,
     withVoucher: bookings.filter(b => Boolean(b.voucherId)).length,
-  };
+  }), [bookings, arrivalDate]);
 
-  const availableVouchers = vouchers.filter(voucher => voucher.isActive && dayjs(voucher.endDate).endOf('day').isAfter(dayjs()));
+  const availableVouchers = React.useMemo(() => 
+    vouchers.filter(voucher => voucher.isActive && dayjs(voucher.endDate).endOf('day').isAfter(dayjs())),
+    [vouchers]
+  );
 
-  const visibleBookings = bookings.filter(b => {
-    const term = searchTerm.toLowerCase();
-    const matchSearch =
-      !term ||
-      b.guestName?.toLowerCase().includes(term) ||
-      b.bookingCode?.toLowerCase().includes(term) ||
-      b.guestPhone?.includes(term) ||
-      b.guestEmail?.toLowerCase().includes(term);
-    const matchStatus = statusFilter === 'all' || b.status === statusFilter;
+  const visibleBookings = React.useMemo(() => {
+    return bookings.filter(b => {
+      const term = searchTerm.toLowerCase();
+      const matchSearch =
+        !term ||
+        b.guestName?.toLowerCase().includes(term) ||
+        b.bookingCode?.toLowerCase().includes(term) ||
+        b.guestPhone?.includes(term) ||
+        b.guestEmail?.toLowerCase().includes(term);
+      const matchStatus = statusFilter === 'all' || b.status === statusFilter;
 
-    const matchView =
-      viewMode === 'arrivals'
-        ? (b.status === 'Pending' || b.status === 'Confirmed') && b.details?.some(d => dayjs(d.checkInDate).isSame(arrivalDate || dayjs(), 'day'))
-        : viewMode === 'in-house'
-          ? b.status === 'CheckedIn'
-          : viewMode === 'check-out'
+      const matchView =
+        viewMode === 'arrivals'
+          ? (b.status === 'Pending' || b.status === 'Confirmed') && b.details?.some(d => dayjs(d.checkInDate).isSame(arrivalDate || dayjs(), 'day'))
+          : viewMode === 'in-house'
             ? b.status === 'CheckedIn'
-            : viewMode === 'invoices'
-              ? Boolean(b.invoiceId) || b.status === 'CheckedOut'
+            : viewMode === 'check-out'
+              ? b.status === 'CheckedOut'
               : true;
 
-    return matchSearch && matchStatus && matchView;
-  });
+      return matchSearch && matchStatus && matchView;
+    });
+  }, [bookings, searchTerm, statusFilter, viewMode, arrivalDate]);
 
-  const statCards =
-    viewMode === 'arrivals'
-      ? [
-          { label: 'Số khách đến (ngày này)', value: stats.arrivalsToday, color: '#0ea5e9', icon: <CalendarDays size={20} /> },
-          { label: 'Chờ xác nhận', value: stats.pending, color: '#d97706', icon: <Ticket size={20} /> },
-          { label: 'Đã xác nhận', value: stats.confirmed, color: '#2563eb', icon: <CheckCircle2 size={20} /> },
-        ]
-      : viewMode === 'in-house'
-        ? [
-            { label: 'Khách đang ở', value: stats.checkedIn, color: '#16a34a', icon: <LogIn size={20} /> },
-            { label: 'Trả phòng hôm nay', value: stats.departuresToday, color: '#7c3aed', icon: <LogOut size={20} /> },
-            { label: 'Có hóa đơn', value: stats.withInvoice, color: '#A6894B', icon: <FileText size={20} /> },
-          ]
-        : viewMode === 'check-out'
-          ? [
-              { label: 'Cần trả phòng', value: stats.departuresToday, color: '#7c3aed', icon: <LogOut size={20} /> },
-              { label: 'Đang lưu trú', value: stats.checkedIn, color: '#16a34a', icon: <LogIn size={20} /> },
-              { label: 'Có hóa đơn', value: stats.withInvoice, color: '#A6894B', icon: <FileText size={20} /> },
-            ]
-          : viewMode === 'invoices'
-            ? [
-                { label: 'Đã có hóa đơn', value: stats.withInvoice, color: '#A6894B', icon: <FileText size={20} /> },
-                { label: 'Đã trả phòng', value: stats.checkedOut, color: '#6b7280', icon: <LogOut size={20} /> },
-                { label: 'Đang lưu trú', value: stats.checkedIn, color: '#16a34a', icon: <LogIn size={20} /> },
-              ]
-            : [
-                { label: 'Tổng booking', value: stats.total, color: '#A6894B', icon: <Ticket size={20} /> },
-                { label: 'Chờ xác nhận', value: stats.pending, color: '#d97706', icon: <CalendarDays size={20} /> },
-                { label: 'Đang ở', value: stats.checkedIn, color: '#16a34a', icon: <LogIn size={20} /> },
-                { label: 'Đã trả phòng', value: stats.checkedOut, color: '#6b7280', icon: <LogOut size={20} /> },
-                { label: 'Đã hủy', value: stats.cancelled, color: '#dc2626', icon: <XCircle size={20} /> },
-              ];
+  const statCards = [
+    { label: 'Tổng booking', value: stats.total, color: '#C6A96B', icon: <LayoutDashboard size={20} /> },
+    { label: 'Chờ xác nhận', value: stats.pending, color: '#fbbf24', icon: <Clock size={20} /> },
+    { label: 'Đã xác nhận', value: stats.confirmed, color: '#60a5fa', icon: <CheckCircle2 size={20} /> },
+    { label: 'Đang ở', value: stats.checkedIn, color: '#34d399', icon: <UserCheck size={20} /> },
+    { label: 'Đã trả phòng', value: stats.checkedOut, color: '#94a3b8', icon: <LogOut size={20} /> },
+    { label: 'Đã hủy', value: stats.cancelled, color: '#f87171', icon: <XCircle size={20} /> },
+  ];
 
   // ── actions ──
   const updateStatus = async (booking: BookingResponseDto, status: BookingStatus) => {
@@ -517,7 +499,7 @@ const BookingPage: React.FC = () => {
     : 0;
 
   // ── table columns ──────────────────────────────────────────────────────
-  const columns = [
+  const columns = React.useMemo(() => [
     {
       title: 'Mã đặt phòng',
       dataIndex: 'bookingCode',
@@ -651,7 +633,7 @@ const BookingPage: React.FC = () => {
         </Space>
       ),
     },
-  ];
+  ], [rooms, statusFilter]);
 
   // ── render ─────────────────────────────────────────────────────────────
   return (
@@ -693,9 +675,9 @@ const BookingPage: React.FC = () => {
             <AntCard className="glass-card text-center" bodyStyle={{ padding: '16px' }}>
               <div style={{ color: s.color }} className="flex justify-center mb-2">{s.icon}</div>
               <Statistic
-                title={<span style={{ fontSize: 12 }}>{s.label}</span>}
+                title={<span style={{ fontSize: 12, color: '#cbd5e1', fontWeight: 500 }}>{s.label}</span>}
                 value={s.value}
-                valueStyle={{ color: s.color, fontSize: 24 }}
+                valueStyle={{ color: s.color, fontSize: 26, fontWeight: 700 }}
               />
             </AntCard>
           </Col>
@@ -788,9 +770,9 @@ const BookingPage: React.FC = () => {
                   className="w-full"
                   style={{ width: '100%' }}
                   min={0}
-                  formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={v => v!.replace(/,/g, '') as any}
-                  addonAfter="₫"
+                  formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                  parser={v => v!.replace(/\./g, '') as any}
+                  addonAfter="VND"
                 />
               </Form.Item>
             </Col>
@@ -929,9 +911,9 @@ const BookingPage: React.FC = () => {
                             <InputNumber
                               min={0}
                               style={{ width: '100%' }}
-                              formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              parser={v => v!.replace(/,/g, '') as any}
-                              addonAfter="₫"
+                              formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                              parser={v => v!.replace(/\./g, '') as any}
+                              addonAfter="VND"
                             />
                           </Form.Item>
                         </Col>
@@ -1466,9 +1448,9 @@ const BookingPage: React.FC = () => {
             <InputNumber
               min={1}
               style={{ width: '100%' }}
-              formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={v => v!.replace(/,/g, '') as any}
-              addonAfter="₫"
+              formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+              parser={v => v!.replace(/\./g, '') as any}
+              addonAfter="VND"
             />
           </Form.Item>
 

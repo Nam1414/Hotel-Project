@@ -85,7 +85,7 @@ export const canAccessPath = (user: User | null | undefined, path: string | null
   }
 
   if (path.startsWith('/admin/orders')) {
-    return permissions.includes('MANAGE_SERVICES') || permissions.includes('MANAGE_ROOMS');
+    return permissions.includes('MANAGE_SERVICES');
   }
 
   if (path.startsWith('/admin/inventory')) {
@@ -121,7 +121,7 @@ export const canAccessPath = (user: User | null | undefined, path: string | null
   }
 
   if (path.startsWith('/staff/orders')) {
-    return permissions.includes('MANAGE_SERVICES') || permissions.includes('MANAGE_ROOMS');
+    return permissions.includes('MANAGE_SERVICES');
   }
 
   return false;

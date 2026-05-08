@@ -8,6 +8,7 @@ using HotelManagementAPI.Hubs;
 using HotelManagementAPI.Models;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using HotelManagementAPI.Helpers;
 
 namespace HotelManagementAPI.Services;
 
@@ -38,7 +39,7 @@ public class PersistedNotificationService : INotificationService
                 Content = content,
                 Type = type,
                 ReferenceLink = referenceLink,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = TimeHelper.Now,
                 IsRead = false
             };
 
@@ -154,7 +155,7 @@ public class PersistedNotificationService : INotificationService
                 Content = content,
                 Type = type,
                 ReferenceLink = referenceLink,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = TimeHelper.Now,
                 IsRead = false
             })
             .ToList();

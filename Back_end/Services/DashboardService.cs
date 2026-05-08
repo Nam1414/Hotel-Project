@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Globalization;
 
+using HotelManagementAPI.Helpers;
+
 namespace HotelManagementAPI.Services;
 
 public class DashboardService : IDashboardService
@@ -20,7 +22,7 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardAnalyticsDto> GetAnalyticsAsync()
     {
-        var now = DateTime.Now;
+        var now = TimeHelper.Now;
         var startOfToday = now.Date;
         var thirtyDaysAgo = startOfToday.AddDays(-30);
 

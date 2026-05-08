@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using HotelManagementAPI.Helpers;
+
 namespace HotelManagementAPI.Controllers;
 
 [ApiController]
@@ -47,7 +49,7 @@ public class ArticlesController : ControllerBase
             query = query.Where(a => a.CategoryId == categoryId.Value);
 
         var articles = await query
-            .OrderByDescending(a => a.CreatedAt ?? DateTime.Now)
+            .OrderByDescending(a => a.CreatedAt ?? TimeHelper.Now)
             .Skip((page - 1) * 10)
             .Take(10)
             .Select(a => new
@@ -56,7 +58,7 @@ public class ArticlesController : ControllerBase
                 a.Title,
                 a.Slug,
                 ThumbnailUrl = a.ImageUrl,       // property ImageUrl → DB column: thumbnail_url
-                PublishedAt  = a.CreatedAt ?? DateTime.Now,  // property CreatedAt → DB column: published_at
+                PublishedAt  = a.CreatedAt ?? TimeHelper.Now,  // property CreatedAt → DB column: published_at
                 IsActive = a.IsActive,
                 Author   = a.Author != null ? a.Author.FullName : "Unknown",
                 Category = a.Category != null ? a.Category.Name : "None",
@@ -87,8 +89,8 @@ public class ArticlesController : ControllerBase
             article.Slug,
             article.Content,
             ThumbnailUrl = article.ImageUrl,      // property ImageUrl → DB column: thumbnail_url
-            PublishedAt  = article.CreatedAt ?? DateTime.Now,  // property CreatedAt → DB column: published_at
-            UpdatedAt    = article.UpdatedAt ?? DateTime.Now,
+            PublishedAt  = article.CreatedAt ?? TimeHelper.Now,  // property CreatedAt → DB column: published_at
+            UpdatedAt    = article.UpdatedAt ?? TimeHelper.Now,
             IsActive     = article.IsActive,
             Author   = article.Author != null ? article.Author.FullName : "Unknown",
             AuthorId = article.AuthorId,
@@ -123,8 +125,8 @@ public class ArticlesController : ControllerBase
             CategoryId = dto.CategoryId,
             AttractionId = dto.AttractionId,
             AuthorId   = dto.AuthorId ?? int.Parse(authorIdClaim), // Sử dụng AuthorId truyền vào, không có thì xài Token
-            CreatedAt  = dto.PublishedAt ?? DateTime.UtcNow,          // → DB column: published_at
-            UpdatedAt  = DateTime.UtcNow,           // → DB column: updated_at (thêm qua SQL patch)
+            CreatedAt  = dto.PublishedAt ?? TimeHelper.Now,          // → DB column: published_at
+            UpdatedAt  = TimeHelper.Now,           // → DB column: updated_at (thêm qua SQL patch)
             IsActive   = dto.IsActive
         };
 
@@ -164,7 +166,7 @@ public class ArticlesController : ControllerBase
         article.AuthorId   = dto.AuthorId ?? article.AuthorId;
         article.CreatedAt  = dto.PublishedAt ?? article.CreatedAt;
         article.IsActive   = dto.IsActive;
-        article.UpdatedAt  = DateTime.UtcNow;
+        article.UpdatedAt  = TimeHelper.Now;
 
         await _context.SaveChangesAsync();
         await _auditLogService.LogAsync("UPDATE", "Article", new { articleId = article.Id, article.Slug }, dto, article, $"Cập nhật bài viết {article.Title}.");
@@ -215,7 +217,7 @@ public class ArticlesController : ControllerBase
         // Bước 3: Lưu URL và PublicId mới
         article.ImageUrl = url;
         article.ThumbnailPublicId = publicId;
-        article.UpdatedAt = DateTime.UtcNow;
+        article.UpdatedAt = TimeHelper.Now;
 
         await _context.SaveChangesAsync();
 

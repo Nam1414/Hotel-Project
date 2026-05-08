@@ -116,7 +116,7 @@ const Booking: React.FC = () => {
   );
 
   useEffect(() => {
-    setDepositInput(String(normalizedDepositAmount));
+    setDepositInput(normalizedDepositAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."));
   }, [normalizedDepositAmount]);
 
   useEffect(() => {
@@ -174,15 +174,16 @@ const Booking: React.FC = () => {
   }, [formData, nights, selectedRooms]);
 
   const commitDepositAmount = (rawValue: string) => {
-    if (!rawValue.trim()) {
+    const cleanValue = rawValue.replace(/\./g, "");
+    if (!cleanValue.trim()) {
       setFormData((current) => ({ ...current, depositAmount: 0 }));
       setDepositInput('0');
       return;
     }
 
-    const numericValue = Number(rawValue);
+    const numericValue = Number(cleanValue);
     if (Number.isNaN(numericValue)) {
-      setDepositInput(String(normalizedDepositAmount));
+      setDepositInput(normalizedDepositAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."));
       return;
     }
 
@@ -193,16 +194,18 @@ const Booking: React.FC = () => {
   };
 
   const handleDepositChange = (value: string) => {
-    if (value === '') {
+    const cleanValue = value.replace(/\./g, "");
+    if (cleanValue === '') {
       setDepositInput('');
       return;
     }
 
-    if (!/^\d+$/.test(value)) {
+    if (!/^\d+$/.test(cleanValue)) {
       return;
     }
 
-    setDepositInput(value);
+    const formatted = cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    setDepositInput(formatted);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -233,14 +236,8 @@ const Booking: React.FC = () => {
         details: detailsPayload,
       });
 
-      let invoiceId: number | null = null;
-      if (normalizedDepositAmount > 0) {
-        const invoice = await bookingApi.createInvoice(booking.id);
-        invoiceId = invoice.id;
-      }
-
       setCreatedBookingId(booking.id);
-      setCreatedInvoiceId(invoiceId);
+      setCreatedInvoiceId(booking.invoiceId || null);
       setBookingCode(booking.bookingCode);
       setStep(3);
     } catch (err: any) {
@@ -494,10 +491,8 @@ const Booking: React.FC = () => {
                     <div className="space-y-3">
                       <label className="text-sm font-bold text-muted uppercase tracking-widest">Deposit Amount (VND)</label>
                       <input
-                        type="number"
+                        type="text"
                         className="input-luxury w-full"
-                        min={0}
-                        max={finalTotal}
                         value={depositInput}
                         onChange={(e) => handleDepositChange(e.target.value)}
                         onBlur={(e) => commitDepositAmount(e.target.value)}

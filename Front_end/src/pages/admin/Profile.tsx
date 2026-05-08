@@ -280,101 +280,126 @@ const MyBookingsTab = () => {
     switch (normalized) {
       case '0':
       case 'Pending':
-        return <Tag color="orange">Pending</Tag>;
+        return <Tag color="orange" className="rounded-full px-3">Chờ xác nhận</Tag>;
       case '1':
       case 'Confirmed':
-        return <Tag color="blue">Confirmed</Tag>;
+        return <Tag color="blue" className="rounded-full px-3">Đã xác nhận</Tag>;
       case '2':
       case 'CheckedIn':
-        return <Tag color="green">Checked in</Tag>;
+        return <Tag color="green" className="rounded-full px-3">Đã nhận phòng</Tag>;
       case '3':
       case 'CheckedOut':
-        return <Tag color="default">Checked out</Tag>;
+        return <Tag color="default" className="rounded-full px-3">Đã trả phòng</Tag>;
       case '4':
       case 'Cancelled':
-        return <Tag color="red">Cancelled</Tag>;
+        return <Tag color="red" className="rounded-full px-3">Đã hủy</Tag>;
       default:
-        return <Tag>{normalized}</Tag>;
+        return <Tag className="rounded-full px-3">{normalized}</Tag>;
     }
   };
 
   if (loading) {
     return (
-      <div className="py-10 text-center">
-        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+      <div className="py-20 text-center">
+        <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
+        <p className="mt-4 text-muted">Đang tải lịch sử đặt phòng...</p>
       </div>
     );
   }
 
   if (bookings.length === 0) {
     return (
-      <div className="mt-10 rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center dark:border-slate-700 dark:bg-slate-800/50">
-        <Calendar className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-        <p className="text-[var(--text-muted)]">You do not have any bookings yet.</p>
-        <Button onClick={() => { window.location.href = '/rooms'; }} type="primary" className="btn-gold mt-4 h-10 px-6">
-          Explore rooms
+      <div className="mt-10 rounded-3xl border border-dashed border-luxury bg-subtle py-16 text-center">
+        <Calendar className="mx-auto mb-4 h-16 w-16 text-muted/30" />
+        <h4 className="text-xl font-display font-bold text-title mb-2">Chưa có đặt phòng nào</h4>
+        <p className="text-muted mb-8">Bạn chưa thực hiện giao dịch đặt phòng nào với chúng tôi.</p>
+        <Button 
+          onClick={() => { window.location.href = '/rooms'; }} 
+          type="primary" 
+          className="btn-gold h-12 px-8 rounded-xl font-bold"
+        >
+          Khám phá các hạng phòng
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="mt-10 space-y-4">
+    <div className="mt-8 space-y-6">
       {bookings.map((booking) => (
         <div
           key={booking.id}
-          className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/50 md:flex-row md:items-center"
+          className="group relative overflow-hidden rounded-3xl border border-luxury bg-white dark:bg-slate-900/40 p-6 transition-all hover:shadow-xl hover:shadow-primary/5"
         >
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className="font-display text-lg font-bold text-[var(--text-title)]">
-                {booking.bookingCode}
-              </span>
-              {getStatusTag(booking.status)}
-            </div>
-            <div className="text-sm text-[var(--text-muted)]">
-              {booking.details.length} room(s) • {formatDate(booking.details[0]?.checkInDate)} to{' '}
-              {formatDate(booking.details[booking.details.length - 1]?.checkOutDate)}
-            </div>
-            <div className="grid gap-1 text-sm sm:grid-cols-3 sm:gap-4">
-              <div>
-                <span className="text-[var(--text-muted)]">Deposit required: </span>
-                <span className="font-semibold text-amber-600">{formatCurrency(booking.depositAmount)}</span>
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-start">
+            <div className="space-y-4 flex-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="bg-primary/10 text-primary px-4 py-1 rounded-full text-sm font-bold border border-primary/20">
+                  {booking.bookingCode}
+                </div>
+                {getStatusTag(booking.status)}
               </div>
+              
               <div>
-                <span className="text-[var(--text-muted)]">Paid: </span>
-                <span className="font-semibold text-emerald-600">{formatCurrency(booking.depositPaidAmount)}</span>
+                <h4 className="text-lg font-bold text-title mb-1">
+                  {booking.details.length} Phòng • {booking.details[0]?.roomTypeId ? 'Hạng phòng cao cấp' : 'Thông tin phòng'}
+                </h4>
+                <div className="flex items-center gap-2 text-sm text-muted">
+                  <Calendar size={14} />
+                  <span>{formatDate(booking.details[0]?.checkInDate)}</span>
+                  <span className="mx-1">→</span>
+                  <span>{formatDate(booking.details[booking.details.length - 1]?.checkOutDate)}</span>
+                </div>
               </div>
-              <div>
-                <span className="text-[var(--text-muted)]">Remaining: </span>
-                <span className="font-semibold text-rose-600">{formatCurrency(booking.depositRemainingAmount)}</span>
-              </div>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap gap-2">
-            {(String(booking.status) === 'Pending' ||
-              String(booking.status) === 'Confirmed' ||
-              String(booking.status) === 'CheckedOut') &&
-              (booking.depositRemainingAmount || 0) > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl border border-luxury/50">
+                  <p className="text-[10px] uppercase tracking-widest text-muted mb-1">Tiền cọc yêu cầu</p>
+                  <p className="font-bold text-title">{formatCurrency(booking.depositAmount)}</p>
+                </div>
+                <div className="bg-emerald-50 dark:bg-emerald-500/5 p-3 rounded-2xl border border-emerald-500/20">
+                  <p className="text-[10px] uppercase tracking-widest text-emerald-600/70 mb-1">Đã thanh toán</p>
+                  <p className="font-bold text-emerald-600">{formatCurrency(booking.depositPaidAmount)}</p>
+                </div>
+                <div className="bg-rose-50 dark:bg-rose-500/5 p-3 rounded-2xl border border-rose-500/20">
+                  <p className="text-[10px] uppercase tracking-widest text-rose-600/70 mb-1">Còn lại</p>
+                  <p className="font-bold text-rose-600">{formatCurrency(booking.depositRemainingAmount)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-row md:flex-col gap-3 justify-end items-center md:items-end">
+              {(String(booking.status) === 'Pending' ||
+                String(booking.status) === 'Confirmed' ||
+                String(booking.status) === 'CheckedOut') &&
+                (booking.depositRemainingAmount || 0) > 0 && (
+                  <Button
+                    type="primary"
+                    className="h-11 px-6 rounded-xl bg-pink-600 hover:bg-pink-700 border-none font-bold text-white shadow-lg shadow-pink-500/20"
+                    onClick={() => void handlePayMoMo(booking)}
+                  >
+                    Thanh toán cọc MoMo
+                  </Button>
+                )}
+
+              {isCheckedInBooking(booking.status) && (
                 <Button
-                  type="default"
-                  className="rounded-xl border-pink-500 font-medium text-pink-600 hover:bg-pink-50"
-                  onClick={() => void handlePayMoMo(booking)}
+                  type="primary"
+                  className="btn-gold h-11 px-6 rounded-xl font-bold shadow-lg shadow-primary/20"
+                  onClick={() => handleOpenServiceModal(booking)}
                 >
-                  Pay deposit with MoMo
+                  Đặt dịch vụ phòng
                 </Button>
               )}
-
-            {isCheckedInBooking(booking.status) && (
-              <Button
-                type="primary"
-                className="btn-gold rounded-xl font-medium"
-                onClick={() => handleOpenServiceModal(booking)}
+              
+              <Button 
+                type="text" 
+                className="text-primary font-medium hover:bg-primary/5 rounded-lg h-11 px-4"
+                onClick={() => message.info('Tính năng chi tiết đang được cập nhật')}
               >
-                Order service
+                Xem chi tiết
               </Button>
-            )}
+            </div>
           </div>
         </div>
       ))}
@@ -388,8 +413,8 @@ const MyBookingsTab = () => {
           <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-slate-100 p-6 dark:border-slate-800">
               <div>
-                <h3 className="text-xl font-bold text-title">Room service request</h3>
-                <p className="text-sm text-muted">Booking {selectedBooking.bookingCode}</p>
+                <h3 className="text-xl font-bold text-title">Yêu cầu dịch vụ phòng</h3>
+                <p className="text-sm text-muted">Mã đặt phòng: {selectedBooking.bookingCode}</p>
               </div>
               <button
                 onClick={() => setIsServiceModalOpen(false)}
@@ -402,7 +427,7 @@ const MyBookingsTab = () => {
             <div className="flex-1 overflow-y-auto bg-slate-50 p-6 dark:bg-slate-900/50">
               {selectedBooking.details.length > 1 && (
                 <div className="mb-6">
-                  <label className="mb-2 block text-sm font-bold text-title">Choose room:</label>
+                  <label className="mb-2 block text-sm font-bold text-title">Chọn phòng:</label>
                   <select
                     className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-title dark:border-slate-700 dark:bg-slate-800"
                     value={selectedBookingDetailId || ''}
@@ -410,7 +435,7 @@ const MyBookingsTab = () => {
                   >
                     {selectedBooking.details.map((detail) => (
                       <option key={detail.id} value={detail.id}>
-                        Room {detail.roomId || 'TBA'} ({formatDate(detail.checkInDate)} - {formatDate(detail.checkOutDate)})
+                        Phòng {detail.roomId || 'Chưa gán'} ({formatDate(detail.checkInDate)} - {formatDate(detail.checkOutDate)})
                       </option>
                     ))}
                   </select>
@@ -471,7 +496,7 @@ const MyBookingsTab = () => {
 
             <div className="flex items-center justify-between border-t border-slate-100 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
               <div>
-                <p className="text-sm text-muted">Estimated total</p>
+                <p className="text-sm text-muted">Tổng tạm tính</p>
                 <p className="text-xl font-bold text-primary">{formatCurrency(cartTotal)}</p>
               </div>
               <Button
@@ -481,7 +506,7 @@ const MyBookingsTab = () => {
                 onClick={() => void handleOrderService()}
                 disabled={cartTotal === 0}
               >
-                Confirm order ({Object.values(cart).reduce((sum, value) => sum + value, 0)} item)
+                Xác nhận đặt ({Object.values(cart).reduce((sum, value) => sum + value, 0)} món)
               </Button>
             </div>
           </div>

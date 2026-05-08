@@ -6,6 +6,7 @@ import staffReducer from './slices/staffSlice';
 import notificationReducer from './slices/notificationSlice';
 import userReducer from './slices/userSlice';
 import roleReducer from './slices/roleSlice';
+import systemSettingsReducer from './slices/systemSettingsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     notifications: notificationReducer,
     users: userReducer,
     roles: roleReducer,
+    systemSettings: systemSettingsReducer,
   },
 });
 

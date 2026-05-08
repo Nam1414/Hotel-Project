@@ -9,6 +9,7 @@ import { bookingApi, BookingResponseDto } from '../../services/bookingApi';
 import axiosClient from '../../api/axiosClient';
 import { formatVietnamTime } from '../../utils/dateFormatter';
 import { message } from 'antd';
+import dayjs from 'dayjs';
 
 const StaffDashboard: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -69,7 +70,7 @@ const StaffDashboard: React.FC = () => {
   };
 
   const arrivals = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = dayjs().format('YYYY-MM-DD');
     return bookings
       .filter(b => b.status === 'Confirmed' && b.details.some(d => d.checkInDate.startsWith(today)))
       .map(b => ({

@@ -1,22 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Facebook, Instagram, Twitter } from 'lucide-react';
-import { bookingApi } from '../../services/bookingApi';
+import { useAppSelector } from '../../hooks/useAppStore';
+import { selectSystemSettings } from '../../store/slices/systemSettingsSlice';
 
 const Footer: React.FC = () => {
-  const [settings, setSettings] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const data = await bookingApi.getSystemSettings();
-        setSettings(data);
-      } catch (error) {
-        console.error('Failed to fetch footer settings:', error);
-      }
-    };
-    fetchSettings();
-  }, []);
+  const settings = useAppSelector(selectSystemSettings);
 
   const getSetting = (key: string, defaultValue: string) => {
     return settings.find(s => s.key === key)?.value || defaultValue;
@@ -92,4 +81,4 @@ const Footer: React.FC = () => {
   );
 };
 
-export default Footer;
+export default React.memo(Footer);

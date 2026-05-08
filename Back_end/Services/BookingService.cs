@@ -8,6 +8,8 @@ using HotelManagementAPI.Enums;
 using HotelManagementAPI.Models;
 using Microsoft.EntityFrameworkCore;
 
+using HotelManagementAPI.Helpers;
+
 namespace HotelManagementAPI.Services
 {
     public class BookingService : IBookingService
@@ -58,7 +60,7 @@ namespace HotelManagementAPI.Services
 
         public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingRequestDto requestDto)
         {
-            var bookingCode = "BK" + DateTime.Now.ToString("yyyyMMddHHmmss");
+            var bookingCode = "BK" + TimeHelper.Now.ToString("yyyyMMddHHmmss");
             var bookingDetails = new List<BookingDetail>();
             decimal trueTotalAmount = 0m;
 
@@ -133,7 +135,7 @@ namespace HotelManagementAPI.Services
                 var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Id == requestDto.VoucherId.Value);
                 if (voucher == null) throw new Exception("Voucher không tồn tại");
 
-                var now = DateTime.Now;
+                var now = TimeHelper.Now;
                 var isValid = voucher.IsActive
                     && voucher.StartDate <= now
                     && voucher.EndDate >= now
@@ -159,6 +161,14 @@ namespace HotelManagementAPI.Services
 
             await _context.Bookings.AddAsync(booking);
             await _context.SaveChangesAsync();
+
+            // Tự động tạo hóa đơn nếu có tiền đặt cọc
+            if (booking.DepositAmount > 0)
+            {
+                await _invoiceService.CreateInvoiceAsync(booking.Id);
+                // Reload để lấy thông tin Invoice vừa tạo cho DTO
+                await _context.Entry(booking).Reference(b => b.Invoice).LoadAsync();
+            }
 
             return MapToResponseDto(booking);
         }
@@ -446,7 +456,7 @@ namespace HotelManagementAPI.Services
                 throw new Exception("Phải giữ lại ít nhất 1 phòng trong booking gốc. Không thể tách toàn bộ.");
 
             // ── 2. Tạo booking mới ───────────────────────────────────────────
-            var newBookingCode = "BK" + DateTime.Now.ToString("yyyyMMddHHmmss") + "S";
+            var newBookingCode = "BK" + TimeHelper.Now.ToString("yyyyMMddHHmmss") + "S";
             var newBooking = new Booking
             {
                 UserId       = original.UserId,

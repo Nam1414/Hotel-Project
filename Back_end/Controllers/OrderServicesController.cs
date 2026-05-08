@@ -12,11 +12,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 
+using HotelManagementAPI.Helpers;
+
 namespace HotelManagementAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[RequirePermission("MANAGE_SERVICES", "MANAGE_ROOMS")]
 public class OrderServicesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -33,7 +34,7 @@ public class OrderServicesController : ControllerBase
     }
 
     [HttpGet("bookings")]
-    [Authorize]
+    [RequirePermission("MANAGE_SERVICES")]
     public async Task<IActionResult> GetBookingsForServiceManagement()
     {
 
@@ -85,6 +86,19 @@ public class OrderServicesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetByBookingId(int bookingId)
     {
+        var booking = await _context.Bookings.FindAsync(bookingId);
+        if (booking == null) return NotFound(new { message = "Booking không tồn tại" });
+
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+
+        if (userRole != "Admin" && userRole != "Staff")
+        {
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId) || booking.UserId != userId)
+            {
+                return Forbid();
+            }
+        }
 
         var orders = await _context.OrderServices
             .Include(o => o.Details)
@@ -128,7 +142,7 @@ public class OrderServicesController : ControllerBase
         var order = new OrderService
         {
             BookingDetailId = bookingDetail.Id,
-            OrderDate = DateTime.Now,
+            OrderDate = TimeHelper.Now,
             Status = OrderServiceStatus.Pending,
         };
 
@@ -168,7 +182,7 @@ public class OrderServicesController : ControllerBase
     }
 
     [HttpPut("{id:int}/status")]
-    [Authorize]
+    [RequirePermission("MANAGE_SERVICES")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderServiceStatusDto dto)
     {
 
@@ -194,7 +208,7 @@ public class OrderServicesController : ControllerBase
     }
 
     [HttpPost("room/{roomId:int}/minibar")]
-    [Authorize]
+    [RequirePermission("MANAGE_SERVICES")]
     public async Task<IActionResult> ReportMinibar(int roomId, [FromBody] List<CreateOrderServiceItemDto> items)
     {
 
@@ -237,7 +251,7 @@ public class OrderServicesController : ControllerBase
         var order = new OrderService
         {
             BookingDetailId = activeBookingDetail.Id,
-            OrderDate = DateTime.Now,
+            OrderDate = TimeHelper.Now,
             Status = OrderServiceStatus.Delivered, 
         };
 

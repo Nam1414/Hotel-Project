@@ -45,7 +45,7 @@ const MainLayout: React.FC = () => {
     i18n.changeLanguage(newLang);
   };
 
-  const navItems = [
+  const navItems = React.useMemo(() => [
     { to: '/', label: t('nav.home') },
     { to: '/rooms', label: t('nav.rooms') },
     { to: '/services', label: t('nav.services') },
@@ -53,7 +53,7 @@ const MainLayout: React.FC = () => {
     { to: '/attractions', label: t('nav.explore') },
     { to: '/about', label: t('nav.about') },
     { to: '/contact', label: t('nav.contact') },
-  ];
+  ], [t]);
 
   const dashboardPath = getAuthorizedHomePath(user);
   const canOpenDashboard =

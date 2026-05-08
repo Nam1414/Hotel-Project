@@ -102,68 +102,77 @@ namespace HotelManagementAPI.Controllers
                     return BadRequest(new { resultCode = 6, message = "InvoiceId not found in MoMo payload" });
                 }
 
-                var transactionCode = notify.TransId > 0
-                    ? $"MOMO-{notify.TransId}"
-                    : notify.OrderId;
-
-                var existedPayment = await _context.Payments
-                    .AnyAsync(p => p.TransactionCode == transactionCode);
-
-                var invoice = await _context.Invoices
-                    .FirstOrDefaultAsync(i => i.Id == invoiceId.Value);
-
-                if (invoice == null)
-                {
-                    return BadRequest(new { resultCode = 7, message = "Invoice not found" });
-                }
-
-                var booking = invoice.BookingId.HasValue
-                    ? await _context.Bookings.FindAsync(invoice.BookingId.Value)
-                    : null;
-
-                var isDepositPayment = notify.OrderInfo.Contains("coc", StringComparison.OrdinalIgnoreCase);
-
-                var shouldMarkDepositAsPaid =
-                    booking != null
-                    && booking.DepositAmount > 0
-                    && !IsDepositPaid(booking)
-                    && isDepositPayment
-                    && notify.Amount == (long)Math.Round(booking.DepositAmount);
-
-                if (shouldMarkDepositAsPaid)
-                {
-                    booking!.DepositStatus = "Paid";
-                    await _context.SaveChangesAsync();
-
-                    if (invoice.BookingId.HasValue)
-                    {
-                        await _invoiceService.RecalculateInvoiceAsync(invoice.BookingId.Value);
-                    }
-
-                    await NotifyPaymentAsync(booking, invoiceId.Value, notify.Amount, true);
-                }
-                else if (booking != null && IsDepositPaid(booking) && isDepositPayment)
-                {
-                    return Ok(new { resultCode = 0, message = "Success" });
-                }
-                else if (!existedPayment)
-                {
-                    await _invoiceService.AddPaymentAsync(invoiceId.Value, new AddPaymentDto
-                    {
-                        PaymentMethod = "MoMo",
-                        AmountPaid = notify.Amount,
-                        TransactionCode = transactionCode
-                    });
-
-                    await NotifyPaymentAsync(booking, invoiceId.Value, notify.Amount, false);
-                }
-
-                return Ok(new { resultCode = 0, message = "Success" });
+                return await ProcessPaymentSuccessInternal(invoiceId.Value, notify.Amount, notify.TransId > 0 ? $"MOMO-{notify.TransId}" : notify.OrderId, notify.OrderInfo);
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { resultCode = 99, message = ex.Message });
             }
+        }
+
+        /// <summary>
+        /// ENDPOINT GIẢ LẬP (CHỈ DÙNG CHO DEMO/BÁO CÁO)
+        /// Giúp xác nhận thanh toán MoMo thành công mà không cần quét mã thật
+        /// </summary>
+        [HttpGet("{id}/simulate-momo-success")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SimulateMoMoSuccess(int id, [FromQuery] long amount = 0, [FromQuery] string info = "thanh toan coc")
+        {
+            var invoice = await _context.Invoices.FindAsync(id);
+            if (invoice == null) return NotFound("Hóa đơn không tồn tại");
+
+            var booking = invoice.BookingId.HasValue ? await _context.Bookings.FindAsync(invoice.BookingId.Value) : null;
+            
+            // Tính toán số tiền còn lại
+            var depositAmount = IsDepositPaid(booking) ? (booking?.DepositAmount ?? 0m) : 0m;
+            var paidAmount = (invoice.Payments?.Sum(p => p.AmountPaid) ?? 0m) + depositAmount;
+            var remainingAmount = Math.Max(0m, (invoice.FinalTotal ?? 0m) - paidAmount);
+
+            // Nếu không truyền amount, mặc định lấy số tiền còn lại (hoặc tiền cọc nếu chưa trả)
+            long finalAmount = amount > 0 ? amount : (long)Math.Round(remainingAmount > 0 ? remainingAmount : (booking?.DepositAmount ?? invoice.FinalTotal ?? 0));
+            string transactionCode = $"DEMO-MOMO-{DateTime.Now.Ticks}";
+
+            await ProcessPaymentSuccessInternal(id, finalAmount, transactionCode, info);
+            
+            return Content($"<html><body style='font-family:sans-serif; text-align:center; padding-top:50px;'> <h2 style='color:green;'>XÁC NHẬN THANH TOÁN DEMO THÀNH CÔNG!</h2> <p>Hóa đơn #{id} đã được chuyển sang trạng thái Đã Thanh Toán.</p> <p>Bạn có thể quay lại trang quản lý để kiểm tra.</p> <button onclick='window.close()'>Đóng tab này</button> </body></html>", "text/html", Encoding.UTF8);
+        }
+
+        private async Task<IActionResult> ProcessPaymentSuccessInternal(int invoiceId, long amount, string transactionCode, string orderInfo)
+        {
+            var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.Id == invoiceId);
+            if (invoice == null) return BadRequest(new { resultCode = 7, message = "Invoice not found" });
+
+            var booking = invoice.BookingId.HasValue ? await _context.Bookings.FindAsync(invoice.BookingId.Value) : null;
+            var isDepositPayment = orderInfo.Contains("coc", StringComparison.OrdinalIgnoreCase);
+
+            var shouldMarkDepositAsPaid = booking != null && booking.DepositAmount > 0 && !IsDepositPaid(booking) && isDepositPayment;
+
+            if (shouldMarkDepositAsPaid)
+            {
+                booking!.DepositStatus = "Paid";
+                await _context.SaveChangesAsync();
+
+                if (invoice.BookingId.HasValue)
+                {
+                    await _invoiceService.RecalculateInvoiceAsync(invoice.BookingId.Value);
+                }
+                await NotifyPaymentAsync(booking, invoiceId, amount, true);
+            }
+            else
+            {
+                var existedPayment = await _context.Payments.AnyAsync(p => p.TransactionCode == transactionCode);
+                if (!existedPayment)
+                {
+                    await _invoiceService.AddPaymentAsync(invoiceId, new AddPaymentDto
+                    {
+                        PaymentMethod = "MoMo (Demo)",
+                        AmountPaid = amount,
+                        TransactionCode = transactionCode
+                    });
+                    await NotifyPaymentAsync(booking, invoiceId, amount, false);
+                }
+            }
+            return Ok(new { resultCode = 0, message = "Success" });
         }
 
         [HttpGet("momo-return")]

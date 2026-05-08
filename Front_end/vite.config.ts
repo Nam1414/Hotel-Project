@@ -22,8 +22,16 @@ export default defineConfig(({mode}) => {
     },
     build: {
       rollupOptions: {
-        input: path.resolve(__dirname, 'index.html'),
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-antd': ['antd', '@ant-design/icons'],
+            'vendor-charts': ['recharts'],
+            'vendor-utils': ['dayjs', 'axios', 'framer-motion', 'lucide-react'],
+          },
+        },
       },
+      chunkSizeWarningLimit: 1000,
     },
   };
 });

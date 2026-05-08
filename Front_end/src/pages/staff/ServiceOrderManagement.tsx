@@ -153,7 +153,7 @@ const ServiceOrderManagementPage: React.FC = () => {
     }
   };
 
-  const columns = [
+  const columns = React.useMemo(() => [
     {
       title: 'Mã đơn',
       dataIndex: 'id',
@@ -214,7 +214,7 @@ const ServiceOrderManagementPage: React.FC = () => {
         </Space>
       ),
     },
-  ];
+  ], [statusFilter]);
 
   return (
     <div className="space-y-6">

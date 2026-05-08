@@ -4,6 +4,7 @@ using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
+using HotelManagementAPI.Helpers;
 
 namespace HotelManagementAPI.Services;
 
@@ -28,7 +29,7 @@ public class AuditLogService : IAuditLogService
         _context.AuditLogs.Add(new AuditLog
         {
             Id = Guid.NewGuid(),
-            Timestamp = DateTime.UtcNow,
+            Timestamp = TimeHelper.Now,
             ActionType = actionType,
             EntityType = entityType,
             ContextJson = Serialize(context),
@@ -77,7 +78,7 @@ public class AuditLogService : IAuditLogService
 
     public async Task<int> CleanupAsync(int keepDays = 90)
     {
-        var cutoff = DateTime.UtcNow.AddDays(-keepDays);
+        var cutoff = TimeHelper.Now.AddDays(-keepDays);
         var old = await _context.AuditLogs.Where(x => x.Timestamp < cutoff).ToListAsync();
         _context.AuditLogs.RemoveRange(old);
         return await _context.SaveChangesAsync();

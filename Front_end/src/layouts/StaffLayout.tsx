@@ -97,7 +97,7 @@ const StaffLayout: React.FC = () => {
     }
 
     if (canManageMemberships) {
-      items.push({ icon: Users, label: t('nav.customers'), path: '/staff/memberships' });
+      items.push({ icon: Users, label: t('nav.memberships'), path: '/staff/memberships' });
     }
 
     if (canViewReports && user?.role?.toLowerCase() === 'admin') {

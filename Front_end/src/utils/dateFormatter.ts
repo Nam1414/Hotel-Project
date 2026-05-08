@@ -1,31 +1,42 @@
-import { format } from 'date-fns';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+import 'dayjs/locale/vi';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(relativeTime);
+dayjs.locale('vi');
 
 /**
- * Format UTC timestamp to Vietnam timezone (UTC+7)
+ * Format timestamp to Vietnam timezone (UTC+7)
  * @param dateString - ISO string or any valid date format
  * @returns Formatted string: "HH:mm:ss dd/MM/yyyy"
  */
 export const formatVietnamTime = (dateString: string): string => {
+  if (!dateString) return 'N/A';
   try {
-    const utcString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-    const localDate = new Date(utcString);
-    return format(localDate, 'HH:mm:ss dd/MM/yyyy');
+    // Nếu dateString không có Z và không có offset (+xx:xx), 
+    // dayjs sẽ coi đó là local time (mà backend đã gửi là VN Time).
+    // Nếu có Z, nó sẽ convert sang local time của trình duyệt (VN).
+    return dayjs(dateString).format('HH:mm:ss DD/MM/YYYY');
   } catch (error) {
-    return new Date(dateString).toLocaleString('vi-VN');
+    return 'Invalid Date';
   }
 };
 
 /**
- * Format UTC timestamp to Vietnam timezone with short format
+ * Format timestamp to Vietnam timezone with short format
  * @param dateString - ISO string or any valid date format
  * @returns Formatted string: "dd/MM/yyyy HH:mm"
  */
 export const formatVietnamTimeShort = (dateString: string): string => {
+  if (!dateString) return 'N/A';
   try {
-    const utcString = dateString.endsWith('Z') ? dateString : `${dateString}Z`;
-    const localDate = new Date(utcString);
-    return format(localDate, 'dd/MM/yyyy HH:mm');
+    return dayjs(dateString).format('DD/MM/YYYY HH:mm');
   } catch (error) {
-    return new Date(dateString).toLocaleString('vi-VN');
+    return 'Invalid Date';
   }
 };
+

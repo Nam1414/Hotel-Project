@@ -7,6 +7,8 @@ using HotelManagementAPI.Enums;
 using HotelManagementAPI.Models;
 using Microsoft.EntityFrameworkCore;
 
+using HotelManagementAPI.Helpers;
+
 namespace HotelManagementAPI.Services
 {
     public class InvoiceService : IInvoiceService
@@ -203,8 +205,8 @@ namespace HotelManagementAPI.Services
                 // Tự động sinh mã giao dịch nếu client không gửi
                 TransactionCode = !string.IsNullOrWhiteSpace(paymentDto.TransactionCode)
                     ? paymentDto.TransactionCode
-                    : $"TXN-{DateTime.Now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpper()}",
-                PaymentDate = DateTime.Now
+                    : $"TXN-{TimeHelper.Now:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..8].ToUpper()}",
+                PaymentDate = TimeHelper.Now
             };
 
             await _context.Payments.AddAsync(payment);
@@ -392,7 +394,7 @@ namespace HotelManagementAPI.Services
             }
 
             var voucher = booking.Voucher;
-            var now = DateTime.Now;
+            var now = TimeHelper.Now;
             var canApply = voucher.IsActive
                 && voucher.StartDate <= now
                 && voucher.EndDate >= now

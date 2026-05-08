@@ -12,6 +12,7 @@ import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { useScrollToTop } from './hooks/useScrollToTop';
 import { useThemeStore } from './store/themeStore';
 import { addNotification } from './store/slices/notificationSlice';
+import { fetchSystemSettings } from './store/slices/systemSettingsSlice';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/vi';
@@ -28,7 +29,10 @@ const AppContent = () => {
   const { isDarkMode, hydrated } = useThemeStore();
   const dispatch = useDispatch();
 
-  // Removed dummy notification generator
+  useEffect(() => {
+    // @ts-ignore
+    dispatch(fetchSystemSettings());
+  }, [dispatch]);
 
   useEffect(() => {
     if (!hydrated) return;

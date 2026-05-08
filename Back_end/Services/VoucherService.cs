@@ -3,6 +3,8 @@ using HotelManagementAPI.DTOs;
 using HotelManagementAPI.Models;
 using Microsoft.EntityFrameworkCore;
 
+using HotelManagementAPI.Helpers;
+
 namespace HotelManagementAPI.Services
 {
     public class VoucherService : IVoucherService
@@ -25,7 +27,7 @@ namespace HotelManagementAPI.Services
 
         public async Task<IEnumerable<VoucherResponseDto>> GetPublicForBookingAsync(decimal? bookingAmount = null)
         {
-            var now = DateTime.Now;
+            var now = TimeHelper.Now;
 
             var vouchers = await _context.Vouchers
                 .Where(v =>
@@ -42,7 +44,7 @@ namespace HotelManagementAPI.Services
 
         public async Task<IEnumerable<VoucherResponseDto>> GetVipForMemberAsync(int membershipId, decimal? bookingAmount = null)
         {
-            var now = DateTime.Now;
+            var now = TimeHelper.Now;
 
             var vouchers = await _context.Vouchers
                 .Where(v =>
@@ -89,8 +91,8 @@ namespace HotelManagementAPI.Services
                 EligibleMembershipId = dto.EligibleMembershipId,
                 EligibleMemberOnly = dto.EligibleMemberOnly,
                 IsActive = dto.IsActive,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                CreatedAt = TimeHelper.Now,
+                UpdatedAt = TimeHelper.Now
             };
 
             _context.Vouchers.Add(voucher);
@@ -122,7 +124,7 @@ namespace HotelManagementAPI.Services
             voucher.EligibleMembershipId = dto.EligibleMembershipId;
             voucher.EligibleMemberOnly = dto.EligibleMemberOnly;
             voucher.IsActive = dto.IsActive;
-            voucher.UpdatedAt = DateTime.Now;
+            voucher.UpdatedAt = TimeHelper.Now;
 
             await _context.SaveChangesAsync();
             return MapToDto(voucher, null);
@@ -194,7 +196,7 @@ namespace HotelManagementAPI.Services
 
         private static bool IsVoucherValid(Voucher voucher, decimal bookingAmount)
         {
-            var now = DateTime.Now;
+            var now = TimeHelper.Now;
             var withinDate = voucher.StartDate <= now && voucher.EndDate >= now;
             var underLimit = !voucher.UsageLimit.HasValue || voucher.UsageCount < voucher.UsageLimit.Value;
             return voucher.IsActive && withinDate && underLimit && bookingAmount >= voucher.MinBookingAmount;

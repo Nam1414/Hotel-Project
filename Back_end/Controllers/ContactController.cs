@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using HotelManagementAPI.Data;
 using HotelManagementAPI.Models;
 using HotelManagementAPI.Services;
+using HotelManagementAPI.Helpers;
 
 namespace HotelManagementAPI.Controllers
 {
@@ -26,7 +27,7 @@ namespace HotelManagementAPI.Controllers
                 return BadRequest(ModelState);
             }
 
-            message.CreatedAt = DateTime.Now;
+            message.CreatedAt = TimeHelper.Now;
             message.IsRead = false;
 
             _context.ContactMessages.Add(message);
@@ -62,7 +63,7 @@ namespace HotelManagementAPI.Controllers
             if (message == null) return NotFound();
 
             message.ReplyMessage = replyContent;
-            message.RepliedAt = DateTime.Now;
+            message.RepliedAt = TimeHelper.Now;
             message.IsRead = true;
 
             await _context.SaveChangesAsync();

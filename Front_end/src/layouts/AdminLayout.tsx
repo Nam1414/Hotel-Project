@@ -67,7 +67,7 @@ const AdminLayout: React.FC = () => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const menuItems = [
+  const menuItems = React.useMemo(() => [
     { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/admin', permissions: ['VIEW_DASHBOARD'] },
     { icon: TrendingUp, label: t('nav.analytics'), path: '/admin/analytics', permissions: ['VIEW_REPORTS'] },
     { icon: Users, label: t('nav.users'), path: '/admin/users', permissions: ['MANAGE_USERS'] },
@@ -88,14 +88,14 @@ const AdminLayout: React.FC = () => {
     { icon: ShieldCheck, label: t('nav.roles'), path: '/admin/roles', permissions: ['MANAGE_ROLES'] },
     { icon: Settings, label: t('nav.settings'), path: '/admin/settings', permissions: ['MANAGE_ROLES'] },
     { icon: History, label: t('nav.audit_logs'), path: '/admin/audit-logs', permissions: ['MANAGE_ROLES'] },
-  ];
+  ], [t]);
 
-  const bookingMenuItems = [
+  const bookingMenuItems = React.useMemo(() => [
     { icon: CalendarClock, label: t('nav.all_bookings'), path: '/admin/bookings/manage', permissions: ['MANAGE_BOOKINGS'] },
     { icon: CalendarDays, label: t('nav.arrivals'), path: '/admin/bookings/arrivals', permissions: ['MANAGE_BOOKINGS'] },
     { icon: House, label: t('nav.in_house'), path: '/admin/bookings/in-house', permissions: ['MANAGE_BOOKINGS'] },
     { icon: DoorClosed, label: t('nav.check_out'), path: '/admin/bookings/check-out', permissions: ['MANAGE_BOOKINGS'] },
-  ];
+  ], [t]);
 
   const filteredMenu = menuItems.filter((item) => {
     const hasPermission = item.permissions ? item.permissions.some((p) => user?.permissions?.includes(p)) : true;

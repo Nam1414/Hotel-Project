@@ -20,6 +20,7 @@ import { Button, message, Select, Badge, Empty, Skeleton } from 'antd';
 import { useAppSelector } from '../../hooks/useAppStore';
 import { bookingApi, type BookingResponseDto } from '../../services/bookingApi';
 import { serviceOrderApi, type ServiceDto, type ServiceCategoryDto } from '../../services/serviceOrderApi';
+import dayjs from 'dayjs';
 
 const heroServices = [
   {
@@ -58,10 +59,12 @@ const formatCurrency = (value?: number | null) =>
   Number(value || 0).toLocaleString('vi-VN') + ' đ';
 
 const formatDate = (value?: string | null) =>
-  value ? new Date(value).toLocaleDateString('vi-VN') : '--';
+  value ? dayjs(value).format('DD/MM/YYYY') : '--';
 
-const isCheckedInBooking = (status: string | number) =>
-  String(status) === '2' || String(status) === 'CheckedIn';
+const isCheckedInBooking = (status: string | number) => {
+  const s = String(status).toLowerCase();
+  return s === '2' || s === 'checkedin';
+};
 
 const Services: React.FC = () => {
   const navigate = useNavigate();

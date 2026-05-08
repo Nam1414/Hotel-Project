@@ -10,6 +10,17 @@ import 'dayjs/locale/vi';
 dayjs.extend(relativeTime);
 dayjs.locale('vi');
 
+const icons = {
+  booking: <CalendarClock className="text-sky-600" size={18} />,
+  reminder: <Clock3 size={18} className="text-violet-500" />,
+  update: <Info className="text-amber-500" size={18} />,
+  message: <MessageSquare className="text-primary" size={18} />,
+  payment: <CreditCard className="text-emerald-600" size={18} />,
+  service: <ShoppingBag className="text-rose-500" size={18} />,
+  warning: <AlertCircle size={18} className="text-red-500" />,
+  success: <CheckCircle2 className="text-green-500" size={18} />,
+};
+
 const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => {
   const dispatch = useDispatch();
 
@@ -20,17 +31,6 @@ const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => 
     } catch {
       // Ignore network failure and keep local state responsive.
     }
-  };
-  
-  const icons = {
-    booking: <CalendarClock className="text-sky-600" size={18} />,
-    reminder: <Clock3 size={18} className="text-violet-500" />,
-    update: <Info className="text-amber-500" size={18} />,
-    message: <MessageSquare className="text-primary" size={18} />,
-    payment: <CreditCard className="text-emerald-600" size={18} />,
-    service: <ShoppingBag className="text-rose-500" size={18} />,
-    warning: <AlertCircle size={18} className="text-red-500" />,
-    success: <CheckCircle2 className="text-green-500" size={18} />,
   };
 
   return (
@@ -61,4 +61,4 @@ const NotificationItem: React.FC<{ notification: any }> = ({ notification }) => 
   );
 };
 
-export default NotificationItem;
+export default React.memo(NotificationItem);

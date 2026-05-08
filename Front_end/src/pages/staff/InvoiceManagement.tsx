@@ -244,6 +244,19 @@ const InvoiceManagementPage: React.FC = () => {
     }
 
     try {
+      // ── Mẹo cho Demo: Nếu chọn MoMo và nhập mã đặc biệt ──
+      if (values.paymentMethod === 'MoMo' && values.transactionCode === 'DEMO-SUCCESS') {
+        const response = await fetch(`http://localhost:5206/api/MoMoPayment/simulate-momo-success?invoiceId=${selectedInvoice.id}`);
+        if (response.ok) {
+          message.success('✅ [DEMO] Hệ thống đã xác nhận thanh toán MoMo thành công!');
+          loadData();
+          if (selectedBooking) openInvoice(selectedBooking);
+          setPaymentOpen(false);
+          paymentForm.resetFields();
+          return;
+        }
+      }
+
       await bookingApi.addPayment(selectedInvoice.id, {
         paymentMethod: values.paymentMethod,
         amountPaid: values.amountPaid,

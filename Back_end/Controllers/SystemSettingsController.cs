@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using HotelManagementAPI.Services;
+using HotelManagementAPI.Helpers;
 
 namespace HotelManagementAPI.Controllers;
 
@@ -76,12 +77,12 @@ public class SystemSettingsController : ControllerBase
                 {
                     var oldValue = existing.Value;
                     existing.Value = setting.Value;
-                    existing.UpdatedAt = DateTime.Now;
+                    existing.UpdatedAt = TimeHelper.Now;
                     await _auditLogService.LogAsync("UPDATE", "SystemSetting", new { key = setting.Key }, new { value = oldValue }, new { value = setting.Value }, $"Cập nhật cấu hình hệ thống: {setting.Key}");
                 }
                 else 
                 {
-                    setting.UpdatedAt = DateTime.Now;
+                    setting.UpdatedAt = TimeHelper.Now;
                     _context.SystemSettings.Add(setting);
                 }
             }

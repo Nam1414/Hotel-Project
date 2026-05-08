@@ -314,7 +314,7 @@ Tài khoản: `admin@hotel.com` / `Admin@123`
    POST http://localhost:5052/api/Admin/seed-demo-presentation
    ```
    Hoặc dùng nút **Seed Demo** trong Admin Panel (nếu có).
-
+Mã xác nhận thanh toán momo: http://localhost:5206/api/invoices/30/simulate-momo-success
 ---
 
 ## 📡 API Endpoints chính
