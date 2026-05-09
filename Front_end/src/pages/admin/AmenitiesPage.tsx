@@ -206,12 +206,27 @@ const AmenitiesPage: React.FC = () => {
     },
     {
       title: 'Áp dụng cho loại phòng',
+      width: 400,
       render: (_: any, record: AmenityDto) => {
         const linked = roomTypes.filter(rt => rt.amenities?.some(a => a.id === record.id));
-        if (linked.length === 0) return <span className="text-muted text-xs">Chưa liên kết</span>;
+        if (linked.length === 0) return <span className="text-muted text-xs italic">Chưa liên kết</span>;
+        
+        const maxVisible = 3;
+        const visible = linked.slice(0, maxVisible);
+        const extraCount = linked.length - maxVisible;
+
         return (
-          <div className="flex flex-wrap gap-1">
-            {linked.map(rt => <Tag key={rt.id} color="gold" className="text-xs">{rt.name}</Tag>)}
+          <div className="flex flex-wrap gap-1 items-center">
+            {visible.map(rt => (
+              <Tag key={rt.id} color="gold" className="text-[10px] uppercase font-bold border-none bg-primary/10 text-primary px-2 py-0.5 rounded-md">
+                {rt.name}
+              </Tag>
+            ))}
+            {extraCount > 0 && (
+              <Tag color="default" className="text-[10px] font-bold border-none bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md">
+                +{extraCount} loại phòng khác
+              </Tag>
+            )}
           </div>
         );
       },
@@ -222,9 +237,15 @@ const AmenitiesPage: React.FC = () => {
       render: (_: any, record: AmenityDto) => (
         <div className="flex items-center gap-1">
           {canManage && (
-            <Button type="text" size="small"
+            <Button 
+              type="text" 
+              size="small"
+              className="hover:bg-primary/10"
               icon={<Link2 size={15} className="text-primary" />}
-              onClick={() => openLink(record)} title="Liên kết loại phòng" />
+              onClick={() => openLink(record)}
+            >
+              <span className="text-xs text-primary font-medium">Liên kết</span>
+            </Button>
           )}
           {canManage && (
             <Button type="text" size="small"

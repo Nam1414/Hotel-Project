@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useEffect, useRef, useState } from 'react';
 import {
   App,
@@ -16,9 +15,14 @@ import {
   Table,
   Tag,
   Typography,
+  Tooltip,
 } from 'antd';
-import { CircleDollarSign, Edit2, FileUp, ImagePlus, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { CircleDollarSign, Edit2, FileUp, ImagePlus, Plus, RotateCcw, Trash2, Search, RefreshCcw, Package, Box, TrendingUp, AlertCircle } from 'lucide-react';
 import { adminApi, EquipmentDto, EquipmentStats } from '../../services/adminApi';
+import { formatCurrency, formatNumber } from '../../utils/numberFormatter';
+import { motion } from 'framer-motion';
+
+const { Title, Text, Paragraph } = Typography;
 
 const InventoryPage: React.FC = () => {
   const { message } = App.useApp();
@@ -88,15 +92,10 @@ const InventoryPage: React.FC = () => {
     try {
       if (editingItem) {
         await adminApi.updateEquipment(editingItem.id, {
-          name: values.name,
-          category: values.category,
-          unit: values.unit,
-          totalQuantity: values.totalQuantity,
-          supplier: values.supplier,
+          ...editingItem,
+          ...values,
           basePrice: editingItem.basePrice,
           defaultPriceIfLost: editingItem.defaultPriceIfLost,
-          imageUrl: editingItem.imageUrl,
-          isActive: editingItem.isActive,
         } as any);
         message.success('Đã cập nhật vật tư');
       } else {
@@ -152,8 +151,9 @@ const InventoryPage: React.FC = () => {
 
   const downloadTemplate = async () => {
     try {
-      const blob = await adminApi.downloadEquipmentImportTemplate();
-      const url = window.URL.createObjectURL(blob as Blob);
+      const response = await adminApi.downloadEquipmentImportTemplate() as any;
+      const blob = response.data || response; // Handle both direct blob and axios response
+      const url = window.URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob]));
       const link = document.createElement('a');
       link.href = url;
       link.download = 'equipment-import-template.xlsx';
@@ -162,7 +162,7 @@ const InventoryPage: React.FC = () => {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      message.error(err.response?.data?.message || 'KhÃ´ng thá»ƒ táº£i file máº«u');
+      message.error(err.response?.data?.message || 'Không thể tải file mẫu');
     }
   };
 
@@ -179,161 +179,264 @@ const InventoryPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-8 p-4 md:p-8">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+      >
         <div>
-          <Typography.Title level={2} style={{ marginBottom: 0 }}>
-            Quản lý vật tư
-          </Typography.Title>
-          <Typography.Paragraph style={{ color: '#9ca3af', marginTop: 8 }}>
-            CRUD vật tư, nhập Excel, thống kê kho và cập nhật giá đền bù.
-          </Typography.Paragraph>
+          <Title level={2} className="!mb-1 text-title">Quản lý Kho vật tư</Title>
+          <Paragraph className="text-luxury">
+            Quản lý tồn kho, định giá đền bù và theo dõi tình trạng thiết bị.
+          </Paragraph>
         </div>
 
         <Space wrap>
           <input ref={importFileRef} type="file" hidden accept=".xlsx,.csv" onChange={(event) => importExcel(event.target.files?.[0])} />
-          <Button onClick={downloadTemplate}>
-            Xuất file mẫu
+          <Button onClick={downloadTemplate} className="h-12 px-6 rounded-xl border-luxury">
+            Mẫu Excel
           </Button>
-          <Button icon={<FileUp size={16} />} onClick={() => importFileRef.current?.click()}>
+          <Button icon={<FileUp size={18} />} onClick={() => importFileRef.current?.click()} className="h-12 px-6 rounded-xl border-luxury flex items-center gap-2">
             Import Excel
           </Button>
-          <Button type="primary" className="btn-gold" icon={<Plus size={16} />} onClick={openCreate}>
+          <Button type="primary" className="btn-gold h-12 px-8 rounded-xl shadow-lg shadow-gold/20 flex items-center gap-2" icon={<Plus size={20} />} onClick={openCreate}>
             Thêm vật tư
           </Button>
         </Space>
-      </div>
+      </motion.div>
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={12} xl={6}>
-          <Card className="glass-card">
-            <Statistic title="Tổng đơn vị vật tư" value={stats.total} />
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={6}>
-          <Card className="glass-card">
-            <Statistic title="Đang dùng" value={stats.inUse} />
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={6}>
-          <Card className="glass-card">
-            <Statistic title="Hỏng / mất" value={stats.damaged} />
-          </Card>
-        </Col>
-        <Col xs={24} md={12} xl={6}>
-          <Card className="glass-card">
-            <Statistic title="Trong kho" value={stats.inStock} />
-          </Card>
-        </Col>
+      <Row gutter={[24, 24]}>
+        {[
+          { label: 'Tổng vật tư', value: stats.total, icon: <Package size={24} />, color: 'primary' },
+          { label: 'Đang dùng', value: stats.inUse, icon: <TrendingUp size={24} />, color: 'green' },
+          { label: 'Hỏng / Mất', value: stats.damaged, icon: <AlertCircle size={24} />, color: 'red' },
+          { label: 'Tồn kho', value: stats.inStock, icon: <Box size={24} />, color: 'blue' },
+        ].map((stat, idx) => (
+          <Col key={idx} xs={24} md={12} xl={6}>
+            <Card className="glass-card !border-none text-center" styles={{ body: { padding: 32 } }}>
+              <div className={`bg-${stat.color === 'primary' ? 'primary' : stat.color + '-500'}/10 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 text-${stat.color === 'primary' ? 'primary' : stat.color + '-600'}`}>
+                {stat.icon}
+              </div>
+              <Statistic 
+                title={<span className="text-[10px] font-black uppercase tracking-widest text-primary/60">{stat.label}</span>}
+                value={stat.value} 
+                className="luxury-stat"
+              />
+            </Card>
+          </Col>
+        ))}
       </Row>
 
-      <Card className="glass-card">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} md={12}>
+      <Card className="glass-card border-none" styles={{ body: { padding: 24 } }}>
+        <div className="flex flex-wrap gap-4 items-end mb-6">
+          <div className="flex-1 min-w-[300px]">
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 block mb-2">Tìm kiếm</span>
             <Input
-              placeholder="Tìm theo tên vật tư"
+              size="large"
+              placeholder="Nhập tên vật tư, mã..."
+              prefix={<Search size={18} className="text-muted" />}
+              className="input-luxury"
               value={filters.search}
               onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value || undefined }))}
             />
-          </Col>
-          <Col xs={24} md={6}>
+          </div>
+          <div className="w-[200px]">
+            <span className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 block mb-2">Trạng thái</span>
             <Select
-              style={{ width: '100%' }}
+              size="large"
+              className="w-full custom-select-luxury"
               value={filters.includeInactive ? 'all' : 'active'}
               options={[
                 { value: 'active', label: 'Chỉ đang dùng' },
-                { value: 'all', label: 'Bao gồm đã ẩn' },
+                { value: 'all', label: 'Tất cả' },
               ]}
               onChange={(value) => setFilters((prev) => ({ ...prev, includeInactive: value === 'all' }))}
             />
-          </Col>
-          <Col xs={24} md={6}>
-            <Space>
-              <Button type="primary" onClick={() => loadData(filters)}>
-                Tìm kiếm
-              </Button>
-              <Button
-                onClick={() => {
-                  const next = {};
-                  setFilters(next);
-                  loadData(next);
-                }}
-              >
-                Làm mới
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+          </div>
+          <Space>
+            <Button type="primary" size="large" className="btn-gold h-12 px-8 rounded-xl" onClick={() => loadData(filters)}>
+              Tìm kiếm
+            </Button>
+            <Button size="large" className="h-12 px-6 rounded-xl border-luxury" icon={<RefreshCcw size={18} />} onClick={() => {
+              const next = {};
+              setFilters(next);
+              loadData(next);
+            }}>
+              Làm mới
+            </Button>
+          </Space>
+        </div>
 
-      <Card className="glass-card">
         <Table
           rowKey="id"
           loading={loading}
           dataSource={items}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1100 }}
+          className="luxury-table"
+          pagination={{ pageSize: 10, showSizeChanger: false }}
+          rowClassName={(record: EquipmentDto) => record.isActive ? '' : 'opacity-50'}
           columns={[
-            { title: 'Mã', dataIndex: 'itemCode', render: (value: string) => <strong>{value}</strong> },
-            {
-              title: 'Hình ảnh',
-              dataIndex: 'imageUrl',
-              width: 110,
-              render: (value: string | null | undefined, record: EquipmentDto) =>
-                value ? (
-                  <img
-                    src={value}
-                    alt={record.name}
-                    style={{
-                      width: 64,
-                      height: 64,
-                      objectFit: 'cover',
-                      borderRadius: 12,
-                      border: '1px solid rgba(255,255,255,0.12)',
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 64,
-                      height: 64,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 12,
-                      background: 'rgba(255,255,255,0.05)',
-                      color: '#9ca3af',
-                      fontSize: 12,
-                      textAlign: 'center',
-                      padding: 6,
-                    }}
-                  >
-                    Chưa có ảnh
-                  </div>
-                ),
+            { 
+              title: 'Vật tư',
+              key: 'info',
+              width: 240,
+              render: (_, record: EquipmentDto) => (
+                <Space size={12}>
+                  {record.imageUrl ? (
+                    <img
+                      src={record.imageUrl}
+                      alt={record.name}
+                      style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: 'rgba(184,151,42,0.07)', border: '1px dashed rgba(184,151,42,0.2)',
+                      fontSize: 9, fontWeight: 900, color: 'rgba(184,151,42,0.4)', textAlign: 'center', letterSpacing: 0.5
+                    }}>NO<br/>IMG</div>
+                  )}
+                  <Space direction="vertical" size={2}>
+                    <Text strong style={{ fontSize: 13 }}>{record.name}</Text>
+                    <Space size={6}>
+                      <Text type="secondary" style={{ fontSize: 11 }}>#{record.itemCode}</Text>
+                      <Text type="secondary" style={{ fontSize: 11 }}>· {record.unit}</Text>
+                    </Space>
+                  </Space>
+                </Space>
+              )
             },
-            { title: 'Tên vật tư', dataIndex: 'name' },
-            { title: 'Danh mục', dataIndex: 'category', render: (value: string) => <Tag>{value}</Tag> },
-            { title: 'Đơn vị', dataIndex: 'unit' },
-            { title: 'Tổng', dataIndex: 'totalQuantity' },
-            { title: 'Trong kho', dataIndex: 'inStockQuantity' },
-            { title: 'Đang dùng', dataIndex: 'inUseQuantity' },
-            { title: 'Hỏng', dataIndex: 'damagedQuantity', render: (value: number) => <Tag color={value > 0 ? 'red' : 'green'}>{value}</Tag> },
-            { title: 'Giá gốc', dataIndex: 'basePrice', render: (value: number) => Number(value || 0).toLocaleString('vi-VN') + ' đ' },
-            { title: 'Đền bù', dataIndex: 'defaultPriceIfLost', render: (value: number) => Number(value || 0).toLocaleString('vi-VN') + ' đ' },
-            { title: 'Trạng thái', dataIndex: 'isActive', render: (value: boolean) => <Tag color={value ? 'green' : 'red'}>{value ? 'Đang dùng' : 'Đã ẩn'}</Tag> },
+            {
+              title: 'Danh mục',
+              dataIndex: 'category',
+              width: 110,
+              render: (value: string) => (
+                <Tag style={{ borderRadius: 16, padding: '2px 10px', fontWeight: 600, fontSize: 11, border: '1px solid rgba(184,151,42,0.3)', background: 'rgba(184,151,42,0.08)', color: '#b8972a' }}>
+                  {value}
+                </Tag>
+              )
+            },
+            { 
+              title: 'Tồn kho',
+              key: 'stock',
+              width: 140,
+              render: (_, record: EquipmentDto) => {
+                const total = record.totalQuantity || 1;
+                const inStock = record.inStockQuantity || 0;
+                const pct = Math.round((inStock / total) * 100);
+                return (
+                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 13, fontWeight: 700 }}>{inStock}</Text>
+                      <Text type="secondary" style={{ fontSize: 10 }}>/ {total}</Text>
+                    </Space>
+                    <div style={{ height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 4,
+                        width: `${pct}%`,
+                        background: pct > 50 ? '#16a34a' : pct > 20 ? '#b8972a' : '#dc2626',
+                        transition: 'width 0.4s ease'
+                      }} />
+                    </div>
+                  </Space>
+                );
+              }
+            },
+            {
+              title: 'Đang dùng',
+              dataIndex: 'inUseQuantity',
+              align: 'center',
+              width: 90,
+              render: (v: number) => (
+                <Tag style={{ borderRadius: 16, padding: '2px 10px', fontWeight: 700, border: 'none', background: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}>
+                  {v}
+                </Tag>
+              )
+            },
+            { 
+              title: 'Hỏng / Mất',
+              dataIndex: 'damagedQuantity',
+              align: 'center',
+              width: 100,
+              render: (value: number) => value > 0
+                ? <Tag color="error" style={{ borderRadius: 16, padding: '2px 10px', fontWeight: 700, border: 'none' }}>{value}</Tag>
+                : <Text type="secondary" style={{ fontSize: 12 }}>—</Text>
+            },
+            { 
+              title: 'Giá gốc / Đền bù',
+              key: 'pricing',
+              width: 160,
+              render: (_, record: EquipmentDto) => (
+                <Space direction="vertical" size={3}>
+                  <Space size={4}>
+                    <Text type="secondary" style={{ fontSize: 10 }}>Gốc:</Text>
+                    <Text style={{ fontSize: 11 }}>{formatCurrency(record.basePrice)}</Text>
+                  </Space>
+                  <Space size={4}>
+                    <Text type="secondary" style={{ fontSize: 10 }}>Đền:</Text>
+                    <Text strong style={{ fontSize: 12, color: '#b8972a' }}>{formatCurrency(record.defaultPriceIfLost)}</Text>
+                  </Space>
+                </Space>
+              )
+            },
+            {
+              title: 'Trạng thái',
+              dataIndex: 'isActive',
+              width: 100,
+              align: 'center',
+              render: (value: boolean) => (
+                <Tag
+                  style={{
+                    borderRadius: 16, padding: '3px 12px', fontWeight: 700, fontSize: 11,
+                    border: 'none',
+                    background: value ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)',
+                    color: value ? '#16a34a' : '#dc2626',
+                  }}
+                >
+                  {value ? 'Hoạt động' : 'Đã ẩn'}
+                </Tag>
+              )
+            },
             {
               title: 'Thao tác',
+              fixed: 'right',
+              width: 130,
               render: (_, record: EquipmentDto) => (
-                <Space wrap>
-                  <Button icon={<Edit2 size={14} />} onClick={() => openEdit(record)}>
-                    Sửa
-                  </Button>
-                  <Button icon={<CircleDollarSign size={14} />} onClick={() => openPriceModal(record)}>
-                    Giá
-                  </Button>
-                  <Button icon={record.isActive ? <Trash2 size={14} /> : <RotateCcw size={14} />} onClick={() => toggleItem(record)}>
-                    {record.isActive ? 'Ẩn' : 'Khôi phục'}
-                  </Button>
+                <Space direction="vertical" size={6}>
+                  <Space size={6}>
+                    <Tooltip title="Chỉnh sửa thông tin">
+                      <Button
+                        size="small"
+                        icon={<Edit2 size={13} />}
+                        onClick={() => openEdit(record)}
+                        style={{ borderRadius: 8, fontSize: 11 }}
+                      >
+                        Sửa
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Cập nhật giá">
+                      <Button
+                        size="small"
+                        icon={<CircleDollarSign size={13} />}
+                        onClick={() => openPriceModal(record)}
+                        style={{ borderRadius: 8, fontSize: 11, color: '#b8972a', borderColor: 'rgba(184,151,42,0.3)' }}
+                      >
+                        Giá
+                      </Button>
+                    </Tooltip>
+                  </Space>
+                  <Tooltip title={record.isActive ? 'Ẩn vật tư khỏi hệ thống' : 'Khôi phục vật tư'}>
+                    <Button
+                      size="small"
+                      danger={record.isActive}
+                      icon={record.isActive ? <Trash2 size={13} /> : <RotateCcw size={13} />}
+                      onClick={() => toggleItem(record)}
+                      style={{ borderRadius: 8, fontSize: 11, width: '100%', ...(!record.isActive ? { color: '#16a34a', borderColor: 'rgba(22,163,74,0.3)' } : {}) }}
+                    >
+                      {record.isActive ? 'Ẩn' : 'Khôi phục'}
+                    </Button>
+                  </Tooltip>
                 </Space>
               ),
             },
@@ -341,95 +444,142 @@ const InventoryPage: React.FC = () => {
         />
       </Card>
 
-      <Modal open={openForm} title={editingItem ? 'Cập nhật vật tư' : 'Thêm vật tư'} onCancel={() => setOpenForm(false)} footer={null}>
+
+      <Modal 
+        open={openForm} 
+        title={
+          <div className="flex items-center gap-3 pb-4 border-b">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+              <Package size={24} />
+            </div>
+            <div>
+              <div className="text-xs font-black uppercase tracking-widest text-primary">{editingItem ? 'Cập nhật' : 'Thêm mới'}</div>
+              <div className="text-lg font-bold text-title">Thông tin vật tư</div>
+            </div>
+          </div>
+        }
+        onCancel={() => setOpenForm(false)} 
+        footer={null}
+        width={600}
+        centered
+        className="luxury-modal"
+      >
         <Form 
           form={form} 
           layout="vertical" 
           onFinish={submitForm}
+          className="pt-6"
           onValuesChange={(changedValues) => {
             if (changedValues.basePrice !== undefined && !editingItem) {
               const base = changedValues.basePrice || 0;
-              let multiplier = 1.1; // Tài sản giá trị rất cao (> 5tr) bù thêm 10% phí rủi ro/vận chuyển
-              if (base <= 50000) multiplier = 4.0;       // Đồ lặt vặt (ly, tách, bàn chải, dép) -> x4 (VD: 20k -> 80k)
-              else if (base <= 200000) multiplier = 2.5; // Đồ dùng vừa (khăn tắm, áo choàng, ấm siêu tốc nhỏ) -> x2.5 (VD: 100k -> 250k)
-              else if (base <= 1000000) multiplier = 1.5; // Đồ giá trị trung bình (chăn ga gối, máy sấy) -> x1.5 (VD: 500k -> 750k)
-              else if (base <= 5000000) multiplier = 1.2; // Đồ điện tử/móc cứng (Tivi, tủ lạnh mini) -> x1.2 (VD: 3tr -> 3.6tr)
-              form.setFieldsValue({ defaultPriceIfLost: Math.round(base * multiplier) }); // Làm tròn số
+              let multiplier = 1.1;
+              if (base <= 50000) multiplier = 4.0;
+              else if (base <= 200000) multiplier = 2.5;
+              else if (base <= 1000000) multiplier = 1.5;
+              else if (base <= 5000000) multiplier = 1.2;
+              form.setFieldsValue({ defaultPriceIfLost: Math.round(base * multiplier) });
             }
           }}
         >
-          <Row gutter={12}>
+          <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="itemCode" label="Mã vật tư" rules={[{ required: !editingItem }]}>
-                <Input disabled={!!editingItem} />
+              <Form.Item name="itemCode" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Mã vật tư</span>} rules={[{ required: !editingItem }]}>
+                <Input disabled={!!editingItem} placeholder="VD: VT-001" className="input-luxury h-12" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="name" label="Tên vật tư" rules={[{ required: true }]}>
-                <Input />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={12}>
-            <Col span={12}>
-              <Form.Item name="category" label="Danh mục" rules={[{ required: true }]}>
-                <Input />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="unit" label="Đơn vị" rules={[{ required: true }]}>
-                <Input />
+              <Form.Item name="name" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Tên vật tư</span>} rules={[{ required: true }]}>
+                <Input placeholder="VD: Khăn tắm trắng" className="input-luxury h-12" />
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={12}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="category" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Danh mục</span>} rules={[{ required: true }]}>
+                <Input placeholder="VD: Đồ vải" className="input-luxury h-12" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="unit" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Đơn vị tính</span>} rules={[{ required: true }]}>
+                <Input placeholder="VD: Cái, Bộ..." className="input-luxury h-12" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="totalQuantity" label="Số lượng tổng" rules={[{ required: true }]}>
-                <InputNumber min={0} style={{ width: '100%' }} />
+              <Form.Item name="totalQuantity" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Tổng số lượng</span>} rules={[{ required: true }]}>
+                <InputNumber min={0} className="w-full luxury-input-number h-12" size="large" />
               </Form.Item>
             </Col>
             {!editingItem ? (
               <>
                 <Col span={8}>
-                  <Form.Item name="basePrice" label="Giá gốc" rules={[{ required: true }]}>
-                    <InputNumber min={0} style={{ width: '100%' }} />
+                  <Form.Item name="basePrice" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Giá gốc nhập</span>} rules={[{ required: true }]}>
+                    <InputNumber min={0} className="w-full luxury-input-number h-12" size="large" suffix="₫" />
                   </Form.Item>
                 </Col>
                 <Col span={8}>
-                  <Form.Item name="defaultPriceIfLost" label="Giá đền bù" rules={[{ required: true }]}>
-                    <InputNumber min={0} style={{ width: '100%' }} disabled readOnly />
+                  <Form.Item name="defaultPriceIfLost" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Định giá đền bù</span>}>
+                    <Tooltip title="Hệ thống tự động tính dựa trên giá nhập">
+                      <InputNumber min={0} className="w-full luxury-input-number h-12 bg-muted/5" size="large" disabled readOnly suffix="₫" />
+                    </Tooltip>
                   </Form.Item>
                 </Col>
               </>
             ) : null}
           </Row>
-          <Form.Item name="supplier" label="Nhà cung cấp">
-            <Input />
+          <Form.Item name="supplier" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Nhà cung cấp</span>}>
+            <Input placeholder="Tên công ty cung cấp..." className="input-luxury h-12" />
           </Form.Item>
 
           {editingItem ? (
-            <>
+            <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
               <input ref={imageFileRef} type="file" hidden accept="image/*" onChange={(event) => uploadImage(event.target.files?.[0])} />
-              <Button icon={<ImagePlus size={14} />} onClick={() => imageFileRef.current?.click()}>
-                Upload ảnh vật tư
-              </Button>
-            </>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Text strong className="text-xs block">Hình ảnh vật tư</Text>
+                  <Text type="secondary" className="text-[10px]">Tải ảnh minh chứng giúp nhân viên dễ nhận diện.</Text>
+                </div>
+                <Button icon={<ImagePlus size={16} />} onClick={() => imageFileRef.current?.click()} className="btn-gold-small">
+                  Tải lên
+                </Button>
+              </div>
+            </div>
           ) : null}
 
-          <div className="mt-4 flex justify-end gap-3">
-            <Button onClick={() => setOpenForm(false)}>Hủy</Button>
-            <Button type="primary" htmlType="submit">
-              {editingItem ? 'Lưu thay đổi' : 'Tạo vật tư'}
+          <div className="mt-8 flex justify-end gap-3">
+            <Button size="large" onClick={() => setOpenForm(false)} className="rounded-xl px-8">Hủy</Button>
+            <Button type="primary" size="large" htmlType="submit" className="btn-gold rounded-xl px-12">
+              {editingItem ? 'Lưu thay đổi' : 'Thêm vật tư'}
             </Button>
           </div>
         </Form>
       </Modal>
 
-      <Modal open={openPriceForm} title={`Giá và đền bù: ${priceTarget?.name || ''}`} onCancel={() => setOpenPriceForm(false)} footer={null}>
+      <Modal 
+        open={openPriceForm} 
+        title={
+          <div className="flex items-center gap-3 pb-4 border-b">
+            <div className="p-2 bg-primary/10 rounded-lg text-primary">
+              <CircleDollarSign size={24} />
+            </div>
+            <div>
+              <div className="text-xs font-black uppercase tracking-widest text-primary">Cập nhật tài chính</div>
+              <div className="text-lg font-bold text-title">{priceTarget?.name}</div>
+            </div>
+          </div>
+        }
+        onCancel={() => setOpenPriceForm(false)} 
+        footer={null}
+        width={500}
+        centered
+        className="luxury-modal"
+      >
         <Form 
           form={priceForm} 
           layout="vertical" 
           onFinish={submitPrice}
+          className="pt-6"
           onValuesChange={(changedValues) => {
             if (changedValues.basePrice !== undefined) {
               const base = changedValues.basePrice || 0;
@@ -442,15 +592,15 @@ const InventoryPage: React.FC = () => {
             }
           }}
         >
-          <Form.Item name="basePrice" label="Giá gốc" rules={[{ required: true }]}>
-            <InputNumber min={0} style={{ width: '100%' }} />
+          <Form.Item name="basePrice" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Giá gốc nhập mới</span>} rules={[{ required: true }]}>
+            <InputNumber min={0} className="w-full luxury-input-number h-12" size="large" suffix="₫" />
           </Form.Item>
-          <Form.Item name="defaultPriceIfLost" label="Giá đền bù" rules={[{ required: true }]}>
-            <InputNumber min={0} style={{ width: '100%' }} disabled readOnly />
+          <Form.Item name="defaultPriceIfLost" label={<span className="text-[10px] font-black uppercase tracking-widest text-primary">Giá đền bù đề xuất</span>} rules={[{ required: true }]}>
+            <InputNumber min={0} className="w-full luxury-input-number h-12 bg-muted/5" size="large" disabled readOnly suffix="₫" />
           </Form.Item>
-          <div className="flex justify-end gap-3">
-            <Button onClick={() => setOpenPriceForm(false)}>Hủy</Button>
-            <Button type="primary" htmlType="submit">
+          <div className="flex justify-end gap-3 pt-4">
+            <Button size="large" onClick={() => setOpenPriceForm(false)} className="rounded-xl px-6">Hủy</Button>
+            <Button type="primary" size="large" htmlType="submit" className="btn-gold rounded-xl px-12">
               Cập nhật giá
             </Button>
           </div>

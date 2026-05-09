@@ -14,5 +14,6 @@ namespace HotelManagementAPI.Services
         Task<BookingResponseDto?> UpdateBookingStatusAsync(int id, BookingStatus newStatus);
         Task<BookingResponseDto?> ReassignRoomAsync(int bookingId, ReassignRoomDto dto);
         Task<SplitBookingResultDto> SplitBookingAsync(int bookingId, SplitBookingDto dto);
+        Task<RoomResponseDto?> GetRoomByIdAsync(int roomId);
     }
 }

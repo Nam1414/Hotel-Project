@@ -197,8 +197,8 @@ const CleaningPage: React.FC = () => {
         <Space wrap>
           <Select
             allowClear
-            style={{ width: 240 }}
-            placeholder="Loc trang thai ve sinh"
+            className="w-full sm:w-[240px] h-10 md:h-12"
+            placeholder="Lọc trạng thái vệ sinh"
             value={statusFilter}
             options={['Clean', 'Dirty', 'Inspecting'].map((value) => ({ value, label: value }))}
             onChange={setStatusFilter}
@@ -277,6 +277,7 @@ const CleaningPage: React.FC = () => {
         title={<Space><AlertTriangle style={{ color: '#dc2626' }} size={18} /><span>Báo hỏng vật tư - Phòng {selectedRoom?.roomNumber || ''}</span></Space>}
         onCancel={() => setReportModalOpen(false)} 
         footer={null}
+        className="max-w-[95vw]"
       >
         {roomInventory.length === 0 ? (
           <div style={{ padding: '24px 0', textAlign: 'center' }}>
@@ -327,6 +328,7 @@ const CleaningPage: React.FC = () => {
         title={<Space><Coffee style={{ color: '#0ea5e9' }} size={18} /><span>Báo dùng Minibar - Phòng {selectedRoom?.roomNumber || ''}</span></Space>}
         onCancel={() => setMinibarModalOpen(false)} 
         footer={null}
+        className="max-w-[95vw]"
       >
         <Form form={minibarForm} layout="vertical" onFinish={handleMinibarSubmit}>
           <div style={{ marginBottom: 16, padding: 12, background: '#f0f9ff', borderRadius: 8, fontSize: 13, color: '#0369a1' }}>

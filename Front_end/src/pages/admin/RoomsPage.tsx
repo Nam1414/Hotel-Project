@@ -435,17 +435,22 @@ const RoomsPage: React.FC = () => {
             <Select options={roomTypeOptions} />
           </Form.Item>
           <Row gutter={12}>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item name="floor" label="Tầng" rules={[{ required: true }]}>
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={8}>
-              <Form.Item name="startNumber" label="Số bắt đầu" rules={[{ required: true }]}>
+            <Col span={6}>
+              <Form.Item name="startNumber" label="Bắt đầu" rules={[{ required: true }]}>
                 <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
+              <Form.Item name="step" label="Bước nhảy" initialValue={1} rules={[{ required: true }]}>
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
               <Form.Item name="count" label="Số lượng" rules={[{ required: true }]}>
                 <InputNumber min={1} max={50} style={{ width: '100%' }} />
               </Form.Item>

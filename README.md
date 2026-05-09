@@ -11,7 +11,7 @@
 
 **Hệ thống quản lý khách sạn toàn diện — Full-Stack ERP**
 
-*Đồ án tốt nghiệp · Đại học Lạc Hồng · Khoa CNTT · Lớp 23CT111*
+*Đồ án ứng dụng WEB · Đại học Lạc Hồng · Khoa CNTT · Lớp 23CT111*
 
 </div>
 

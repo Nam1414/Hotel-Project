@@ -218,6 +218,9 @@ const RoomTypeManagement: React.FC = () => {
                   <Button icon={<Edit2 size={16} />} onClick={() => openEdit(record)}>
                     Sửa
                   </Button>
+                  <Button icon={<Sparkles size={16} />} onClick={() => openAmenities(record)}>
+                    Tiện nghi
+                  </Button>
                   <Button icon={<ImagePlus size={16} />} onClick={() => setGalleryTarget(record)}>
                     Ảnh
                   </Button>
@@ -337,6 +340,53 @@ const RoomTypeManagement: React.FC = () => {
               </Col>
             ))}
           </Row>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!amenityTarget}
+        title={`Quản lý tiện nghi: ${amenityTarget?.name || ''}`}
+        onCancel={() => setAmenityTarget(null)}
+        footer={null}
+        width={600}
+      >
+        <div className="space-y-6">
+          <div className="flex gap-2">
+            <Input 
+              placeholder="Thêm tiện nghi mới nhanh..." 
+              value={newAmenityName} 
+              onChange={(e) => setNewAmenityName(e.target.value)}
+              onPressEnter={createAmenity}
+            />
+            <Button type="primary" icon={<Plus size={16} />} onClick={createAmenity}>
+              Tạo
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto p-2">
+            {amenities.map((amenity) => (
+              <div 
+                key={amenity.id}
+                className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                  selectedAmenityIds.includes(amenity.id) 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-luxury/10 hover:border-primary/50'
+                }`}
+                onClick={() => toggleAmenity(amenity.id, !selectedAmenityIds.includes(amenity.id))}
+              >
+                <Checkbox 
+                  checked={selectedAmenityIds.includes(amenity.id)} 
+                  onChange={(e) => toggleAmenity(amenity.id, e.target.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className="text-sm font-medium">{amenity.name}</span>
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex justify-end pt-4">
+            <Button type="primary" onClick={() => setAmenityTarget(null)}>Xong</Button>
+          </div>
         </div>
       </Modal>
     </div>

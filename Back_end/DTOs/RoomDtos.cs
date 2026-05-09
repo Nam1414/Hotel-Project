@@ -94,7 +94,8 @@ public record BulkCreateRoomsRequestDto(
     int Floor,
     int StartNumber,
     int Count,
-    int? TemplateRoomId
+    int? TemplateRoomId,
+    int? Step = 1
 );
 
 // ─── BULK CREATE ───────────────────────────────────────────────────────────────

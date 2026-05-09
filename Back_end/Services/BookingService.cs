@@ -501,7 +501,10 @@ namespace HotelManagementAPI.Services
                 await _invoiceService.CreateInvoiceAsync(newBooking.Id);
             }
 
-            // ── 5. Reload cả 2 booking để trả về ────────────────────────────
+            // ── 5. Cập nhật lại hóa đơn của booking gốc (vì đã mất một số phòng/dịch vụ) ──
+            await _invoiceService.RecalculateInvoiceAsync(bookingId);
+
+            // ── 6. Reload cả 2 booking để trả về ────────────────────────────
             var reloadedOriginal = await _context.Bookings
                 .Include(b => b.BookingDetails)
                 .Include(b => b.Invoice)
@@ -522,6 +525,27 @@ namespace HotelManagementAPI.Services
                     ? $"Đã tách và trả phòng thành công. Booking mới: {newBookingCode}"
                     : $"Đã tách thành công. Booking mới: {newBookingCode}"
             };
+        }
+
+        public async Task<RoomResponseDto?> GetRoomByIdAsync(int roomId)
+        {
+            var room = await _context.Rooms
+                .Include(r => r.RoomType)
+                .FirstOrDefaultAsync(r => r.Id == roomId);
+
+            if (room == null) return null;
+
+            return new RoomResponseDto(
+                room.Id,
+                room.RoomNumber,
+                room.RoomType?.Name ?? "Unknown",
+                room.RoomTypeId,
+                room.Status,
+                room.CleaningStatus,
+                room.IsActive,
+                room.Floor,
+                null // ExtensionNumber
+            );
         }
     }
 }

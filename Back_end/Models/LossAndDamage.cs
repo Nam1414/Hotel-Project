@@ -36,7 +36,7 @@ public class LossAndDamage
     public string Status { get; set; } = "pending";
 
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = Helpers.TimeHelper.Now;
 
     [ForeignKey(nameof(EquipmentId))]
     public Equipment? Equipment { get; set; }

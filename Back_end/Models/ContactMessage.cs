@@ -14,22 +14,22 @@ namespace HotelManagementAPI.Models
         [Required]
         [MaxLength(100)]
         [Column("full_name")]
-        public string FullName { get; set; }
+        public required string FullName { get; set; }
 
         [Required]
         [EmailAddress]
         [MaxLength(100)]
         [Column("email")]
-        public string Email { get; set; }
+        public required string Email { get; set; }
 
         [Required]
         [MaxLength(200)]
         [Column("subject")]
-        public string Subject { get; set; }
+        public required string Subject { get; set; }
 
         [Required]
         [Column("message")]
-        public string Message { get; set; }
+        public required string Message { get; set; }
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.Now;

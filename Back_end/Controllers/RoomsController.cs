@@ -59,6 +59,10 @@ public class RoomsController : ControllerBase
         var result = await _roomService.UpdateRoomAsync(id, dto);
         if (result == null) return NotFound(new { message = "Phòng không tồn tại" });
         await _auditLogService.LogAsync("UPDATE", nameof(Room), new { roomId = id, result.RoomNumber }, dto, result, $"Cập nhật phòng {result.RoomNumber}.");
+        
+        // Gửi SignalR thông báo
+        await _hubContext.Clients.All.SendAsync("RoomStatusChanged", result.Id, result.Status, result.CleaningStatus);
+        
         return Ok(result);
     }
 
@@ -98,16 +102,59 @@ public class RoomsController : ControllerBase
 
         var templateInventories = await LoadTemplateInventoriesAsync(dto.TemplateRoomId);
         var oldInventories = await _context.RoomInventories.Where(ri => ri.RoomId == id).ToListAsync();
+        
+        // Tránh lỗi FK: Lấy danh sách ID đang được tham chiếu bởi LossAndDamages
+        var usedInventoryIds = await _context.LossAndDamages
+            .Where(ld => ld.RoomInventoryId.HasValue && oldInventories.Select(oi => oi.Id).Contains(ld.RoomInventoryId.Value))
+            .Select(ld => ld.RoomInventoryId!.Value)
+            .Distinct()
+            .ToListAsync();
 
         var affectedEquipmentIds = oldInventories.Select(ri => ri.EquipmentId).ToHashSet();
         foreach (var inventory in templateInventories) affectedEquipmentIds.Add(inventory.EquipmentId);
 
-        _context.RoomInventories.RemoveRange(oldInventories);
-        _context.RoomInventories.AddRange(templateInventories.Select(item => new RoomInventory
+        // Chỉ xóa những thứ không bị tham chiếu
+        var toRemove = oldInventories.Where(oi => !usedInventoryIds.Contains(oi.Id)).ToList();
+        var toKeep = oldInventories.Where(oi => usedInventoryIds.Contains(oi.Id)).ToList();
+
+        _context.RoomInventories.RemoveRange(toRemove);
+        
+        // Đối với những thứ giữ lại vì vướng FK, ta đánh dấu ẩn đi nếu nó không có trong template mới
+        foreach (var k in toKeep)
         {
-            RoomId = id, EquipmentId = item.EquipmentId, Quantity = item.Quantity,
-            PriceIfLost = item.PriceIfLost, Note = item.Note, IsActive = item.IsActive, ItemType = item.ItemType
-        }));
+            if (!templateInventories.Any(t => t.EquipmentId == k.EquipmentId))
+            {
+                k.IsActive = false;
+                k.Quantity = 0; // Đặt về 0 vì thực tế nó không còn trong set đồ của phòng này
+            }
+        }
+
+        // Thêm mới hoặc cập nhật
+        foreach (var item in templateInventories)
+        {
+            var existing = toKeep.FirstOrDefault(k => k.EquipmentId == item.EquipmentId);
+            if (existing != null)
+            {
+                existing.Quantity = item.Quantity;
+                existing.PriceIfLost = item.PriceIfLost;
+                existing.Note = item.Note;
+                existing.IsActive = item.IsActive;
+                existing.ItemType = item.ItemType;
+            }
+            else
+            {
+                _context.RoomInventories.Add(new RoomInventory
+                {
+                    RoomId = id,
+                    EquipmentId = item.EquipmentId,
+                    Quantity = item.Quantity,
+                    PriceIfLost = item.PriceIfLost,
+                    Note = item.Note,
+                    IsActive = item.IsActive,
+                    ItemType = item.ItemType
+                });
+            }
+        }
 
         await _context.SaveChangesAsync();
         await RecalculateEquipmentUsageAsync(affectedEquipmentIds);
@@ -127,18 +174,64 @@ public class RoomsController : ControllerBase
         var templateItems = await LoadTemplateInventoriesAsync(id);
         var targetRoomIds = targetRooms.Select(r => r.Id).ToList();
 
-        var oldItems = await _context.RoomInventories.Where(ri => ri.RoomId.HasValue && targetRoomIds.Contains(ri.RoomId.Value)).ToListAsync();
-        var affectedEquipmentIds = oldItems.Select(ri => ri.EquipmentId).ToHashSet();
+        var allOldItems = await _context.RoomInventories.Where(ri => ri.RoomId.HasValue && targetRoomIds.Contains(ri.RoomId.Value)).ToListAsync();
+        
+        // Lấy danh sách ID bị vướng FK
+        var usedInventoryIds = await _context.LossAndDamages
+            .Where(ld => ld.RoomInventoryId.HasValue && allOldItems.Select(oi => oi.Id).Contains(ld.RoomInventoryId.Value))
+            .Select(ld => ld.RoomInventoryId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        var affectedEquipmentIds = allOldItems.Select(ri => ri.EquipmentId).ToHashSet();
         foreach (var item in templateItems) affectedEquipmentIds.Add(item.EquipmentId);
 
-        _context.RoomInventories.RemoveRange(oldItems);
-        var newItems = targetRooms.SelectMany(room => templateItems.Select(item => new RoomInventory
-        {
-            RoomId = room.Id, EquipmentId = item.EquipmentId, Quantity = item.Quantity,
-            PriceIfLost = item.PriceIfLost, Note = item.Note, IsActive = item.IsActive, ItemType = item.ItemType
-        })).ToList();
+        // Xóa những thứ không bị vướng
+        var toRemove = allOldItems.Where(oi => !usedInventoryIds.Contains(oi.Id)).ToList();
+        _context.RoomInventories.RemoveRange(toRemove);
 
-        _context.RoomInventories.AddRange(newItems);
+        // Cập nhật hoặc thêm mới cho từng phòng mục tiêu
+        foreach (var room in targetRooms)
+        {
+            var roomOldItemsToKeep = allOldItems.Where(oi => oi.RoomId == room.Id && usedInventoryIds.Contains(oi.Id)).ToList();
+
+            // Ẩn những thứ cũ bị vướng FK nhưng không có trong template mới
+            foreach (var old in roomOldItemsToKeep)
+            {
+                if (!templateItems.Any(t => t.EquipmentId == old.EquipmentId))
+                {
+                    old.IsActive = false;
+                    old.Quantity = 0;
+                }
+            }
+
+            foreach (var tItem in templateItems)
+            {
+                var existing = roomOldItemsToKeep.FirstOrDefault(k => k.EquipmentId == tItem.EquipmentId);
+                if (existing != null)
+                {
+                    existing.Quantity = tItem.Quantity;
+                    existing.PriceIfLost = tItem.PriceIfLost;
+                    existing.Note = tItem.Note;
+                    existing.IsActive = tItem.IsActive;
+                    existing.ItemType = tItem.ItemType;
+                }
+                else
+                {
+                    _context.RoomInventories.Add(new RoomInventory
+                    {
+                        RoomId = room.Id,
+                        EquipmentId = tItem.EquipmentId,
+                        Quantity = tItem.Quantity,
+                        PriceIfLost = tItem.PriceIfLost,
+                        Note = tItem.Note,
+                        IsActive = tItem.IsActive,
+                        ItemType = tItem.ItemType
+                    });
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
         await RecalculateEquipmentUsageAsync(affectedEquipmentIds);
         await _auditLogService.LogAsync("UPDATE", nameof(RoomInventory), new { templateRoomId = templateRoom.Id, templateRoom.RoomNumber }, null, new { syncedRooms = targetRooms.Count, itemCount = templateItems.Count }, $"Đồng bộ vật tư từ phòng {templateRoom.RoomNumber} sang {targetRooms.Count} phòng.");
@@ -153,9 +246,10 @@ public class RoomsController : ControllerBase
         var templateInventories = dto.TemplateRoomId.HasValue ? await LoadTemplateInventoriesAsync(dto.TemplateRoomId.Value) : new List<RoomInventory>();
         var affectedEquipmentIds = templateInventories.Select(ri => ri.EquipmentId).ToHashSet();
 
+        var step = dto.Step ?? 1;
         for (int i = 0; i < dto.Count; i++)
         {
-            var roomNumber = BuildRoomNumber(dto.Floor, dto.StartNumber + i);
+            var roomNumber = BuildRoomNumber(dto.Floor, dto.StartNumber + (i * step));
             if (await _context.Rooms.AnyAsync(r => r.RoomNumber == roomNumber)) continue;
 
             var room = new Room { RoomTypeId = dto.RoomTypeId, RoomNumber = roomNumber, Floor = dto.Floor, Status = "Available", CleaningStatus = "Clean", IsActive = true };

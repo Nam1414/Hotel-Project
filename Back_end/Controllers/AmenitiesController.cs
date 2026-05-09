@@ -4,6 +4,7 @@ using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HotelManagementAPI.Controllers;
 
@@ -14,15 +15,19 @@ public class AmenitiesController : ControllerBase
     private readonly IAmenityService _amenityService;
     private readonly AppDbContext _context;
     private readonly ICloudinaryService _cloudinaryService;
+    private readonly IMemoryCache _cache;
+    private const string ROOM_TYPES_CACHE_KEY = "roomTypesList";
 
     public AmenitiesController(
         IAmenityService amenityService,
         AppDbContext context,
-        ICloudinaryService cloudinaryService)
+        ICloudinaryService cloudinaryService,
+        IMemoryCache cache)
     {
         _amenityService = amenityService;
         _context = context;
         _cloudinaryService = cloudinaryService;
+        _cache = cache;
     }
 
     [HttpGet]
@@ -47,6 +52,7 @@ public class AmenitiesController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateAmenityDto dto)
     {
         var result = await _amenityService.CreateAsync(dto);
+        _cache.Remove(ROOM_TYPES_CACHE_KEY);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -56,6 +62,7 @@ public class AmenitiesController : ControllerBase
     {
         var result = await _amenityService.UpdateAsync(id, dto);
         if (result == null) return NotFound(new { message = "Tiện nghi không tồn tại" });
+        _cache.Remove(ROOM_TYPES_CACHE_KEY);
         return Ok(result);
     }
 
@@ -65,6 +72,7 @@ public class AmenitiesController : ControllerBase
     {
         var result = await _amenityService.DeleteAsync(id);
         if (!result) return NotFound(new { message = "Tiện nghi không tồn tại" });
+        _cache.Remove(ROOM_TYPES_CACHE_KEY);
         return Ok(new { message = "Đã xóa tiện nghi thành công" });
     }
 
@@ -89,6 +97,7 @@ public class AmenitiesController : ControllerBase
 
         amenity.IconUrl = url;
         await _context.SaveChangesAsync();
+        _cache.Remove(ROOM_TYPES_CACHE_KEY);
 
         return Ok(new { message = "Đã cập nhật icon tiện nghi", iconUrl = amenity.IconUrl });
     }
@@ -100,6 +109,7 @@ public class AmenitiesController : ControllerBase
     {
         var result = await _amenityService.AddToRoomTypeAsync(roomTypeId, amenityId);
         if (!result) return BadRequest(new { message = "Không thể liên kết tiện nghi (có thể ID không đúng)" });
+        _cache.Remove(ROOM_TYPES_CACHE_KEY);
         return Ok(new { message = "Đã liên kết tiện nghi thành công" });
     }
 
@@ -109,6 +119,7 @@ public class AmenitiesController : ControllerBase
     {
         var result = await _amenityService.RemoveFromRoomTypeAsync(roomTypeId, amenityId);
         if (!result) return BadRequest(new { message = "Không thể gỡ bỏ liên kết" });
+        _cache.Remove(ROOM_TYPES_CACHE_KEY);
         return Ok(new { message = "Đã gỡ bỏ liên kết tiện nghi thành công" });
     }
 }

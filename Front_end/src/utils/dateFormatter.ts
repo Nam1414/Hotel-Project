@@ -39,4 +39,16 @@ export const formatVietnamTimeShort = (dateString: string): string => {
     return 'Invalid Date';
   }
 };
-
+/**
+ * Get relative time from now (e.g. "2 giờ trước")
+ * @param dateString - ISO string or any valid date format
+ * @returns Human friendly relative time
+ */
+export const formatRelativeTime = (dateString: string): string => {
+  if (!dateString) return 'N/A';
+  try {
+    return dayjs(dateString).fromNow();
+  } catch (error) {
+    return 'Invalid Date';
+  }
+};

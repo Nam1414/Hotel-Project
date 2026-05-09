@@ -13,14 +13,14 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 
 const COLORS = [
-  '#C6A96B', // Luxury Gold (Primary)
-  '#3730A3', // Indigo
-  '#059669', // Emerald
-  '#D97706', // Amber
-  '#BE123C', // Rose
-  '#0891B2', // Cyan
-  '#4F46E5', // Violet
-  '#64748B'  // Slate
+  '#C6A96B', // Luxury Gold
+  '#10B981', // Emerald (Bright Green)
+  '#F59E0B', // Amber (Bright Orange)
+  '#F43F5E', // Rose (Bright Red)
+  '#6366F1', // Indigo (Bright Blue/Purple)
+  '#8B5CF6', // Violet (Bright Purple)
+  '#06B6D4', // Cyan
+  '#94A3B8'  // Slate
 ];
 
 const AnalyticsPage: React.FC = () => {
@@ -41,6 +41,14 @@ const AnalyticsPage: React.FC = () => {
     };
     fetchData();
   }, []);
+
+  const STATUS_MAP: Record<string, string> = {
+    'Pending': 'Chờ xác nhận',
+    'Confirmed': 'Đã xác nhận',
+    'CheckedIn': 'Đã nhận phòng',
+    'CheckedOut': 'Đã trả phòng',
+    'Cancelled': 'Đã hủy'
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
@@ -190,7 +198,15 @@ const AnalyticsPage: React.FC = () => {
                     itemStyle={{ color: '#C6A96B' }}
                     formatter={(value: number) => [formatCurrency(value), 'Doanh thu']}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#C6A96B" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#C6A96B" 
+                    strokeWidth={4} 
+                    fillOpacity={1} 
+                    fill="url(#colorRevenue)" 
+                    animationDuration={1500}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -204,24 +220,38 @@ const AnalyticsPage: React.FC = () => {
               title={<span className="text-xs font-black uppercase tracking-[0.2em] text-title">{t('analytics.rev_by_room_type')}</span>} 
               className="glass-card border border-luxury/10 shadow-xl rounded-2xl h-full"
             >
-            <div style={{ width: '100%', height: 350, marginTop: 20 }}>
+            <div style={{ width: '100%', height: 420, marginTop: 20 }}>
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
                     data={data?.revenueByRoomType}
                     cx="50%"
-                    cy="45%"
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={8}
+                    cy="44%"
+                    innerRadius={65}
+                    outerRadius={95}
+                    paddingAngle={4}
                     dataKey="value"
                   >
                     {data?.revenueByRoomType.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="transparent" />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid rgba(198,169,107,0.2)' }}
+                    formatter={(value: number) => formatCurrency(value)} 
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    align="center"
+                    iconType="circle" 
+                    iconSize={10}
+                    formatter={(value) => <span style={{ color: '#94a3b8', marginLeft: '8px' }}>{value}</span>}
+                    wrapperStyle={{ 
+                      paddingTop: '32px',
+                      fontSize: '12px',
+                      fontWeight: 500
+                    }} 
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -253,7 +283,8 @@ const AnalyticsPage: React.FC = () => {
                     axisLine={false} 
                     tickLine={false} 
                     width={100}
-                    tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
+                    tickFormatter={(val) => STATUS_MAP[val] || val}
+                    tick={{ fontSize: 11, fontWeight: 600, fill: '#94a3b8' }} 
                   />
                   <Tooltip 
                     cursor={{ fill: 'rgba(198, 169, 107, 0.05)' }} 
@@ -273,28 +304,58 @@ const AnalyticsPage: React.FC = () => {
               title={<span className="text-xs font-black uppercase tracking-[0.2em] text-title">{t('analytics.top_services')}</span>} 
               className="glass-card border border-luxury/10 shadow-xl rounded-2xl"
             >
-            <div style={{ width: '100%', height: 350, marginTop: 20 }}>
+            <div style={{ width: '100%', height: 520, marginTop: 20 }}>
               <ResponsiveContainer>
                 <PieChart>
                   <Pie
                     data={data?.serviceUsage}
                     cx="50%"
-                    cy="45%"
+                    cy="42%"
                     innerRadius={0}
-                    outerRadius={100}
+                    outerRadius={95}
                     dataKey="value"
-                    labelLine={true}
-                    label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                    labelLine={{ stroke: '#64748b', strokeWidth: 1 }}
+                    label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                      const RADIAN = Math.PI / 180;
+                      const radius = outerRadius + 28;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      if (percent < 0.03) return null;
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          fill="#94a3b8"
+                          textAnchor={x > cx ? 'start' : 'end'}
+                          dominantBaseline="central"
+                          fontSize={11}
+                          fontWeight={600}
+                        >
+                          {`${(percent * 100).toFixed(0)}%`}
+                        </text>
+                      );
+                    }}
                   >
                     {data?.serviceUsage.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} stroke="transparent" />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend verticalAlign="bottom" iconType="rect" wrapperStyle={{ paddingTop: '20px' }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: '1px solid rgba(198,169,107,0.2)' }}
+                    formatter={(value: number, name: string) => [value, name]}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    align="center"
+                    iconType="circle"
+                    iconSize={9}
+                    formatter={(value) => <span style={{ color: '#94a3b8', fontSize: '11px', marginLeft: '4px' }}>{value}</span>}
+                    wrapperStyle={{ paddingTop: '32px' }} 
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
+
           </Card>
         </motion.div>
       </Col>

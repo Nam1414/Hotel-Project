@@ -6,6 +6,8 @@ using HotelManagementAPI.Middleware;
 using HotelManagementAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using HotelManagementAPI.Hubs;
 
 namespace HotelManagementAPI.Controllers
 {
@@ -16,12 +18,18 @@ namespace HotelManagementAPI.Controllers
         private readonly IBookingService _bookingService;
         private readonly INotificationService _notificationService;
         private readonly IAuditLogService _auditLogService;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public BookingController(IBookingService bookingService, INotificationService notificationService, IAuditLogService auditLogService)
+        public BookingController(
+            IBookingService bookingService, 
+            INotificationService notificationService, 
+            IAuditLogService auditLogService,
+            IHubContext<NotificationHub> hubContext)
         {
             _bookingService = bookingService;
             _notificationService = notificationService;
             _auditLogService = auditLogService;
+            _hubContext = hubContext;
         }
 
         /// <summary>Lấy tất cả booking — chỉ Staff/Admin có quyền MANAGE_BOOKINGS</summary>
@@ -124,6 +132,23 @@ namespace HotelManagementAPI.Controllers
                 if (updatedBooking == null) return NotFound(new { message = "Booking not found" });
                 await NotifyBookingStatusChangedAsync(updatedBooking);
                 await _auditLogService.LogAsync("UPDATE", "BookingStatus", new { bookingId = id, code = updatedBooking.BookingCode }, new { statusDto.Status }, updatedBooking, $"Cập nhật trạng thái booking {updatedBooking.BookingCode} sang {statusDto.Status}.");
+
+                // Gửi SignalR cập nhật trạng thái phòng cho Dashboard/RoomsPage
+                if (updatedBooking.Details != null)
+                {
+                    foreach (var detail in updatedBooking.Details)
+                    {
+                        if (detail.RoomId.HasValue)
+                        {
+                            var room = await _bookingService.GetRoomByIdAsync(detail.RoomId.Value);
+                            if (room != null)
+                            {
+                                await _hubContext.Clients.All.SendAsync("RoomStatusChanged", room.Id, room.Status, room.CleaningStatus);
+                            }
+                        }
+                    }
+                }
+
                 return Ok(updatedBooking);
             }
             catch (Exception ex)
@@ -143,6 +168,30 @@ namespace HotelManagementAPI.Controllers
                 var result = await _bookingService.ReassignRoomAsync(id, dto);
                 if (result == null) return NotFound(new { message = "Booking not found" });
                 await _auditLogService.LogAsync("UPDATE", "BookingRoom", new { bookingId = id, code = result.BookingCode }, dto, result, $"Đổi phòng cho booking {result.BookingCode}.");
+
+                // Gửi SignalR thông báo trạng thái phòng thay đổi
+                if (dto.NewRoomId.HasValue)
+                {
+                    var newRoom = await _bookingService.GetRoomByIdAsync(dto.NewRoomId.Value);
+                    if (newRoom != null)
+                    {
+                        await _hubContext.Clients.All.SendAsync("RoomStatusChanged", newRoom.Id, newRoom.Status, newRoom.CleaningStatus);
+                    }
+                }
+                // Nếu đổi phòng cũ sang phòng mới, phòng cũ sẽ về Available
+                // Lưu ý: Logic trong service đã cập nhật DB, ở đây ta gửi Notify
+                if (result.Details != null)
+                {
+                    foreach (var d in result.Details)
+                    {
+                        if (d.RoomId.HasValue)
+                        {
+                            var r = await _bookingService.GetRoomByIdAsync(d.RoomId.Value);
+                            if (r != null) await _hubContext.Clients.All.SendAsync("RoomStatusChanged", r.Id, r.Status, r.CleaningStatus);
+                        }
+                    }
+                }
+
                 return Ok(result);
             }
             catch (Exception ex)
@@ -160,6 +209,32 @@ namespace HotelManagementAPI.Controllers
             try
             {
                 var result = await _bookingService.SplitBookingAsync(id, dto);
+                
+                // Nếu tách và trả phòng ngay -> Gửi SignalR cập nhật trạng thái phòng cho các client khác
+                if (dto.CheckOutImmediately)
+                {
+                    foreach (var detail in result.NewBooking.Details)
+                    {
+                        if (detail.RoomId.HasValue)
+                        {
+                            // Lấy thông tin phòng để gửi SignalR (vì detail chỉ có ID)
+                            var room = await _bookingService.GetRoomByIdAsync(detail.RoomId.Value);
+                            if (room != null)
+                            {
+                                await _hubContext.Clients.All.SendAsync("RoomStatusChanged", room.Id, "Available", "Dirty");
+                                
+                                // Gửi thông báo cho nhân viên dọn phòng
+                                await _notificationService.SendToRoleByNameAsync(
+                                    "Staff",
+                                    "Yêu cầu dọn phòng",
+                                    $"Phòng {room.RoomNumber} đã được tách trả (Split) và cần được dọn dẹp.",
+                                    NotificationType.Warning,
+                                    "/staff/rooms");
+                            }
+                        }
+                    }
+                }
+
                 await _auditLogService.LogAsync("CREATE", "BookingSplit", new { originalBookingId = id }, dto, result, $"Tách booking #{id} thành booking mới #{result.NewBooking.Id}.");
                 return Ok(result);
             }

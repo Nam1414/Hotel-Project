@@ -315,7 +315,7 @@ const BookingPage: React.FC = () => {
           : viewMode === 'in-house'
             ? b.status === 'CheckedIn'
             : viewMode === 'check-out'
-              ? b.status === 'CheckedOut'
+              ? b.status === 'CheckedIn' && b.details?.some(d => isToday(d.checkOutDate))
               : true;
 
       return matchSearch && matchStatus && matchView;
@@ -671,13 +671,13 @@ const BookingPage: React.FC = () => {
       {/* Stats */}
       <Row gutter={[16, 16]}>
         {statCards.map((s, i) => (
-          <Col key={i} xs={24} sm={12} md={8} lg={5}>
-            <AntCard className="glass-card text-center" bodyStyle={{ padding: '16px' }}>
-              <div style={{ color: s.color }} className="flex justify-center mb-2">{s.icon}</div>
+          <Col key={i} xs={12} sm={12} md={8} lg={4}>
+            <AntCard className="glass-card text-center h-full" bodyStyle={{ padding: '12px md:16px' }}>
+              <div style={{ color: s.color }} className="flex justify-center mb-1 md:mb-2">{s.icon}</div>
               <Statistic
-                title={<span style={{ fontSize: 12, color: '#cbd5e1', fontWeight: 500 }}>{s.label}</span>}
+                title={<span className="text-[10px] md:text-[12px] text-muted font-medium">{s.label}</span>}
                 value={s.value}
-                valueStyle={{ color: s.color, fontSize: 26, fontWeight: 700 }}
+                valueStyle={{ color: s.color, fontSize: '18px', md: '26px', fontWeight: 700 }}
               />
             </AntCard>
           </Col>
@@ -686,30 +686,31 @@ const BookingPage: React.FC = () => {
 
       {/* Filters */}
       <AntCard className="glass-card">
-        <Row gutter={16} align="middle">
-          <Col xs={24} md={10}>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} md={8} lg={10}>
             <Input
-              prefix={<Search size={16} style={{ color: '#9ca3af' }} />}
-              placeholder={viewMode === 'invoices' ? 'Tìm theo mã booking, khách hàng, SĐT...' : 'Tìm theo tên, mã booking, SĐT, email...'}
+              prefix={<Search size={16} className="text-muted" />}
+              placeholder={viewMode === 'invoices' ? 'Mã booking, khách hàng, SĐT...' : 'Tên, mã booking, SĐT, email...'}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               allowClear
+              className="h-10 md:h-12"
             />
           </Col>
           {viewMode === 'arrivals' && (
-            <Col xs={24} md={6}>
+            <Col xs={24} sm={12} md={4} lg={4}>
               <DatePicker 
                 value={arrivalDate} 
                 onChange={d => setArrivalDate(d)} 
-                style={{ width: '100%' }} 
+                className="w-full h-10 md:h-12"
                 format="DD/MM/YYYY" 
-                placeholder="Chọn ngày nhận phòng" 
+                placeholder="Ngày nhận" 
               />
             </Col>
           )}
-          <Col xs={24} md={8}>
+          <Col xs={24} sm={12} md={6} lg={viewMode === 'arrivals' ? 6 : 8}>
             <Select
-              style={{ width: '100%' }}
+              className="w-full h-10 md:h-12"
               value={statusFilter}
               onChange={v => setStatusFilter(v)}
               options={[
@@ -718,8 +719,8 @@ const BookingPage: React.FC = () => {
               ]}
             />
           </Col>
-          <Col xs={24} md={6}>
-            <Button block onClick={() => { setSearchTerm(''); setStatusFilter(viewConfig.defaultStatus); }}>Xóa bộ lọc</Button>
+          <Col xs={24} md={4} lg={viewMode === 'arrivals' ? 4 : 6}>
+            <Button block className="h-10 md:h-12" onClick={() => { setSearchTerm(''); setStatusFilter(viewConfig.defaultStatus); }}>Xóa bộ lọc</Button>
           </Col>
         </Row>
       </AntCard>
@@ -741,34 +742,34 @@ const BookingPage: React.FC = () => {
         title="Tạo Booking Mới"
         onCancel={() => setCreateOpen(false)}
         footer={null}
-        width={820}
+        width={1000}
+        className="max-w-[95vw]"
       >
         <Form form={form} layout="vertical" onFinish={submitCreate}>
           {/* ── Thông tin khách ───────────────────────────── */}
           <Divider orientation="left">Thông tin khách hàng</Divider>
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="guestName" label="Tên khách" rules={[{ required: true }]}>
                 <Input placeholder="Nguyễn Văn A" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="guestPhone" label="Số điện thoại" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}>
                 <Input placeholder="0912345678" />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="guestEmail" label="Email">
                 <Input placeholder="guest@example.com" />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item name="depositAmount" label="Tiền đặt cọc (₫)" initialValue={0}>
                 <InputNumber
-                  className="w-full"
-                  style={{ width: '100%' }}
+                  className="w-full h-10 md:h-12"
                   min={0}
                   formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
                   parser={v => v!.replace(/\./g, '') as any}
@@ -813,13 +814,14 @@ const BookingPage: React.FC = () => {
                     >
                       <Row gutter={16}>
                         {/* Loại phòng */}
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                           <Form.Item {...rest} name={[name, 'roomTypeId']} label="Loại phòng" rules={[{ required: true, message: 'Vui lòng chọn loại phòng' }]}>
                             <Select
                               showSearch
                               optionFilterProp="label"
                               placeholder="Chọn loại phòng..."
                               options={roomTypes.map(rt => ({ value: rt.id, label: rt.name }))}
+                              className="w-full h-10 md:h-12"
                               onChange={(val) => {
                                 const rt = roomTypes.find(t => t.id === val);
                                 if (rt) {
@@ -834,7 +836,7 @@ const BookingPage: React.FC = () => {
                           </Form.Item>
                         </Col>
                         {/* Phòng cụ thể (tuỳ chọn) */}
-                        <Col span={12}>
+                        <Col xs={24} sm={12}>
                           <Form.Item
                             shouldUpdate={(prev, curr) =>
                               prev.details?.[name]?.roomTypeId !== curr.details?.[name]?.roomTypeId ||
@@ -855,6 +857,7 @@ const BookingPage: React.FC = () => {
                                     optionFilterProp="label"
                                     placeholder={typeId ? (filteredRooms.length > 0 ? `${filteredRooms.length} phòng sẵn sàng` : 'Không có phòng trống') : 'Chọn loại trước'}
                                     disabled={!typeId}
+                                    className="w-full h-10 md:h-12"
                                     options={filteredRooms.map(r => ({
                                       value: r.id,
                                       label: `Phòng ${r.roomNumber}${r.cleaningStatus === 'Clean' ? ' ✓' : ''}`,
@@ -882,7 +885,7 @@ const BookingPage: React.FC = () => {
 
                       {/* Ngày + Giá */}
                       <Row gutter={16}>
-                        <Col span={14}>
+                        <Col xs={24} sm={14}>
                           <Form.Item
                             {...rest}
                             name={[name, 'dates']}
@@ -900,17 +903,17 @@ const BookingPage: React.FC = () => {
                             ]}
                           >
                             <DatePicker.RangePicker
-                              style={{ width: '100%' }}
+                              className="w-full h-10 md:h-12"
                               format="DD/MM/YYYY"
                               disabledDate={d => d && d < dayjs().startOf('day')}
                             />
                           </Form.Item>
                         </Col>
-                        <Col span={10}>
+                        <Col xs={24} sm={10}>
                           <Form.Item {...rest} name={[name, 'pricePerNight']} label="Giá / đêm (₫)" rules={[{ required: true }]}>
                             <InputNumber
                               min={0}
-                              style={{ width: '100%' }}
+                              className="w-full h-10 md:h-12"
                               formatter={v => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
                               parser={v => v!.replace(/\./g, '') as any}
                               addonAfter="VND"
@@ -1583,54 +1586,65 @@ const BookingPage: React.FC = () => {
       >
         {selectedBooking && (
           <>
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#1e40af' }}>
-              💡 Chọn phòng muốn <strong>tách ra</strong> thanh toán riêng. Booking gốc sẽ giữ lại các phòng còn lại.
+            <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 mb-4">
+              <p className="text-xs text-muted mb-0 flex gap-2">
+                <span className="text-primary text-base">✨</span>
+                <span>
+                  Chọn các phòng muốn <strong>tách ra</strong> để thanh toán riêng hoặc check-out sớm. 
+                  Booking gốc sẽ giữ lại những phòng còn lại.
+                </span>
+              </p>
             </div>
 
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>Chọn phòng cần tách:</div>
-            {selectedBooking.details.map(d => {
-              const room = rooms.find(r => r.id === d.roomId);
-              const nights = nightsBetween(d.checkInDate, d.checkOutDate);
-              const checked = splitSelectedIds.includes(d.id);
-              return (
-                <div
-                  key={d.id}
-                  onClick={() => setSplitSelectedIds(prev =>
-                    prev.includes(d.id) ? prev.filter(x => x !== d.id) : [...prev, d.id]
-                  )}
-                  style={{
-                    border: `2px solid ${checked ? '#2563eb' : '#e5e7eb'}`,
-                    borderRadius: 8, padding: '10px 14px', marginBottom: 8,
-                    cursor: 'pointer', background: checked ? '#eff6ff' : '#fff',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <Row justify="space-between" align="middle">
-                    <Col>
-                      <div style={{ fontWeight: 600 }}>
-                        {room ? `Phòng ${room.roomNumber}` : `Loại #${d.roomTypeId}`}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#6b7280' }}>
-                        {dayjs(d.checkInDate).format('DD/MM')} → {dayjs(d.checkOutDate).format('DD/MM')} · {nights} đêm
-                      </div>
-                    </Col>
-                    <Col>
-                      <div style={{ fontWeight: 700, color: '#2563eb' }}>
-                        {formatMoney(d.pricePerNight * nights)}
-                      </div>
-                      {checked && <Tag color="blue" style={{ marginTop: 4 }}>✓ Đã chọn</Tag>}
-                    </Col>
-                  </Row>
-                </div>
-              );
-            })}
+            <div className="text-sm font-bold uppercase tracking-wider text-muted mb-3 ml-1">Danh sách phòng trong booking:</div>
+            <div className="space-y-3">
+              {selectedBooking.details.map(d => {
+                const room = rooms.find(r => r.id === d.roomId);
+                const nights = nightsBetween(d.checkInDate, d.checkOutDate);
+                const checked = splitSelectedIds.includes(d.id);
+                return (
+                  <div
+                    key={d.id}
+                    onClick={() => setSplitSelectedIds(prev =>
+                      prev.includes(d.id) ? prev.filter(x => x !== d.id) : [...prev, d.id]
+                    )}
+                    className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                      checked 
+                        ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10' 
+                        : 'border-luxury/10 bg-luxury/5 hover:border-primary/30'
+                    }`}
+                  >
+                    <Row justify="space-between" align="middle">
+                      <Col>
+                        <div className={`text-base font-bold mb-0.5 ${checked ? 'text-primary' : 'text-title'}`}>
+                          {room ? `Phòng ${room.roomNumber}` : `Loại #${d.roomTypeId}`}
+                        </div>
+                        <div className="text-xs text-muted">
+                          {dayjs(d.checkInDate).format('DD/MM')} → {dayjs(d.checkOutDate).format('DD/MM')} · {nights} đêm
+                        </div>
+                      </Col>
+                      <Col className="text-right">
+                        <div className={`text-lg font-display font-bold ${checked ? 'text-primary' : 'text-title'}`}>
+                          {formatMoney(d.pricePerNight * nights)}
+                        </div>
+                        {checked && (
+                          <div className="flex items-center justify-end gap-1 text-[10px] font-bold text-primary uppercase mt-1">
+                            <ScissorsIcon size={10} /> Đã chọn tách
+                          </div>
+                        )}
+                      </Col>
+                    </Row>
+                  </div>
+                );
+              })}
+            </div>
 
-            <Divider />
+            <Divider className="my-6 border-luxury/10" />
 
-            <Row gutter={12}>
-              <Col span={16}>
-                <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 4 }}>Tổng phòng được tách:</div>
-                <div style={{ fontWeight: 700, fontSize: 16, color: '#1d4ed8' }}>
+            <Row justify="space-between" align="middle" className="bg-luxury/5 p-4 rounded-xl border border-luxury/10">
+              <Col>
+                <div className="text-xs font-bold uppercase tracking-widest text-muted mb-1">Tổng cộng tách:</div>
+                <div className="text-2xl font-display font-bold text-primary">
                   {formatMoney(
                     selectedBooking.details
                       .filter(d => splitSelectedIds.includes(d.id))
@@ -1638,37 +1652,67 @@ const BookingPage: React.FC = () => {
                   )}
                 </div>
               </Col>
-              <Col span={8}>
-                <Button
-                  type="primary"
-                  block
-                  loading={splitLoading}
-                  disabled={splitSelectedIds.length === 0 || splitSelectedIds.length >= selectedBooking.details.length}
-                  style={{ background: '#d97706', borderColor: '#d97706' }}
-                  onClick={async () => {
-                    if (!selectedBooking) return;
-                    setSplitLoading(true);
-                    try {
-                      const dto: SplitBookingDto = {
-                        bookingDetailIds: splitSelectedIds,
-                        newBookingDepositAmount: 0,
-                        checkOutImmediately: true,
-                      };
-                      const result = await bookingApi.splitBooking(selectedBooking.id, dto);
-                      antdMessage.success(result.message);
-                      setSplitOpen(false);
-                      setSplitSelectedIds([]);
-                      setDetailOpen(false);
-                      await loadData();
-                    } catch (err: any) {
-                      antdMessage.error(err?.response?.data?.message || 'Tách hóa đơn thất bại');
-                    } finally {
-                      setSplitLoading(false);
-                    }
-                  }}
-                >
-                  Tách & Trả phòng
-                </Button>
+              <Col>
+                <Space>
+                  <Button
+                    size="large"
+                    loading={splitLoading}
+                    disabled={splitSelectedIds.length === 0 || splitSelectedIds.length >= selectedBooking.details.length}
+                    onClick={async () => {
+                      if (!selectedBooking) return;
+                      setSplitLoading(true);
+                      try {
+                        const dto: SplitBookingDto = {
+                          bookingDetailIds: splitSelectedIds,
+                          newBookingDepositAmount: 0,
+                          checkOutImmediately: false,
+                        };
+                        const result = await bookingApi.splitBooking(selectedBooking.id, dto);
+                        antdMessage.success("Đã tách phòng sang booking mới thành công. Bạn có thể bổ sung dịch vụ cho booking mới này.");
+                        setSplitOpen(false);
+                        setSplitSelectedIds([]);
+                        setDetailOpen(false);
+                        await loadData();
+                      } catch (err: any) {
+                        antdMessage.error(err?.response?.data?.message || 'Tách hóa đơn thất bại');
+                      } finally {
+                        setSplitLoading(false);
+                      }
+                    }}
+                  >
+                    Chỉ tách phòng
+                  </Button>
+                  <Button
+                    type="primary"
+                    size="large"
+                    className="btn-gold h-12 px-8"
+                    loading={splitLoading}
+                    disabled={splitSelectedIds.length === 0 || splitSelectedIds.length >= selectedBooking.details.length}
+                    onClick={async () => {
+                      if (!selectedBooking) return;
+                      setSplitLoading(true);
+                      try {
+                        const dto: SplitBookingDto = {
+                          bookingDetailIds: splitSelectedIds,
+                          newBookingDepositAmount: 0,
+                          checkOutImmediately: true,
+                        };
+                        const result = await bookingApi.splitBooking(selectedBooking.id, dto);
+                        antdMessage.success(result.message);
+                        setSplitOpen(false);
+                        setSplitSelectedIds([]);
+                        setDetailOpen(false);
+                        await loadData();
+                      } catch (err: any) {
+                        antdMessage.error(err?.response?.data?.message || 'Tách hóa đơn thất bại');
+                      } finally {
+                        setSplitLoading(false);
+                      }
+                    }}
+                  >
+                    Tách & Trả phòng
+                  </Button>
+                </Space>
               </Col>
             </Row>
             {splitSelectedIds.length >= selectedBooking.details.length && (

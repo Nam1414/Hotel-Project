@@ -68,7 +68,7 @@ public class AttractionsController : ControllerBase
     [HttpPost("{id}/image")]
     [Authorize(Roles = "Admin")]
     [RequestSizeLimit(10_000_000)]
-    public async Task<IActionResult> UploadImage(int id, [FromForm] IFormFile file)
+    public async Task<IActionResult> UploadImage(int id, IFormFile file)
     {
         try 
         {

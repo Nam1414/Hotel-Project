@@ -109,7 +109,7 @@ public class LossAndDamagesController : ControllerBase
             PenaltyAmount   = dto.PenaltyAmount,
             Description     = dto.Description,
             ImageUrl        = dto.ImageUrl,
-            CreatedAt       = DateTime.UtcNow,
+            CreatedAt       = Helpers.TimeHelper.Now,
             Status          = "pending"
         };
 
