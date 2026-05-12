@@ -59,6 +59,21 @@ public class AuthController : ControllerBase
 
         await _auditLogService.LogAsync("REGISTER", nameof(User), new { user.Id, user.Email }, null, null, $"Người dùng đăng ký mới: {user.Email}");
 
+        var emailBody = $@"
+        <h3>Chào mừng bạn đến với Hotel Management</h3>
+        <p>Xin chào {user.FullName},</p>
+        <p>Chúc mừng bạn đã đăng ký tài khoản thành công tại hệ thống của chúng tôi.</p>
+        <p><strong>Thông tin tài khoản:</strong></p>
+        <ul>
+            <li><strong>Họ và tên:</strong> {user.FullName}</li>
+            <li><strong>Email:</strong> {user.Email}</li>
+            <li><strong>Số điện thoại:</strong> {user.Phone}</li>
+        </ul>
+        <p>Cảm ơn bạn đã đồng hành cùng chúng tôi!</p>
+        <p>Trân trọng,<br>Đội ngũ Hotel Management</p>";
+
+        await _emailService.SendEmailAsync(user.Email, "Đăng ký tài khoản thành công - Hotel Management", emailBody);
+
         return Ok(new { message = "Đăng ký thành công" });
     }
 
@@ -197,7 +212,7 @@ public class AuthController : ControllerBase
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
         if (user == null)
-            return Ok(new { message = "Nếu email này tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu." });
+            return BadRequest(new { message = "Email này chưa được đăng ký trong hệ thống." });
 
         var secret = _config["JwtSettings:Secret"] + user.PasswordHash;
         var securityKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secret));
@@ -229,7 +244,7 @@ public class AuthController : ControllerBase
         await _emailService.SendEmailAsync(user.Email, "Hotel Management - Đặt lại mật khẩu", emailBody);
         await _auditLogService.LogAsync("FORGOT_PASSWORD", nameof(User), new { user.Id, user.Email }, null, null, $"Gửi email reset password: {user.Email}");
 
-        return Ok(new { message = "Nếu email này tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu." });
+        return Ok(new { message = "Đã gửi đường dẫn đặt lại mật khẩu vào email của bạn. Vui lòng kiểm tra hộp thư." });
     }
 
     [HttpPost("reset-password")]

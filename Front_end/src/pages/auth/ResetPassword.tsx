@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Loader2 } from 'lucide-react';
-import { Form, Input, Button, message } from 'antd';
+import { message } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axiosClient from '../../api/axiosClient';
 
@@ -20,8 +20,18 @@ const ResetPassword = () => {
     }
   }, [token, email, navigate]);
 
-  const handleFinish = async (values: any) => {
-    if (values.password !== values.confirmPassword) {
+  const handleFinish = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+
+    if (!password || password.length < 6) {
+      message.error('Mật khẩu phải có ít nhất 6 ký tự!');
+      return;
+    }
+
+    if (password !== confirmPassword) {
       message.error('Mật khẩu không khớp!');
       return;
     }
@@ -31,7 +41,7 @@ const ResetPassword = () => {
       await axiosClient.post('/api/Auth/reset-password', {
         email,
         token,
-        newPassword: values.password
+        newPassword: password
       });
       message.success('Đổi mật khẩu thành công! Bạn có thể đăng nhập ngay.');
       navigate('/login');
@@ -43,66 +53,58 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4 overflow-hidden relative">
-      <div className="absolute inset-0 z-0">
-        <img
-          src="https://images.unsplash.com/photo-1542314831-c6a4d27ce66b?auto=format&fit=crop&q=80"
-          alt="Hotel Background"
-          className="w-full h-full object-cover opacity-30"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+    <div className="min-h-screen flex items-center justify-center px-4 py-20 bg-[var(--bg-main)] relative overflow-hidden transition-colors duration-300">
+      <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary rounded-full blur-[120px]" />
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-black/60 backdrop-blur-xl border border-white/10 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10"
+        className="w-full max-w-md"
       >
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-yellow-500/20">
-            <Lock className="text-black" size={32} />
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Lock className="text-primary" size={32} />
           </div>
-          <h2 className="text-3xl font-display font-bold text-white mb-2 tracking-wide">Mật Khẩu Mới</h2>
-          <p className="text-gray-400">Vui lòng nhập mật khẩu mới cho tài khoản của bạn</p>
+          <h2 className="text-3xl font-display font-bold text-primary mb-2 tracking-wide">Mật Khẩu Mới</h2>
+          <p className="text-muted">Vui lòng nhập mật khẩu mới cho tài khoản của bạn</p>
         </div>
 
-        <Form layout="vertical" onFinish={handleFinish} className="space-y-6">
-          <Form.Item
-            name="password"
-            rules={[
-              { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
-              { min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự!' }
-            ]}
-          >
-            <Input.Password
-              prefix={<Lock className="text-gray-400 mr-2" size={18} />}
-              placeholder="Mật khẩu mới"
-              className="h-14 bg-white/5 border-white/10 text-white hover:border-yellow-500/50 focus:border-yellow-500 focus:bg-white/10 transition-all rounded-xl text-lg"
-            />
-          </Form.Item>
+        <div className="glass-card p-8 sm:p-10 relative z-10">
+          <form onSubmit={handleFinish} className="space-y-6">
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
+              <input
+                type="password"
+                required
+                name="password"
+                placeholder="Mật khẩu mới"
+                className="input-luxury w-full pl-12"
+              />
+            </div>
 
-          <Form.Item
-            name="confirmPassword"
-            rules={[
-              { required: true, message: 'Vui lòng xác nhận mật khẩu!' }
-            ]}
-          >
-            <Input.Password
-              prefix={<Lock className="text-gray-400 mr-2" size={18} />}
-              placeholder="Xác nhận mật khẩu"
-              className="h-14 bg-white/5 border-white/10 text-white hover:border-yellow-500/50 focus:border-yellow-500 focus:bg-white/10 transition-all rounded-xl text-lg"
-            />
-          </Form.Item>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
+              <input
+                type="password"
+                required
+                name="confirmPassword"
+                placeholder="Xác nhận mật khẩu"
+                className="input-luxury w-full pl-12"
+              />
+            </div>
 
-          <Button
-            type="primary"
-            htmlType="submit"
-            disabled={loading}
-            className="w-full h-14 bg-gradient-to-r from-yellow-500 to-yellow-600 border-none text-black font-bold text-lg rounded-xl shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 transition-all"
-          >
-            {loading ? <Loader2 className="animate-spin" size={24} /> : 'ĐỔI MẬT KHẨU'}
-          </Button>
-        </Form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-gold w-full py-4 text-lg flex items-center justify-center group"
+            >
+              {loading ? <Loader2 className="animate-spin" size={24} /> : 'ĐỔI MẬT KHẨU'}
+            </button>
+          </form>
+        </div>
       </motion.div>
     </div>
   );

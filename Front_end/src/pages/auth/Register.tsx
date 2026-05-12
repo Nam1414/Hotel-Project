@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, User, Phone, ArrowRight, ShieldCheck } from 'lucide-react';
 import { authApi } from '../../services/authApi';
 
+import { message } from 'antd';
+
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -19,7 +21,7 @@ const Register: React.FC = () => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
-      alert('Mật khẩu xác nhận không khớp!');
+      message.error('Mật khẩu xác nhận không khớp!');
       return;
     }
 
@@ -31,10 +33,10 @@ const Register: React.FC = () => {
         phone: formData.phone,
         password: formData.password
       });
-      alert('Đăng ký tài khoản thành công!');
+      message.success('Đăng ký tài khoản thành công!');
       navigate('/login');
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Có lỗi xảy ra khi đăng ký!');
+      message.error(error.response?.data?.message || 'Có lỗi xảy ra khi đăng ký!');
     } finally {
       setLoading(false);
     }
@@ -53,14 +55,14 @@ const Register: React.FC = () => {
       >
         <div className="text-center mb-10">
           <h1 className="text-4xl font-display font-bold text-primary mb-2 tracking-widest">KANT</h1>
-          <p className="text-muted">Join the world of luxury</p>
+          <p className="text-muted">Gia nhập thế giới đẳng cấp</p>
         </div>
 
         <div className="glass-card p-10">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-muted uppercase tracking-widest">Full Name</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-widest">Họ và Tên</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                   <input 
@@ -70,7 +72,7 @@ const Register: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-muted uppercase tracking-widest">Phone Number</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-widest">Số điện thoại</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                   <input 
@@ -82,7 +84,7 @@ const Register: React.FC = () => {
             </div>
  
             <div className="space-y-2">
-              <label className="text-xs font-bold text-muted uppercase tracking-widest">Email Address</label>
+              <label className="text-xs font-bold text-muted uppercase tracking-widest">Địa chỉ Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                 <input 
@@ -94,7 +96,7 @@ const Register: React.FC = () => {
  
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-muted uppercase tracking-widest">Password</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-widest">Mật khẩu</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                   <input 
@@ -104,7 +106,7 @@ const Register: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-muted uppercase tracking-widest">Confirm Password</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-widest">Xác nhận mật khẩu</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50" size={18} />
                   <input 
@@ -123,7 +125,7 @@ const Register: React.FC = () => {
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
-                  CREATE ACCOUNT <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  ĐĂNG KÝ TÀI KHOẢN <ArrowRight size={20} className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>
@@ -131,7 +133,7 @@ const Register: React.FC = () => {
 
           <div className="mt-10 pt-8 border-t border-luxury text-center">
             <p className="text-muted text-sm">
-              Already have an account? <button onClick={() => navigate('/login')} className="text-primary font-bold hover:underline">Sign in</button>
+              Đã có tài khoản? <button onClick={() => navigate('/login')} className="text-primary font-bold hover:underline">Đăng nhập</button>
             </p>
           </div>
         </div>
