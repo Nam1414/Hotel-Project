@@ -431,6 +431,5 @@ Dự án phát triển phục vụ mục đích **học tập và nghiên cứu 
 
 **© 2026 KANT Team · Đại học Lạc Hồng**
 
-*Chúc buổi bảo vệ đồ án thành công rực rỡ! 🎓*
 
 </div>
